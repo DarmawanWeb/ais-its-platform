@@ -25,8 +25,9 @@ S3="http://$HOST:${S3_API_PORT:-9000}"
 S3_AUTH=(--aws-sigv4 "aws:amz:${S3_REGION:-us-east-1}:s3" --user "${S3_ACCESS_KEY:-seemp-dev}:${S3_SECRET_KEY:-seemp-dev-secret}")
 
 failures=0
-pass() { printf '  \033[32mPASS\033[0m %s\n' "$*"; }
-fail() { printf '  \033[31mFAIL\033[0m %s\n' "$*"; failures=$((failures + 1)); }
+if [[ -t 1 ]]; then OK=$'\033[32mPASS\033[0m' KO=$'\033[31mFAIL\033[0m'; else OK=PASS KO=FAIL; fi
+pass() { printf '  %s %s\n' "$OK" "$*"; }
+fail() { printf '  %s %s\n' "$KO" "$*"; failures=$((failures + 1)); }
 check() { local name=$1; shift; if "$@"; then pass "$name"; else fail "$name"; return 1; fi; }
 status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 port_open() { (exec 3<>"/dev/tcp/$HOST/$1") 2>/dev/null; }

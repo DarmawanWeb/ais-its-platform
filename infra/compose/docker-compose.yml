@@ -312,12 +312,12 @@ services:
       resources:
         limits: { memory: 768m }
 
-  legacy-be:
+  legacy-be:                           # seemp-mvp-api (spec §1), /api/v1 until cut-over
     <<: *service
     build:
       context: ../../legacy/be
       dockerfile: Dockerfile
-    image: seemp-legacy-be:dev
+    image: seemp-mvp-api:dev           # local tag; production image ghcr.io/darmawanweb/seemp-mvp-api
     container_name: seemp-legacy-be
     profiles: [legacy]
     depends_on:
@@ -331,6 +331,12 @@ services:
       JWT_SECRET: ${LEGACY_JWT_SECRET:-dev-legacy-jwt-secret-change-me}
       REFRESH_TOKEN_SECRET: ${LEGACY_REFRESH_TOKEN_SECRET:-dev-legacy-refresh-secret-change-me}
       ALLOWED_ORIGINS: http://localhost:8000,http://localhost:5173
+      # Behind the gateway: one proxy hop, and identity comes from the forwardAuth
+      # headers (X-User-Id …) set by the v2 auth service (spec §12). The host port
+      # below bypasses the gateway — it is bound to BIND_ADDRESS (loopback) for
+      # local debugging only.
+      TRUST_PROXY: "1"
+      TRUST_FORWARD_AUTH: "true"
       WEBSOCKET_URI: ${LEGACY_AIS_PRIMARY_URL:-}
       WEBSOCKET_BATAM_URI: ${LEGACY_AIS_BATAM_URL:-}
       WEBSOCKET_TOKEN: ${LEGACY_AIS_TOKEN:-}
