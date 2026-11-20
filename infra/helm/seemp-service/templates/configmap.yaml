@@ -1,0 +1,19 @@
+{{- /*
+  Non-secret environment: global.env, then the process' own env. HOST and PORT
+  are always derived from the chart (probes and Service depend on them);
+  SERVICE_NAME defaults to the resource name (spec §4).
+*/ -}}
+{{- $env := dict "SERVICE_NAME" (include "seemp-service.fullname" .) }}
+{{- $env = mustMergeOverwrite $env (deepCopy ((.Values.global).env | default dict)) (deepCopy (.Values.env | default dict)) }}
+{{- $_ := set $env "HOST" "0.0.0.0" }}
+{{- $_ = set $env "PORT" (toString .Values.port) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "seemp-service.fullname" . }}
+  labels:
+    {{- include "seemp-service.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := $env }}
+  {{ $key }}: {{ $value | toString | quote }}
+  {{- end }}

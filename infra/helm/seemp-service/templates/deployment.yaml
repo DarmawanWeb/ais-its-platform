@@ -108,9 +108,11 @@ spec:
             {{- include "seemp-service.podEnv" $ | nindent 12 }}
             - name: PORT
               value: {{ .port | quote }}
+            {{- if not (hasKey (.env | default dict) "SERVICE_NAME") }}
             - name: SERVICE_NAME
               value: {{ .name | quote }}
-            {{- range $key, $value := .env }}
+            {{- end }}
+            {{- range $key, $value := omit (.env | default dict) "PORT" }}
             - name: {{ $key }}
               value: {{ $value | toString | quote }}
             {{- end }}
