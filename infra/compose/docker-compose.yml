@@ -132,8 +132,8 @@ services:
         limits: { memory: 384m }
 
   # ---------------------------------------------------------------------------
-  # S3-compatible object storage — RustFS (MinIO-compatible API); see README
-  # for the SeaweedFS fallback. Path-style addressing (S3_FORCE_PATH_STYLE=true).
+  # S3-compatible object storage — RustFS (MinIO-compatible API), path-style
+  # addressing (S3_FORCE_PATH_STYLE=true). Fallback: s3-seaweedfs.yml override.
   # ---------------------------------------------------------------------------
   s3:
     <<: *service

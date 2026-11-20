@@ -72,7 +72,7 @@ valkey_ping() {
 }
 check "PING → PONG" valkey_ping
 
-echo "S3 (RustFS) :${S3_API_PORT:-9000}"
+echo "S3 :${S3_API_PORT:-9000}"
 bucket="smoke-$(date +%s)"
 check "SigV4 create bucket $bucket" test "$(status "${S3_AUTH[@]}" -X PUT "$S3/$bucket")" = 200
 buckets=$(curl -s "${S3_AUTH[@]}" "$S3/")
