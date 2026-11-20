@@ -1,0 +1,167 @@
+# =============================================================================
+# seemp-service — defaults for one SEEMP process (docs/PLATFORM_SPEC.md §5, §10, §11)
+# =============================================================================
+# The umbrella chart seemp-platform instantiates this chart once per process
+# (alias = component name). Shared settings arrive through `global`.
+
+global:
+  # -- Image tag for every SEEMP image whose own image.tag is empty (platform release).
+  imageTag: ""
+  imagePullSecrets: []
+  # -- Environment shared by all services (NATS_URL, REDIS_URL, AUTH_* …), rendered
+  # into each ConfigMap before the service's own `env`.
+  env: {}
+  # -- Name of an existing Secret with variables shared by all services
+  # (e.g. INTERNAL_TOKEN); mounted with envFrom before the service's own secret.
+  existingSecret: ""
+
+# -- Resource names (default: the chart name, i.e. the umbrella alias).
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/darmawanweb/seemp-auth-service
+  # -- Defaults to global.imageTag, then to the chart appVersion.
+  tag: ""
+  # -- Pin by digest (sha256:…); wins over the tag.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# -- Ignored when autoscaling.enabled.
+replicaCount: 1
+
+# -- Deployment strategy. Use {type: Recreate} for a consumer that must never run twice.
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 0
+
+# -- Container entrypoint override, e.g. ["node", "dist/apps/processor/main.js"]
+# to run the ais-pipeline processor from the same image as the ingestor.
+command: []
+args: []
+
+# -- HTTP port of the process (also exported as PORT, spec §3).
+port: 3001
+
+# -- Non-secret environment for this process → ConfigMap (overrides global.env).
+env: {}
+# -- Secret environment rendered into a chart-managed Secret. Development only:
+# in production keep this empty and use existingSecret (External Secrets,
+# Sealed Secrets, SOPS …) so that no secret is ever stored in values files.
+secretEnv: {}
+# -- Existing Secret whose keys become environment variables (DATABASE_URL …).
+existingSecret: ""
+# -- Additional envFrom sources (configMapRef / secretRef).
+extraEnvFrom: []
+
+probes:
+  # Spec §10: /health/live = process up, /health/ready = DB, NATS, Valkey reachable.
+  liveness:
+    path: /health/live
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    path: /health/ready
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  # Generous: services run their SQL migrations on boot (DB_MIGRATE_ON_BOOT).
+  startup:
+    path: /health/live
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 36
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    memory: 512Mi
+
+# -- Optional second container in the same Pod: the same image with another
+# entrypoint, sharing env, security context and volumes — e.g. the ais-pipeline
+# processor next to the ingestor in small (dev) clusters. Its port is added to
+# the Service as "http-<name>" and probed on the same paths. Production runs
+# the processor as its own release instead (independent scaling and rollout).
+secondaryContainer:
+  enabled: false
+  name: processor
+  command: ["node", "dist/apps/processor/main.js"]
+  args: []
+  port: 3004
+  # -- Extra environment for this container only (PORT is set from `port`).
+  env: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 192Mi
+    limits:
+      memory: 512Mi
+
+service:
+  type: ClusterIP
+  # -- Service port; defaults to `port` so in-cluster URLs match spec §3 (http://auth:3001).
+  port: null
+  annotations: {}
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  # -- Services never call the Kubernetes API.
+  automountToken: false
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  # -- Optional memory target (percentage of requests); null = CPU only.
+  targetMemoryUtilizationPercentage: null
+
+podDisruptionBudget:
+  enabled: true
+  # -- maxUnavailable never blocks node drains, even with a single replica.
+  maxUnavailable: 1
+
+# -- Scrape annotations for Prometheus-compatible agents (GET /metrics, spec §10).
+metrics:
+  enabled: true
+  path: /metrics
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000            # USER node in node:24-alpine (spec §11)
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+# -- Writable emptyDir mounts on top of the read-only root filesystem.
+writablePaths: [/tmp]
+
+# -- Seconds to keep serving after the Pod is marked terminating, so that the
+# gateway stops routing to it before the process shuts down (0 = disabled).
+preStopSleepSeconds: 5
+terminationGracePeriodSeconds: 30
+
+# -- Spread replicas over nodes when possible (soft constraint).
+spreadAcrossNodes: true
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
