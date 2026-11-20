@@ -1,0 +1,103 @@
+# =============================================================================
+# seemp-platform — PRODUCTION
+# =============================================================================
+#   helm upgrade --install seemp infra/helm/seemp-platform -n seemp \
+#     -f infra/helm/seemp-platform/values-prod.yaml --atomic --timeout 10m
+#
+# Prerequisites (infra/helm/README.md): Traefik v3 with CRDs and a `websecure`
+# entrypoint, the TLS secret, and the Secrets named by existingSecret
+# (seemp-shared, seemp-auth, …) created from your secret manager. Backing
+# services: managed PostgreSQL 17 + TimescaleDB, a 3-node NATS JetStream cluster,
+# Valkey, S3 and SMTP — see infra/README.md "Production".
+
+global:
+  imageTag: "0.1.0"                      # pin the platform release (or use image.digest)
+  existingSecret: seemp-shared           # INTERNAL_TOKEN
+  env:
+    # Use tls://… once the NATS cluster serves TLS (infra/nats/nats.conf, production).
+    NATS_URL: nats://nats:4222
+    REDIS_URL: redis://valkey:6379
+    CORS_ORIGINS: https://seemp.example.com
+    PUBLIC_BASE_URL: https://seemp.example.com
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.observability:4318
+
+x-http-service: &http-service
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests: { cpu: 200m, memory: 256Mi }
+    limits: { memory: 768Mi }
+
+auth: *http-service
+fleet: *http-service
+telemetry: *http-service
+
+notification:
+  # One ordered (ephemeral) AIS_POSITION consumer per instance by design (§7.3),
+  # so it scales out; socket.io sessions stay on one replica (sticky cookie).
+  <<: *http-service
+
+ais-ingestor:
+  # Two instances keep the upstream feeds alive during a rollout or node loss;
+  # duplicates are dropped by JetStream (Nats-Msg-Id dedup, spec §13.2).
+  replicaCount: 2
+  resources:
+    requests: { cpu: 200m, memory: 256Mi }
+    limits: { memory: 512Mi }
+
+ais-processor:
+  # replicaCount 1 + Recreate from values.yaml (single ordered AIS_RAW consumer).
+  resources:
+    requests: { cpu: 500m, memory: 512Mi }
+    limits: { memory: 1Gi }
+
+emission:
+  # Shared durable consumer; segments carry their own `previous`, handlers are idempotent.
+  replicaCount: 2
+  resources:
+    requests: { cpu: 300m, memory: 384Mi }
+    limits: { memory: 1Gi }
+
+detection:
+  # Detectors keep per-vessel streaks: one instance until the consumer is
+  # partitioned by ais.position.v1.<p>.> (spec §7.3).
+  replicaCount: 1
+  strategy:
+    type: Recreate
+  resources:
+    requests: { cpu: 300m, memory: 384Mi }
+    limits: { memory: 1Gi }
+
+web:
+  replicaCount: 2
+
+martin:
+  replicaCount: 2
+  image:
+    tag: latest                          # PIN: ghcr.io/maplibre/martin release tag
+
+legacy-be:
+  enabled: true                          # /api/v1 until the v2 cut-over (spec §1)
+  replicaCount: 1                        # in-process schedulers of the MVP
+
+gateway:
+  hosts: [seemp.example.com]
+  entryPoints: [websecure]
+  tls:
+    enabled: true
+    secretName: seemp-tls
+  hsts:
+    enabled: true
+    maxAgeSeconds: 31536000
+  rateLimit:
+    average: 10
+    period: 1m
+    burst: 10
+    ipStrategyDepth: 0                   # 1 behind a single trusted cloud load balancer
+
+legacyNetworkPolicy:
+  enabled: true
+  gatewayNamespace: traefik

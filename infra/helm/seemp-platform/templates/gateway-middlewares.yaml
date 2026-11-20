@@ -1,0 +1,103 @@
+{{- /*
+  Middlewares referenced by the route table — same semantics as the dev
+  gateway (infra/traefik/dynamic/routes.yml), plus HSTS for HTTPS.
+*/ -}}
+{{- if .Values.gateway.enabled }}
+{{- $gw := .Values.gateway }}
+# 403 for everyone: only Traefik's own loopback is allowed (spec §12 hidden paths).
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "seemp-platform.middleware" (list . "deny-all") }}
+  labels:
+    {{- include "seemp-platform.labels" . | nindent 4 }}
+spec:
+  ipAllowList:
+    sourceRange: ["127.0.0.1/32", "::1/128"]
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "seemp-platform.middleware" (list . "security-headers") }}
+  labels:
+    {{- include "seemp-platform.labels" . | nindent 4 }}
+spec:
+  headers:
+    contentTypeNosniff: true
+    frameDeny: true
+    referrerPolicy: strict-origin-when-cross-origin
+    permissionsPolicy: "camera=(), microphone=(), payment=(), usb=()"
+    {{- if and $gw.tls.enabled $gw.hsts.enabled }}
+    stsSeconds: {{ int $gw.hsts.maxAgeSeconds }}
+    stsIncludeSubdomains: true
+    {{- end }}
+    customResponseHeaders:
+      Server: ""
+      X-Powered-By: ""
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "seemp-platform.middleware" (list . "auth-rate-limit") }}
+  labels:
+    {{- include "seemp-platform.labels" . | nindent 4 }}
+spec:
+  rateLimit:
+    average: {{ int $gw.rateLimit.average }}
+    period: {{ $gw.rateLimit.period }}
+    burst: {{ int $gw.rateLimit.burst }}
+    {{- if $gw.rateLimit.ipStrategyDepth }}
+    sourceCriterion:
+      ipStrategy:
+        depth: {{ int $gw.rateLimit.ipStrategyDepth }}
+    {{- end }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "seemp-platform.middleware" (list . "compress") }}
+  labels:
+    {{- include "seemp-platform.labels" . | nindent 4 }}
+spec:
+  compress:
+    minResponseBodyBytes: 1024
+    excludedContentTypes: [text/event-stream]
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "seemp-platform.middleware" (list . "strip-tiles-prefix") }}
+  labels:
+    {{- include "seemp-platform.labels" . | nindent 4 }}
+spec:
+  stripPrefix:
+    prefixes: ["/tiles"]
+---
+# Identity headers may only come from legacy-auth; drop client-supplied ones.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "seemp-platform.middleware" (list . "strip-identity-headers") }}
+  labels:
+    {{- include "seemp-platform.labels" . | nindent 4 }}
+spec:
+  headers:
+    customRequestHeaders:
+      X-User-Id: ""
+      X-Org-Id: ""
+      X-Roles: ""
+---
+# /api/v1 needs a valid v2 access token (auth answers 200 + identity headers or 401).
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "seemp-platform.middleware" (list . "legacy-auth") }}
+  labels:
+    {{- include "seemp-platform.labels" . | nindent 4 }}
+spec:
+  forwardAuth:
+    {{- $auth := index .Values "auth" }}
+    address: {{ $gw.forwardAuthAddress | default (printf "http://%s.%s.svc.cluster.local:%v/api/v2/auth/verify" ($auth.fullnameOverride | default "auth") .Release.Namespace (int $auth.port)) | quote }}
+    authRequestHeaders: [Authorization, X-Request-Id]
+    authResponseHeaders: [X-User-Id, X-Org-Id, X-Roles]
+{{- end }}

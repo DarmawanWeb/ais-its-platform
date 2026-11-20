@@ -1,0 +1,30 @@
+{{- /*
+  legacy-be trusts the X-User-Id/X-Org-Id/X-Roles headers set by the gateway's
+  forwardAuth (TRUST_FORWARD_AUTH=true), so nothing but the gateway may reach it.
+*/ -}}
+{{- $legacy := index .Values "legacy-be" }}
+{{- if and $legacy.enabled .Values.legacyNetworkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $legacy.fullnameOverride | default "legacy-be" }}-gateway-only
+  labels:
+    {{- include "seemp-platform.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: legacy-be
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.legacyNetworkPolicy.gatewayNamespace }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.legacyNetworkPolicy.gatewayPodLabels | nindent 14 }}
+      ports:
+        - port: {{ int $legacy.port }}
+          protocol: TCP
+{{- end }}

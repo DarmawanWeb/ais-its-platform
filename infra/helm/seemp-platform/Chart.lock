@@ -1,0 +1,36 @@
+dependencies:
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+- name: seemp-service
+  repository: file://../seemp-service
+  version: 0.1.0
+digest: sha256:cee731da506e1ea4cfc2b1d07e56ea792c8b24426263e9cb24da47bbc0309177
+generated: "2026-11-20T11:54:31.781325924Z"

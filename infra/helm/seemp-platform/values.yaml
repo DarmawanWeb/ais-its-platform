@@ -1,0 +1,349 @@
+# =============================================================================
+# seemp-platform — base values (environment-neutral)
+# =============================================================================
+# Layer an environment file on top:
+#   helm upgrade --install seemp infra/helm/seemp-platform -n seemp -f values-prod.yaml
+#
+# Every process is an instance of ../seemp-service (see its values.yaml for all
+# knobs). fullnameOverride = spec §3 hostname, so in-cluster URLs are the same
+# as in the compose stack (http://auth:3001 …). Secrets are referenced by name
+# (existingSecret) and are never stored in these files.
+
+global:
+  # -- Release tag applied to every SEEMP image without an explicit image.tag.
+  imageTag: ""
+  imagePullSecrets: []
+  # -- Secret with variables shared by all services (INTERNAL_TOKEN).
+  existingSecret: seemp-shared
+  # -- Common environment (spec §4); in-cluster hostnames of the backing services.
+  env:
+    NODE_ENV: production
+    LOG_LEVEL: info
+    LOG_PRETTY: "false"
+    DATABASE_POOL_MAX: "10"
+    DB_MIGRATE_ON_BOOT: "true"
+    NATS_URL: nats://nats:4222
+    REDIS_URL: redis://valkey:6379
+    AUTH_JWKS_URL: http://auth:3001/.well-known/jwks.json
+    AUTH_ISSUER: seemp-auth
+    AUTH_AUDIENCE: seemp-api
+    AUTH_INTERNAL_URL: http://auth:3001
+    CORS_ORIGINS: https://seemp.example.com
+    PUBLIC_BASE_URL: https://seemp.example.com
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+
+# --- auth:3001 (spec §13.1) --------------------------------------------------
+auth:
+  enabled: true
+  fullnameOverride: auth
+  image:
+    repository: ghcr.io/darmawanweb/seemp-auth-service
+  port: 3001
+  env:
+    DATABASE_SCHEMA: auth
+    ACCESS_TOKEN_TTL: "900"
+    REFRESH_TOKEN_TTL_DAYS: "30"
+    COOKIE_SECURE: "true"
+    BOOTSTRAP_ADMIN_EMAIL: admin@seemp.local
+  # DATABASE_URL, KEY_ENCRYPTION_SECRET, BOOTSTRAP_ADMIN_PASSWORD
+  existingSecret: seemp-auth
+
+# --- fleet:3002 (spec §13.3) -------------------------------------------------
+fleet:
+  enabled: true
+  fullnameOverride: fleet
+  image:
+    repository: ghcr.io/darmawanweb/seemp-fleet-service
+  port: 3002
+  env:
+    DATABASE_SCHEMA: fleet
+    S3_ENDPOINT: http://s3:9000
+    S3_REGION: us-east-1
+    S3_BUCKET_PHOTOS: vessel-photos
+    S3_FORCE_PATH_STYLE: "true"
+    S3_PUBLIC_ENDPOINT: https://s3.seemp.example.com
+    FLEET_REPUBLISH_ON_BOOT: "false"
+  # DATABASE_URL, S3_ACCESS_KEY, S3_SECRET_KEY
+  existingSecret: seemp-fleet
+
+# --- ais-ingestor:3003 and ais-processor:3004 — one image, two processes (§13.2)
+ais-ingestor:
+  enabled: true
+  fullnameOverride: ais-ingestor
+  image:
+    repository: ghcr.io/darmawanweb/seemp-ais-pipeline
+  command: ["node", "dist/apps/ingestor/main.js"]
+  port: 3003
+  env:
+    SERVICE_NAME: ais-ingestor
+    AIS_PRIMARY_URL: ""          # empty = upstream disabled
+    AIS_BATAM_URL: ""
+  # AIS_UPSTREAM_TOKEN (stateless: no database)
+  existingSecret: seemp-ais-ingestor
+
+ais-processor:
+  enabled: true
+  fullnameOverride: ais-processor
+  image:
+    repository: ghcr.io/darmawanweb/seemp-ais-pipeline
+  command: ["node", "dist/apps/processor/main.js"]
+  port: 3004
+  # Single consumer of AIS_RAW (durable "ais-processor") keeping per-vessel
+  # order: never two processors at once, not even during a rollout.
+  replicaCount: 1
+  strategy:
+    type: Recreate
+  env:
+    SERVICE_NAME: ais-processor
+    DATABASE_SCHEMA: ais
+    AIS_DEDUP_MIN_DISTANCE_M: "0.1"
+    PROCESSOR_BATCH_SIZE: "500"
+    PROCESSOR_FLUSH_MS: "1000"
+  # DATABASE_URL
+  existingSecret: seemp-ais-processor
+
+# --- telemetry:3005 (spec §13.4) ---------------------------------------------
+telemetry:
+  enabled: true
+  fullnameOverride: telemetry
+  image:
+    repository: ghcr.io/darmawanweb/seemp-telemetry-service
+  port: 3005
+  env:
+    DATABASE_SCHEMA: telemetry
+    TELEMETRY_ACTIVE_WINDOW_MIN: "10"
+  # DATABASE_URL
+  existingSecret: seemp-telemetry
+
+# --- emission:3006 (spec §13.5) ----------------------------------------------
+emission:
+  enabled: true
+  fullnameOverride: emission
+  image:
+    repository: ghcr.io/darmawanweb/seemp-emission-service
+  port: 3006
+  env:
+    DATABASE_SCHEMA: emission
+    CII_PUBLISH_INTERVAL_S: "60"
+  # DATABASE_URL
+  existingSecret: seemp-emission
+
+# --- detection:3007 (spec §13.6) ---------------------------------------------
+detection:
+  enabled: true
+  fullnameOverride: detection
+  image:
+    repository: ghcr.io/darmawanweb/seemp-detection-service
+  port: 3007
+  env:
+    DATABASE_SCHEMA: detection
+    ANOMALY_MIN_POSITIONS: "3"
+    DARK_GAP_MIN: "30"
+  # DATABASE_URL
+  existingSecret: seemp-detection
+
+# --- notification:3008, HTTP + socket.io /ws (spec §13.7, §9) ------------------
+notification:
+  enabled: true
+  fullnameOverride: notification
+  image:
+    repository: ghcr.io/darmawanweb/seemp-notification-service
+  port: 3008
+  env:
+    DATABASE_SCHEMA: notify
+    SMTP_FROM: "SEEMP <no-reply@seemp.example.com>"
+  # DATABASE_URL, SMTP_URL, TELEGRAM_BOT_TOKEN, WEBHOOK_SIGNING_SECRET
+  existingSecret: seemp-notification
+
+# --- web: nginx serving the built SPA on :8080 as non-root (spec §14) ----------
+web:
+  enabled: true
+  fullnameOverride: web
+  platformEnv: false
+  image:
+    repository: ghcr.io/darmawanweb/seemp-web
+  port: 8080
+  probes:
+    liveness: { path: /, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+    readiness: { path: /, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3 }
+    startup: { enabled: false }
+  metrics:
+    enabled: false
+  writablePaths: [/tmp, /var/cache/nginx, /var/run]
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+# --- legacy-be:3020 — seemp-mvp-api, /api/v1 until cut-over (spec §1, §12) -----
+legacy-be:
+  enabled: false                  # needs MongoDB; enable per environment
+  fullnameOverride: legacy-be
+  platformEnv: false
+  image:
+    repository: ghcr.io/darmawanweb/seemp-mvp-api
+  port: 3020
+  probes:
+    liveness: { path: /, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+    readiness: { path: /, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3 }
+    startup: { path: /, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 24 }
+  metrics:
+    enabled: false
+  env:
+    WEBSOCKET_SERVER_PORT: "3021"
+    TRUST_PROXY: "1"
+    # Identity comes from the gateway's forwardAuth headers. Only safe because
+    # the NetworkPolicy below admits nothing but the gateway.
+    TRUST_FORWARD_AUTH: "true"
+  # MONGO_URI, MONGO_DB_NAME, JWT_SECRET, REFRESH_TOKEN_SECRET
+  existingSecret: seemp-mvp-api
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+# --- martin:3010 vector tiles, role tiles_ro (spec §3, §6) ---------------------
+martin:
+  enabled: true
+  fullnameOverride: martin
+  platformEnv: false
+  image:
+    repository: ghcr.io/maplibre/martin
+    tag: latest                   # PIN to a released version for production
+  port: 3010
+  args: ["--listen-addresses", "0.0.0.0:3010", "--pool-size", "10"]
+  probes:
+    liveness: { path: /health, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
+    readiness: { path: /health, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3 }
+    startup: { enabled: false }
+  metrics:
+    enabled: false
+  # DATABASE_URL=postgres://tiles_ro:…@<postgres>:5432/seemp
+  existingSecret: seemp-martin
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+# =============================================================================
+# Gateway — Traefik IngressRoute + Middlewares mirroring spec §12
+# (requires Traefik v3 with its CRDs: traefik.io/v1alpha1).
+# =============================================================================
+gateway:
+  enabled: true
+  # -- Hostnames served; empty = any host.
+  hosts: [seemp.example.com]
+  entryPoints: [websecure]
+  tls:
+    enabled: true
+    # -- TLS secret in the release namespace (e.g. issued by cert-manager) …
+    secretName: seemp-tls
+    # -- … or a Traefik ACME resolver (leave secretName empty).
+    certResolver: ""
+  hsts:
+    enabled: true
+    maxAgeSeconds: 31536000
+  # -- Anonymous credential endpoints, per client IP (spec §5).
+  rateLimit:
+    average: 10
+    period: 1m
+    burst: 10
+    # -- 0 = client address seen by Traefik; N = Nth address from the right of
+    # X-Forwarded-For (set to 1 behind one trusted load balancer).
+    ipStrategyDepth: 0
+  # -- Defaults to http://auth.<namespace>.svc.cluster.local:3001/api/v2/auth/verify
+  forwardAuthAddress: ""
+  # -- Cookie for sticky sessions on socket.io routes (long-polling needs the
+  # same replica for a whole session).
+  stickyCookieName: seemp_affinity
+
+  # -- Route table: one entry per row of spec §12 plus sub-routes. `backend` is a
+  # component alias above ("" = answered by the gateway itself; optional `port`
+  # overrides the component's port); routes whose backend is disabled are
+  # skipped. Middlewares are the names defined in templates/gateway-middlewares.yaml.
+  # Keep in sync with infra/traefik/dynamic.
+  routes:
+    - name: blocked
+      priority: 1000
+      prefixes: [/internal, /docs]
+      paths: [/metrics, /openapi.json]
+      backend: ""
+      middlewares: [deny-all]
+    - name: auth-throttled
+      priority: 300
+      prefixes: [/api/v2/auth/login, /api/v2/auth/password, /api/v2/auth/mfa/verify]
+      backend: auth
+      middlewares: [security-headers, auth-rate-limit, compress]
+    - name: auth
+      priority: 200
+      prefixes: [/api/v2/auth, /api/v2/me, /api/v2/users, /api/v2/organizations, /api/v2/api-keys, /api/v2/audit-logs]
+      paths: [/.well-known/jwks.json]
+      backend: auth
+      middlewares: [security-headers, compress]
+    - name: fleet
+      priority: 200
+      prefixes: [/api/v2/vessels, /api/v2/vessel-types, /api/v2/fuels, /api/v2/engines, /api/v2/fuel-formulas, /api/v2/ports, /api/v2/registry]
+      backend: fleet
+      middlewares: [security-headers, compress]
+    - name: ais-ingestor-socket
+      priority: 300
+      prefixes: [/api/v2/ingest/socket]
+      backend: ais-ingestor
+      sticky: true
+      middlewares: [security-headers]
+    - name: ais-ingestor
+      priority: 200
+      prefixes: [/api/v2/ingest]
+      backend: ais-ingestor
+      middlewares: [security-headers, compress]
+    - name: ais-processor
+      priority: 200
+      prefixes: [/api/v2/ais]
+      backend: ais-processor
+      middlewares: [security-headers, compress]
+    - name: telemetry
+      priority: 200
+      prefixes: [/api/v2/telemetry]
+      backend: telemetry
+      middlewares: [security-headers, compress]
+    - name: emission
+      priority: 200
+      prefixes: [/api/v2/cii, /api/v2/seemp, /api/v2/emission, /api/v2/reduction-factors]
+      backend: emission
+      middlewares: [security-headers, compress]
+    - name: detection
+      priority: 200
+      prefixes: [/api/v2/detections, /api/v2/zones]
+      backend: detection
+      middlewares: [security-headers, compress]
+    - name: notification-ws
+      priority: 300
+      prefixes: [/ws]
+      backend: notification
+      sticky: true
+      middlewares: [security-headers]
+    - name: notification
+      priority: 200
+      prefixes: [/api/v2/alerts, /api/v2/alert-rules, /api/v2/notifications]
+      backend: notification
+      middlewares: [security-headers, compress]
+    - name: tiles
+      priority: 200
+      prefixes: [/tiles]
+      backend: martin
+      middlewares: [security-headers, strip-tiles-prefix, compress]
+    - name: legacy
+      priority: 200
+      prefixes: [/api/v1]
+      backend: legacy-be
+      middlewares: [security-headers, strip-identity-headers, legacy-auth, compress]
+    - name: web
+      priority: 1
+      prefixes: [/]
+      backend: web
+      middlewares: [security-headers, compress]
+
+# -- Restrict ingress to legacy-be (which trusts forwardAuth headers) to the
+# gateway Pods only. Requires a CNI that enforces NetworkPolicy.
+legacyNetworkPolicy:
+  enabled: true
+  gatewayNamespace: traefik
+  gatewayPodLabels:
+    app.kubernetes.io/name: traefik

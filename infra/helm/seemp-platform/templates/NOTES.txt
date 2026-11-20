@@ -1,0 +1,13 @@
+SEEMP platform {{ .Chart.AppVersion }} — release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Components:
+{{- range $name := list "auth" "fleet" "ais-ingestor" "ais-processor" "telemetry" "emission" "detection" "notification" "web" "legacy-be" "martin" }}
+{{- $c := index $.Values $name }}
+  {{ printf "%-14s" $name }} {{ if $c.enabled }}enabled  → http://{{ $c.fullnameOverride | default $name }}:{{ $c.port }}{{ else }}disabled{{ end }}
+{{- end }}
+{{ if .Values.gateway.enabled }}
+Gateway: IngressRoute "{{ include "seemp-platform.fullname" . }}" on entrypoints {{ join ", " .Values.gateway.entryPoints }}
+  hosts: {{ if .Values.gateway.hosts }}{{ join ", " .Values.gateway.hosts }}{{ else }}any{{ end }} (TLS {{ if .Values.gateway.tls.enabled }}on{{ else }}off{{ end }})
+{{- end }}
+
+Secrets are referenced, never created here — see infra/helm/README.md.

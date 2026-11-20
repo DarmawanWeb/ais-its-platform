@@ -15,6 +15,10 @@ global:
   # (e.g. INTERNAL_TOKEN); mounted with envFrom before the service's own secret.
   existingSecret: ""
 
+# -- Receive the platform-wide global.env and global.existingSecret. Off for
+# processes that are not platform services (web, Martin, the MVP API).
+platformEnv: true
+
 # -- Resource names (default: the chart name, i.e. the umbrella alias).
 nameOverride: ""
 fullnameOverride: ""
@@ -61,17 +65,20 @@ extraEnvFrom: []
 probes:
   # Spec §10: /health/live = process up, /health/ready = DB, NATS, Valkey reachable.
   liveness:
+    enabled: true
     path: /health/live
     periodSeconds: 10
     timeoutSeconds: 3
     failureThreshold: 3
   readiness:
+    enabled: true
     path: /health/ready
     periodSeconds: 5
     timeoutSeconds: 3
     failureThreshold: 3
   # Generous: services run their SQL migrations on boot (DB_MIGRATE_ON_BOOT).
   startup:
+    enabled: true
     path: /health/live
     periodSeconds: 5
     timeoutSeconds: 3

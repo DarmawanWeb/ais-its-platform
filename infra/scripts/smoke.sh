@@ -77,11 +77,14 @@ bucket="smoke-$(date +%s)"
 check "SigV4 create bucket $bucket" test "$(status "${S3_AUTH[@]}" -X PUT "$S3/$bucket")" = 200
 buckets=$(curl -s "${S3_AUTH[@]}" "$S3/")
 check "list buckets contains $bucket" grep -q "<Name>$bucket</Name>" <<<"$buckets"
-for b in ${S3_BUCKETS:-vessel-photos}; do
+IFS=, read -r -a expected_buckets <<<"${S3_BUCKETS:-vessel-photos}"
+for b in "${expected_buckets[@]}"; do
   check "bucket $b provisioned" grep -q "<Name>$b</Name>" <<<"$buckets"
 done
 check "delete bucket $bucket" test "$(status "${S3_AUTH[@]}" -X DELETE "$S3/$bucket")" = 204
-check "console UI" test "$(status "http://$HOST:${S3_CONSOLE_PORT:-9001}/rustfs/console/")" = 200
+if port_open "${S3_CONSOLE_PORT:-9001}"; then   # RustFS only, not the SeaweedFS fallback
+  check "console UI" test "$(status "http://$HOST:${S3_CONSOLE_PORT:-9001}/rustfs/console/")" = 200
+fi
 
 echo "Mailpit (SMTP :${MAILPIT_SMTP_PORT:-1025}, UI :${MAILPIT_UI_PORT:-8025})"
 subject="seemp smoke $(date +%s)"

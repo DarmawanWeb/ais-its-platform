@@ -74,9 +74,11 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "seemp-service.envFrom" -}}
 - configMapRef:
     name: {{ include "seemp-service.fullname" . }}
+{{- if .Values.platformEnv }}
 {{- with (.Values.global).existingSecret }}
 - secretRef:
     name: {{ . }}
+{{- end }}
 {{- end }}
 {{- with include "seemp-service.secretName" . }}
 - secretRef:
@@ -100,24 +102,30 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/* HTTP probes on a named port. Usage: include "seemp-service.probes" (dict "probes" .Values.probes "port" "http") */}}
 {{- define "seemp-service.probes" -}}
 {{- with .probes.startup }}
+{{- if .enabled }}
 startupProbe:
   httpGet: { path: {{ .path }}, port: {{ $.port }} }
   periodSeconds: {{ .periodSeconds }}
   timeoutSeconds: {{ .timeoutSeconds }}
   failureThreshold: {{ .failureThreshold }}
 {{- end }}
+{{- end }}
 {{- with .probes.liveness }}
+{{- if .enabled }}
 livenessProbe:
   httpGet: { path: {{ .path }}, port: {{ $.port }} }
   periodSeconds: {{ .periodSeconds }}
   timeoutSeconds: {{ .timeoutSeconds }}
   failureThreshold: {{ .failureThreshold }}
 {{- end }}
+{{- end }}
 {{- with .probes.readiness }}
+{{- if .enabled }}
 readinessProbe:
   httpGet: { path: {{ .path }}, port: {{ $.port }} }
   periodSeconds: {{ .periodSeconds }}
   timeoutSeconds: {{ .timeoutSeconds }}
   failureThreshold: {{ .failureThreshold }}
+{{- end }}
 {{- end }}
 {{- end }}

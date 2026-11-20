@@ -146,7 +146,7 @@ services:
       RUSTFS_ADDRESS: ":9000"
       RUSTFS_CONSOLE_ENABLE: "true"
       RUSTFS_CONSOLE_ADDRESS: ":9001"
-      S3_BUCKETS: ${S3_BUCKETS:-vessel-photos}           # created by the post_start hook
+      S3_BUCKETS: ${S3_BUCKETS:-vessel-photos}           # comma-separated; post_start hook
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${S3_API_PORT:-9000}:9000"
       - "${BIND_ADDRESS:-127.0.0.1}:${S3_CONSOLE_PORT:-9001}:9001"
@@ -161,7 +161,9 @@ services:
           - |
             until curl -fsS -o /dev/null http://127.0.0.1:9000/health; do sleep 1; done
             rc alias set seemp http://127.0.0.1:9000 "$$RUSTFS_ACCESS_KEY" "$$RUSTFS_SECRET_KEY" >/dev/null
-            for bucket in $$S3_BUCKETS; do rc bucket create --ignore-existing "seemp/$$bucket"; done
+            for bucket in $$(echo "$$S3_BUCKETS" | tr ',' ' '); do
+              rc bucket create --ignore-existing "seemp/$$bucket"
+            done
     healthcheck:
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9000/health"]
       interval: 10s
