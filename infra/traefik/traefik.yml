@@ -1,0 +1,71 @@
+# =============================================================================
+# SEEMP gateway — Traefik v3 static configuration (local dev and compose stack)
+# =============================================================================
+# Routes live in the dynamic configuration mounted at /etc/traefik/dynamic:
+#   dev mode   → infra/traefik/dynamic/  (backends on the host, `pnpm dev`)
+#   stack mode → infra/traefik/stack/    (backends are compose services)
+# Production uses Kubernetes IngressRoutes instead (infra/helm/seemp-platform).
+
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+entryPoints:
+  web:
+    address: ":8000"
+    # Client-supplied X-Forwarded-* headers are discarded (Traefik default) —
+    # the gateway is the edge in dev. Behind a load balancer, trust only it:
+    # forwardedHeaders: { trustedIPs: ["10.0.0.0/8"] }
+    transport:
+      respondingTimeouts:
+        readTimeout: 60s     # whole request incl. body (photo uploads ≤ 5 MB)
+        idleTimeout: 180s    # keep-alive between requests
+  traefik:
+    address: ":8090"         # dashboard/API (dev), /ping and /metrics — never public
+
+api:
+  dashboard: true
+  # DEV ONLY: dashboard and API served unauthenticated on the `traefik`
+  # entrypoint. In production the API is not exposed (or only through a router
+  # with authentication on an internal entrypoint).
+  insecure: true
+
+ping:
+  entryPoint: traefik        # used by `traefik healthcheck --ping`
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true              # edit a route, it is live without a restart
+
+log:
+  level: INFO
+  format: json
+
+accessLog:
+  format: json
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: drop      # never log Authorization, cookies or API keys
+      names:
+        User-Agent: keep
+        Content-Type: keep
+        X-Request-Id: keep
+
+# Scraped by the observability collector (infra/observability/otelcol-seemp.yaml).
+metrics:
+  prometheus:
+    entryPoint: traefik
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+
+# Root spans for every request; the W3C traceparent header is propagated to the
+# services, whose OpenTelemetry SDKs continue the trace (spec §10).
+tracing:
+  serviceName: seemp-gateway
+  sampleRate: 1.0            # dev: sample everything
+  otlp:
+    http:
+      endpoint: http://observability:4318/v1/traces

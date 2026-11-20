@@ -1,0 +1,360 @@
+# =============================================================================
+# SEEMP platform — local INFRASTRUCTURE stack (dev mode)
+# =============================================================================
+# Backing services only: the platform services and the web app run on the host
+# with `pnpm dev` and connect to the published ports below (spec §3/§4). The
+# gateway and the observability collector reach those host processes through
+# host.docker.internal.
+#
+#   cp infra/compose/.env.example infra/compose/.env          # optional overrides
+#   docker compose -f infra/compose/docker-compose.yml up -d --wait
+#   docker compose -f infra/compose/docker-compose.yml --profile tiles up -d --wait martin
+#   docker compose -f infra/compose/docker-compose.yml --profile legacy up -d --build --wait
+#   docker compose -f infra/compose/docker-compose.yml down       # stop, keep data
+#   docker compose -f infra/compose/docker-compose.yml down -v    # stop and wipe data
+#
+# Every ${VAR:-default} below is documented in .env.example; the defaults are
+# development-only values (spec §4) and must never be used anywhere else.
+# See infra/README.md for URLs, credentials and connection strings.
+# =============================================================================
+
+name: seemp
+
+x-service: &service
+  restart: unless-stopped
+  networks: [seemp]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+x-host-access: &host-access
+  # Lets a container reach processes on the host (Docker Desktop provides the
+  # name natively; on Linux "host-gateway" maps it to the bridge gateway IP).
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 17 + TimescaleDB + PostGIS (spec §6)
+  # ---------------------------------------------------------------------------
+  postgres:
+    <<: *service
+    image: timescale/timescaledb-ha:pg17
+    container_name: seemp-postgres
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}   # superuser "postgres"
+      TIMESCALEDB_TELEMETRY: "off"
+      TS_TUNE_MAX_CONNS: "200"         # 8 service pools × DATABASE_POOL_MAX + Martin + tools
+      # Passwords of the roles created by ../postgres/bootstrap.sql (first start only).
+      AUTH_SVC_PASSWORD: ${AUTH_SVC_PASSWORD:-auth_svc}
+      FLEET_SVC_PASSWORD: ${FLEET_SVC_PASSWORD:-fleet_svc}
+      AIS_SVC_PASSWORD: ${AIS_SVC_PASSWORD:-ais_svc}
+      TELEMETRY_SVC_PASSWORD: ${TELEMETRY_SVC_PASSWORD:-telemetry_svc}
+      EMISSION_SVC_PASSWORD: ${EMISSION_SVC_PASSWORD:-emission_svc}
+      DETECTION_SVC_PASSWORD: ${DETECTION_SVC_PASSWORD:-detection_svc}
+      NOTIFY_SVC_PASSWORD: ${NOTIFY_SVC_PASSWORD:-notify_svc}
+      TILES_RO_PASSWORD: ${TILES_RO_PASSWORD:-tiles_ro}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/home/postgres/pgdata                      # PGDATA = /home/postgres/pgdata/data
+      - ../postgres:/opt/seemp/postgres:ro                # bootstrap.sql + tests
+      # Mounted as a single file so the image's own init scripts (TimescaleDB,
+      # timescaledb-tune) still run before it.
+      - ../postgres/init/100-seemp-bootstrap.sh:/docker-entrypoint-initdb.d/100-seemp-bootstrap.sh:ro
+    shm_size: 256m                     # parallel query workers need more than Docker's 64 MB
+    stop_grace_period: 60s             # image stops with SIGINT (fast shutdown)
+    healthcheck:
+      # TCP on purpose: during first-start initialisation the server only listens
+      # on its Unix socket, so this turns healthy once bootstrap.sql has finished.
+      test: ["CMD", "pg_isready", "--host=127.0.0.1", "--port=5432", "--username=postgres", "--dbname=seemp"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 120s
+      start_interval: 2s
+    deploy:
+      resources:
+        limits: { memory: 2g }         # timescaledb-tune sizes shared_buffers & co. from it
+
+  # ---------------------------------------------------------------------------
+  # NATS JetStream + MQTT gateway (spec §7)
+  # ---------------------------------------------------------------------------
+  nats:
+    <<: *service
+    image: nats:2.12-alpine
+    container_name: seemp-nats
+    command: ["nats-server", "--config", "/etc/nats/nats.conf"]
+    environment:
+      GOMEMLIMIT: 400MiB               # soft limit below the container limit
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${NATS_PORT:-4222}:4222"
+      - "${BIND_ADDRESS:-127.0.0.1}:${NATS_MONITOR_PORT:-8222}:8222"
+      - "${BIND_ADDRESS:-127.0.0.1}:${NATS_MQTT_PORT:-1883}:1883"
+    volumes:
+      - ../nats/nats.conf:/etc/nats/nats.conf:ro
+      - nats-data:/data
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8222/healthz?js-enabled-only=true"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+      start_interval: 1s
+    deploy:
+      resources:
+        limits: { memory: 512m }
+
+  # ---------------------------------------------------------------------------
+  # Valkey 8 — cache, rate limits, AIS last positions (spec §2)
+  # ---------------------------------------------------------------------------
+  valkey:
+    <<: *service
+    image: valkey/valkey:8-alpine
+    container_name: seemp-valkey
+    # AOF persistence; evict only keys that carry a TTL (caches, throttling
+    # windows) if the dev memory cap is ever reached.
+    command: ["valkey-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${VALKEY_PORT:-6379}:6379"
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+      start_interval: 1s
+    deploy:
+      resources:
+        limits: { memory: 384m }
+
+  # ---------------------------------------------------------------------------
+  # S3-compatible object storage — RustFS (MinIO-compatible API); see README
+  # for the SeaweedFS fallback. Path-style addressing (S3_FORCE_PATH_STYLE=true).
+  # ---------------------------------------------------------------------------
+  s3:
+    <<: *service
+    image: rustfs/rustfs:latest
+    container_name: seemp-s3
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-seemp-dev}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-seemp-dev-secret}
+      RUSTFS_REGION: ${S3_REGION:-us-east-1}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      S3_BUCKETS: ${S3_BUCKETS:-vessel-photos}           # created by the post_start hook
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${S3_API_PORT:-9000}:9000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${S3_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - s3-data:/data
+    # Creates the buckets the services expect (idempotent) every time compose
+    # starts the container; `up --wait` waits for it (Docker Compose ≥ 2.30).
+    post_start:
+      - command:
+          - /bin/sh
+          - -ec
+          - |
+            until curl -fsS -o /dev/null http://127.0.0.1:9000/health; do sleep 1; done
+            rc alias set seemp http://127.0.0.1:9000 "$$RUSTFS_ACCESS_KEY" "$$RUSTFS_SECRET_KEY" >/dev/null
+            for bucket in $$S3_BUCKETS; do rc bucket create --ignore-existing "seemp/$$bucket"; done
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+      start_interval: 1s
+    deploy:
+      resources:
+        limits: { memory: 768m }
+
+  # ---------------------------------------------------------------------------
+  # Mailpit — catches every e-mail sent by the platform (SMTP 1025, UI 8025)
+  # ---------------------------------------------------------------------------
+  mailpit:
+    <<: *service
+    image: axllent/mailpit:latest
+    container_name: seemp-mailpit
+    environment:
+      MP_MAX_MESSAGES: "5000"
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"      # services may send with or without SMTP auth
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+      MP_DISABLE_VERSION_CHECK: "true"
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${BIND_ADDRESS:-127.0.0.1}:${MAILPIT_UI_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+      start_interval: 1s
+    deploy:
+      resources:
+        limits: { memory: 128m }
+
+  # ---------------------------------------------------------------------------
+  # Gateway — Traefik v3, routes of spec §12 to the host processes (dev mode)
+  # ---------------------------------------------------------------------------
+  gateway:
+    <<: [*service, *host-access]
+    image: traefik:v3.5
+    container_name: seemp-gateway
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${GATEWAY_PORT:-8000}:8000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${GATEWAY_DASHBOARD_PORT:-8090}:8090"
+    volumes:
+      - ../traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      # Whole directory (not single files) so live reload survives editors that
+      # replace files atomically. Stack mode mounts ../traefik/stack instead.
+      - ../traefik/dynamic:/etc/traefik/dynamic:ro
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+      start_interval: 1s
+    deploy:
+      resources:
+        limits: { memory: 256m }
+
+  # ---------------------------------------------------------------------------
+  # Observability — Grafana LGTM (Grafana 3000, OTLP gRPC 4317 / HTTP 4318),
+  # plus the SEEMP collector overlay (scrapes /metrics) and dashboards.
+  # ---------------------------------------------------------------------------
+  observability:
+    <<: [*service, *host-access]
+    image: grafana/otel-lgtm:latest
+    container_name: seemp-observability
+    environment:
+      OTELCOL_EXTRA_ARGS: "--config=file:/otel-lgtm/seemp/otelcol-seemp.yaml"
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${OTLP_GRPC_PORT:-4317}:4317"
+      - "${BIND_ADDRESS:-127.0.0.1}:${OTLP_HTTP_PORT:-4318}:4318"
+    volumes:
+      - ../observability:/otel-lgtm/seemp:ro
+      - ../observability/grafana/provisioning/dashboards/seemp.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/seemp.yaml:ro
+      - observability-data:/data       # Prometheus, Loki, Tempo, Grafana state
+    healthcheck:
+      test: ["CMD", "/otel-lgtm/docker/healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+      start_interval: 5s
+    deploy:
+      resources:
+        limits: { memory: 2g }
+
+  # ---------------------------------------------------------------------------
+  # Martin vector tiles (profile "tiles"), read-only role tiles_ro (spec §6)
+  # ---------------------------------------------------------------------------
+  martin:
+    <<: *service
+    image: ${MARTIN_IMAGE:-maplibre/martin:latest}
+    container_name: seemp-martin
+    profiles: [tiles]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      # URL-encode the password if it contains reserved characters.
+      DATABASE_URL: postgres://tiles_ro:${TILES_RO_PASSWORD:-tiles_ro}@postgres:5432/seemp
+    command: ["--listen-addresses", "0.0.0.0:3010", "--pool-size", "5"]
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${MARTIN_PORT:-3010}:3010"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3010/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+      start_interval: 1s
+    deploy:
+      resources:
+        limits: { memory: 256m }
+
+  # ---------------------------------------------------------------------------
+  # Legacy API /api/v1 (profile "legacy"): MongoDB 7 + the MVP backend
+  # ---------------------------------------------------------------------------
+  mongo:
+    <<: *service
+    image: mongo:7
+    container_name: seemp-mongo
+    profiles: [legacy]
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-seemp}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-seemp-dev}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${MONGO_PORT:-27017}:27017"   # legacy data import/migration
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "quit(db.adminCommand('ping').ok ? 0 : 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+      start_interval: 2s
+    deploy:
+      resources:
+        limits: { memory: 768m }
+
+  legacy-be:
+    <<: *service
+    build:
+      context: ../../legacy/be
+      dockerfile: Dockerfile
+    image: seemp-legacy-be:dev
+    container_name: seemp-legacy-be
+    profiles: [legacy]
+    depends_on:
+      mongo: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PORT: "3020"
+      WEBSOCKET_SERVER_PORT: "3021"    # legacy socket.io server, container-internal
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:-seemp}:${MONGO_ROOT_PASSWORD:-seemp-dev}@mongo:27017/${MONGO_DB_NAME:-seemp_legacy}?authSource=admin
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-seemp_legacy}
+      JWT_SECRET: ${LEGACY_JWT_SECRET:-dev-legacy-jwt-secret-change-me}
+      REFRESH_TOKEN_SECRET: ${LEGACY_REFRESH_TOKEN_SECRET:-dev-legacy-refresh-secret-change-me}
+      ALLOWED_ORIGINS: http://localhost:8000,http://localhost:5173
+      WEBSOCKET_URI: ${LEGACY_AIS_PRIMARY_URL:-}
+      WEBSOCKET_BATAM_URI: ${LEGACY_AIS_BATAM_URL:-}
+      WEBSOCKET_TOKEN: ${LEGACY_AIS_TOKEN:-}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${LEGACY_BE_PORT:-3020}:3020"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3020/').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+      start_interval: 2s
+    deploy:
+      resources:
+        limits: { memory: 768m }
+
+networks:
+  seemp:
+    name: seemp                        # fixed name: the stack mode and test runners can join it
+
+volumes:
+  pgdata:
+  nats-data:
+  valkey-data:
+  s3-data:
+  observability-data:
+  mongo-data:

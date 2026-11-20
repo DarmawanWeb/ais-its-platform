@@ -1,0 +1,222 @@
+# =============================================================================
+# SEEMP gateway — dynamic configuration, STACK MODE (everything in containers)
+# =============================================================================
+# Implements the route table of docs/PLATFORM_SPEC.md §12 for `pnpm stack:up`:
+# every backend is a compose service on the `seemp` network and is reached by
+# its §3 compose hostname. The web image is nginx serving the built SPA on
+# :8080 (non-root). Mount this directory instead of ../dynamic at
+# /etc/traefik/dynamic in the stack compose file.
+#
+# ../dynamic/routes.yml is the same file for DEV MODE: only this header, the
+# `services:` URLs and the forwardAuth address differ. Keep both in sync —
+# `diff dynamic/routes.yml stack/routes.yml` must only show those lines.
+#
+# Router conventions (one router per §12 row; generated-friendly):
+#   name      = backend name, `<backend>-<purpose>` for sub-routes
+#   rule      = PathPrefix(`…`) per prefix of the §12 row, joined with ||
+#   priority  = 1000 blocked paths · 300 sub-routes needing other middlewares
+#               · 200 §12 rows · 1 the "/" catch-all (higher wins)
+#   middlewares, in order: security-headers, [route specific], compress
+# =============================================================================
+
+http:
+  routers:
+    # --- never exposed through the gateway (spec §5, §12) --------------------
+    blocked:
+      entryPoints: [web]
+      rule: "PathPrefix(`/internal`) || Path(`/metrics`) || PathPrefix(`/docs`) || Path(`/openapi.json`)"
+      priority: 1000
+      middlewares: [deny-all]
+      service: noop@internal
+
+    # --- auth:3001 ----------------------------------------------------------
+    auth-throttled:            # anonymous credential endpoints: per-IP rate limit
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/auth/login`) || PathPrefix(`/api/v2/auth/password`) || PathPrefix(`/api/v2/auth/mfa/verify`)"
+      priority: 300
+      middlewares: [security-headers, auth-rate-limit, compress]
+      service: auth
+    auth:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/auth`) || PathPrefix(`/api/v2/me`) || PathPrefix(`/api/v2/users`) || PathPrefix(`/api/v2/organizations`) || PathPrefix(`/api/v2/api-keys`) || PathPrefix(`/api/v2/audit-logs`) || Path(`/.well-known/jwks.json`)"
+      priority: 200
+      middlewares: [security-headers, compress]
+      service: auth
+
+    # --- fleet:3002 ---------------------------------------------------------
+    fleet:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/vessels`) || PathPrefix(`/api/v2/vessel-types`) || PathPrefix(`/api/v2/fuels`) || PathPrefix(`/api/v2/engines`) || PathPrefix(`/api/v2/fuel-formulas`) || PathPrefix(`/api/v2/ports`) || PathPrefix(`/api/v2/registry`)"
+      priority: 200
+      middlewares: [security-headers, compress]
+      service: fleet
+
+    # --- ais-ingestor:3003 ----------------------------------------------------
+    ais-ingestor-socket:       # socket.io for AIS pushers (WebSocket + long-polling)
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/ingest/socket`)"
+      priority: 300
+      middlewares: [security-headers]
+      service: ais-ingestor
+    ais-ingestor:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/ingest`)"
+      priority: 200
+      middlewares: [security-headers, compress]
+      service: ais-ingestor
+
+    # --- ais-processor:3004 ---------------------------------------------------
+    ais-processor:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/ais`)"
+      priority: 200
+      middlewares: [security-headers, compress]
+      service: ais-processor
+
+    # --- telemetry:3005 -------------------------------------------------------
+    telemetry:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/telemetry`)"
+      priority: 200
+      middlewares: [security-headers, compress]
+      service: telemetry
+
+    # --- emission:3006 --------------------------------------------------------
+    emission:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/cii`) || PathPrefix(`/api/v2/seemp`) || PathPrefix(`/api/v2/emission`) || PathPrefix(`/api/v2/reduction-factors`)"
+      priority: 200
+      middlewares: [security-headers, compress]
+      service: emission
+
+    # --- detection:3007 -------------------------------------------------------
+    detection:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/detections`) || PathPrefix(`/api/v2/zones`)"
+      priority: 200
+      middlewares: [security-headers, compress]
+      service: detection
+
+    # --- notification:3008 ----------------------------------------------------
+    notification-ws:           # socket.io realtime gateway (spec §9)
+      entryPoints: [web]
+      rule: "PathPrefix(`/ws`)"
+      priority: 300
+      middlewares: [security-headers]
+      service: notification
+    notification:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/alerts`) || PathPrefix(`/api/v2/alert-rules`) || PathPrefix(`/api/v2/notifications`)"
+      priority: 200
+      middlewares: [security-headers, compress]
+      service: notification
+
+    # --- martin:3010 (compose profile "tiles") ------------------------------
+    tiles:
+      entryPoints: [web]
+      rule: "PathPrefix(`/tiles`)"
+      priority: 200
+      middlewares: [security-headers, strip-tiles-prefix, compress]
+      service: martin
+
+    # --- legacy-be:3020 (compose profile "legacy"), only for signed-in users --
+    legacy:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v1`)"
+      priority: 200
+      middlewares: [security-headers, strip-identity-headers, legacy-auth, compress]
+      service: legacy-be
+
+    # --- web (nginx serving the built SPA) ---------------------------------------
+    web:
+      entryPoints: [web]
+      rule: "PathPrefix(`/`)"
+      priority: 1
+      middlewares: [security-headers, compress]
+      service: web
+
+  middlewares:
+    # 403 for everyone: only loopback inside the gateway container is allowed,
+    # which no client coming through the published port can be.
+    deny-all:
+      ipAllowList:
+        sourceRange: ["127.0.0.1/32", "::1/128"]
+
+    security-headers:
+      headers:
+        contentTypeNosniff: true
+        frameDeny: true                        # X-Frame-Options: DENY
+        referrerPolicy: strict-origin-when-cross-origin
+        permissionsPolicy: "camera=(), microphone=(), payment=(), usb=()"
+        customResponseHeaders:                 # empty value = remove banner headers
+          Server: ""
+          X-Powered-By: ""
+        # HSTS is only meaningful over HTTPS: enabled in the production IngressRoute.
+
+    # Gateway-level limit for anonymous credential endpoints (spec §5); auth adds
+    # per-account throttling in Valkey (spec §13.1). Per client IP.
+    auth-rate-limit:
+      rateLimit:
+        average: 30
+        period: 1m
+        burst: 30
+
+    compress:
+      compress:
+        minResponseBodyBytes: 1024
+        excludedContentTypes: [text/event-stream]
+
+    strip-tiles-prefix:
+      stripPrefix:
+        prefixes: ["/tiles"]
+
+    # Identity headers are only ever set by legacy-auth below; drop spoofed ones.
+    strip-identity-headers:
+      headers:
+        customRequestHeaders:
+          X-User-Id: ""
+          X-Org-Id: ""
+          X-Roles: ""
+
+    # /api/v1 requires a valid v2 access token; auth answers 200 + identity
+    # headers (forwarded to the legacy backend) or 401 (returned to the client).
+    legacy-auth:
+      forwardAuth:
+        address: "http://auth:3001/api/v2/auth/verify"
+        authRequestHeaders: [Authorization, X-Request-Id]
+        authResponseHeaders: [X-User-Id, X-Org-Id, X-Roles]
+
+  services:
+    auth:
+      loadBalancer:
+        servers: [{ url: "http://auth:3001" }]
+    fleet:
+      loadBalancer:
+        servers: [{ url: "http://fleet:3002" }]
+    ais-ingestor:
+      loadBalancer:
+        servers: [{ url: "http://ais-ingestor:3003" }]
+    ais-processor:
+      loadBalancer:
+        servers: [{ url: "http://ais-processor:3004" }]
+    telemetry:
+      loadBalancer:
+        servers: [{ url: "http://telemetry:3005" }]
+    emission:
+      loadBalancer:
+        servers: [{ url: "http://emission:3006" }]
+    detection:
+      loadBalancer:
+        servers: [{ url: "http://detection:3007" }]
+    notification:
+      loadBalancer:
+        servers: [{ url: "http://notification:3008" }]
+    martin:
+      loadBalancer:
+        servers: [{ url: "http://martin:3010" }]
+    legacy-be:
+      loadBalancer:
+        servers: [{ url: "http://legacy-be:3020" }]
+    web:
+      loadBalancer:
+        servers: [{ url: "http://web:8080" }]
