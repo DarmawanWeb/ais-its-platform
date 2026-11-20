@@ -1,0 +1,165 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "seemp-service.fullname" . }}
+  labels:
+    {{- include "seemp-service.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    {{- toYaml .Values.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "seemp-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Roll the Pods when their configuration changes.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if and .Values.secretEnv (not .Values.existingSecret) }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if .Values.metrics.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.port | quote }}
+        prometheus.io/path: {{ .Values.metrics.path | quote }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "seemp-service.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: seemp
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "seemp-service.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountToken }}
+      enableServiceLinks: false          # no docker-link env vars (NATS_PORT=tcp://… etc.)
+      {{- with concat ((.Values.global).imagePullSecrets | default list) .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "seemp-service.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.port }}
+              protocol: TCP
+          envFrom:
+            {{- include "seemp-service.envFrom" . | nindent 12 }}
+          env:
+            {{- include "seemp-service.podEnv" . | nindent 12 }}
+          {{- include "seemp-service.probes" (dict "probes" .Values.probes "port" "http") | nindent 10 }}
+          {{- if gt (int .Values.preStopSleepSeconds) 0 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "{{ .Values.preStopSleepSeconds }}"]
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.writablePaths }}
+          volumeMounts:
+            {{- range . }}
+            - name: {{ include "seemp-service.volumeName" . }}
+              mountPath: {{ . }}
+            {{- end }}
+          {{- end }}
+        {{- with .Values.secondaryContainer }}
+        {{- if .enabled }}
+        - name: {{ .name }}
+          image: {{ include "seemp-service.image" $ }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          {{- with .command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: {{ include "seemp-service.secondaryPortName" $ }}
+              containerPort: {{ .port }}
+              protocol: TCP
+          envFrom:
+            {{- include "seemp-service.envFrom" $ | nindent 12 }}
+          env:
+            {{- include "seemp-service.podEnv" $ | nindent 12 }}
+            - name: PORT
+              value: {{ .port | quote }}
+            - name: SERVICE_NAME
+              value: {{ .name | quote }}
+            {{- range $key, $value := .env }}
+            - name: {{ $key }}
+              value: {{ $value | toString | quote }}
+            {{- end }}
+          {{- include "seemp-service.probes" (dict "probes" $.Values.probes "port" (include "seemp-service.secondaryPortName" $)) | nindent 10 }}
+          {{- if gt (int $.Values.preStopSleepSeconds) 0 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "{{ $.Values.preStopSleepSeconds }}"]
+          {{- end }}
+          resources:
+            {{- toYaml .resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
+          {{- with $.Values.writablePaths }}
+          volumeMounts:
+            {{- range . }}
+            - name: {{ include "seemp-service.volumeName" . }}
+              mountPath: {{ . }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+      {{- with .Values.writablePaths }}
+      volumes:
+        {{- range . }}
+        - name: {{ include "seemp-service.volumeName" . }}
+          emptyDir:
+            sizeLimit: 256Mi
+        {{- end }}
+      {{- end }}
+      {{- if .Values.spreadAcrossNodes }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "seemp-service.selectorLabels" . | nindent 14 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
