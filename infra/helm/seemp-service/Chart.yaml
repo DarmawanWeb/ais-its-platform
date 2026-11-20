@@ -1,0 +1,16 @@
+apiVersion: v2
+name: seemp-service
+description: >-
+  Reusable chart for one SEEMP platform process (NestJS/Fastify service, the
+  web app or a helper such as Martin): Deployment, Service, ServiceAccount,
+  ConfigMap/Secret environment, optional HPA and PodDisruptionBudget.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/DarmawanWeb/seemp-platform
+sources:
+  - https://github.com/DarmawanWeb/seemp-platform/tree/main/infra/helm/seemp-service
+keywords: [seemp, nestjs, service]
+maintainers:
+  - name: DarmawanWeb
