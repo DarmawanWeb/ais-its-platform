@@ -21,7 +21,7 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | 2 | Fondasi v2: `@darmawanweb/ais-its-contracts` 0.2 + `@darmawanweb/ais-its-nest` (kit + Detector SDK) + template (+review, hardening) | 🔄 berjalan (contracts 0.1.0 selesai; dilanjutkan setelah limit) |
 | 2b | Infrastruktur repo pusat: compose, Postgres bootstrap 9 role, NATS+MQTT, Traefik (18 router), Grafana, Helm `ais-its-*`, smoke 150/150 | ✅ selesai |
 | 2c | Quick fix MVP: BE `fix/phase-0-hardening` (242 test) dan FE `fix/phase-0` | ✅ selesai, ter-push |
-| 2d | Riset metodologi & referensi (inventaris 90 rumus, 127 referensi ✅; verifikasi + penulisan 🔄) | 🔄 berjalan |
+| 2d | Metodologi & referensi: `docs/METHODOLOGY.md`, 91 metode, 140 referensi (88 verified, 41 corrected, 11 unverified), 67 metode perlu sitasi tesis | ✅ selesai |
 | 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK + contracts v0.2 | 🔄 digabung ke tahap 2 (spec v1.1 ✅) |
 | 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | ⏳ |
 | 5 | Web v2 (foundation → fitur → integrasi) | ⏳ |
