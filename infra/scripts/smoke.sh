@@ -191,18 +191,20 @@ check "OTLP/HTTP accepts traces" test "$(status -H 'Content-Type: application/js
   -d '{"resourceSpans":[]}' "http://$HOST:${OTLP_HTTP_PORT:-4318}/v1/traces")" = 200
 check "OTLP/gRPC port open" port_open "${OTLP_GRPC_PORT:-4317}"
 promql() { curl -s -G "$GRAFANA/api/datasources/proxy/uid/prometheus/api/v1/query" --data-urlencode "query=$1"; }
-collector_scrapes() {   # the overlay is loaded when the gateway target shows up in Prometheus
+# Waits up to 60 s until the PromQL query $1 returns the single value $2: right
+# after a start, targets get their first scrape spread over the 15 s interval.
+promql_eventually() {
   local i
   for i in $(seq 1 12); do
-    promql 'up{job="gateway"}' | grep -q '"value":\[[0-9.]*,"1"\]' && return 0
+    promql "$1" | grep -q "\"value\":\[[0-9.]*,\"$2\"\]" && return 0
     sleep 5
   done
   return 1
 }
-check "collector scrapes /metrics (up{job=\"gateway\"} == 1)" collector_scrapes
+check "collector scrapes /metrics (up{job=\"gateway\"} == 1)" promql_eventually 'up{job="gateway"}' 1
 jobs=$(IFS='|'; echo "${SERVICES[*]%%:*}")
 check "a scrape job for each of the ${#SERVICES[@]} services (up == 0 until they run)" \
-  grep -q "\"value\":\[[0-9.]*,\"${#SERVICES[@]}\"\]" <(promql "count(up{job=~\"$jobs\"})")
+  promql_eventually "count(up{job=~\"$jobs\"})" "${#SERVICES[@]}"
 
 echo "Gateway (web :${GATEWAY_PORT:-8000}, dashboard :${GATEWAY_DASHBOARD_PORT:-8090})"
 check "ping" test "$(curl -s "$GATEWAY_API/ping")" = OK

@@ -1,7 +1,7 @@
 # AIS Maritime Intelligence v2 — Engineering Specification
 
 > Single source of truth for every repository of the platform. When code and this
-> document disagree, fix one of them in the same change. Version: **1.1 (2026-11-21)** —
+> document disagree, fix one of them in the same change. Version: **1.1.1 (2026-11-21)** —
 > 1.1 renames the platform to *AIS Maritime Intelligence* (`ais-its-*`) and splits navigational
 > safety, surveillance and geofences into their own services built on a shared Detector SDK.
 
@@ -508,6 +508,12 @@ openapi.json
 - Formulas ported from legacy MUST have **golden tests** with values computed from the legacy code.
 - Docker images: `node:24-alpine`, `NODE_ENV=production`, `USER node`, `HEALTHCHECK` on `/health/live`,
   only production dependencies.
+- Dockerfiles install dependencies with BuildKit secrets only: `npmrc` (registry auth, required for
+  `@darmawanweb` packages) and an OPTIONAL `ca` secret holding an extra CA bundle for TLS-intercepting
+  proxies (`--mount=type=secret,id=ca,target=/tmp/build-ca.crt,required=false` and
+  `NODE_EXTRA_CA_CERTS=/tmp/build-ca.crt` when the file exists). On the build VM use
+  `DOCKER_BUILDKIT=1 docker build --network host --secret id=npmrc,src=$HOME/.npmrc --secret id=ca,src=/root/.ccr/ca-bundle.crt …`;
+  CI passes only `npmrc`.
 
 ---
 
@@ -525,7 +531,7 @@ openapi.json
 | `/api/v2/alerts`, `/api/v2/alert-rules`, `/api/v2/notifications`, `/ws` | notification:3008 |
 | `/api/v2/zones` | geo:3009 |
 | `/api/v2/safety` | safety:3011 |
-| `/tiles` | martin:3010 (strip prefix) |
+| `/tiles` | martin:3010 (strip prefix) behind `forwardAuth` (signed-in users only; the web app sends the access token through MapLibre `transformRequest`) |
 | `/api/v1` | legacy-be:3020 behind `forwardAuth` → `auth:3001/api/v2/auth/verify` |
 | `/` | web |
 
@@ -560,7 +566,7 @@ Endpoints:
 - `POST /auth/refresh` (cookie) → `{ accessToken, expiresIn }` + rotated cookie. [public]
 - `POST /auth/logout` → 204. [public, cookie]
 - `POST /auth/switch-org` {orgId} → new access token (must be a member, or super_admin). [user]
-- `POST /auth/password/forgot` {email} → 202 always. Publishes `notify.email.requested.v1` (template `password_reset`, link `${PUBLIC_BASE_URL}/reset-password?token=…`, 30 min). [public, throttled]
+- `POST /auth/password/forgot` {email} → 202 always. Publishes `notify.email.requested.v1` (template `password_reset`, link `${PUBLIC_BASE_URL}/reset-password#token=…` — the token travels in the URL fragment so it never reaches access logs, 30 min). [public, throttled]
 - `POST /auth/password/reset` {token, password} → 204 (also used to accept invites). [public]
 - `POST /auth/password/change` {currentPassword, newPassword} → 204 and revokes other sessions. [user]
 - `POST /auth/mfa/setup` → `{ secret, otpauthUrl }`; `POST /auth/mfa/enable` {code}; `POST /auth/mfa/disable` {code}. [user]
@@ -750,7 +756,7 @@ outbox.
 
 Tables: `zones(id, org_id null = global, code, name, kind (see ZoneSnapshotV1), geom geography(Geometry,4326),
 buffer_m, alert_on_enter, active, properties jsonb, source, created_by, created_at, updated_at)`,
-`outbox`, view `zones_tiles` (geometry cast, `SELECT` granted to `tiles_ro` when present).
+`outbox`, view `zones_tiles` (geometry cast, **global zones only** (`org_id IS NULL`, `active`) because Martin cannot apply tenancy; `SELECT` granted to `tiles_ro` when present). Org zones reach the map through the authenticated REST/GeoJSON endpoint.
 
 Endpoints:
 - `GET /zones?kind&active&bbox&orgId` [zone:read] (global zones + own org zones; authority/super_admin all),
@@ -827,7 +833,7 @@ Tables: `vessel_state(mmsi PK, …latest position…, in_zone_ids uuid[], anomal
 `events` hypertable on `time` (id, type, detector, severity, mmsi, related_mmsi, zone_id, geom, title,
 message, method_id, data jsonb, status check in ('open','confirmed','dismissed','resolved'),
 reviewed_by, reviewed_at, note), `fishing_violations` (historical records imported from legacy
-`apps/web/src/data/ilegal.json`), projections `zones` (GEO) and `vessels` (FLEET). View `events_tiles` for Martin.
+`apps/web/src/data/ilegal.json`), projections `zones` (GEO) and `vessels` (FLEET). Events are NOT exposed through Martin (tenancy, §8.5); the map loads them through the REST API.
 
 Endpoints [surveillance:read unless stated; tenancy per §8.5]:
 - `GET /surveillance/events?type&severity&status&mmsi&from&to&bbox&cursor&limit`, `GET /surveillance/events/:id`,

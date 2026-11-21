@@ -1,0 +1,60 @@
+# Checks of the central repository's infrastructure (infra/, docs/PLATFORM_SPEC.md §3–§12).
+# Each job runs the same script a developer runs locally (see infra/README.md).
+name: infra
+
+on:
+  push:
+    branches: [main]
+    paths: ["infra/**", ".github/workflows/infra.yml"]
+  pull_request:
+    paths: ["infra/**", ".github/workflows/infra.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPOSE: docker compose -f infra/compose/docker-compose.yml
+
+jobs:
+  stack:
+    name: compose stack + smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate the compose files
+        run: |
+          $COMPOSE config -q
+          $COMPOSE --profile tiles --profile legacy config -q
+          $COMPOSE -f infra/compose/s3-seaweedfs.yml config -q
+      - name: Start the infrastructure (+ Martin)
+        run: $COMPOSE --profile tiles up -d --wait --wait-timeout 600
+      - name: Smoke test (includes the §12 routing test)
+        run: infra/scripts/smoke.sh
+      - name: Container logs
+        if: failure()
+        run: $COMPOSE --profile tiles logs --no-color --tail 200
+      - name: Tear down
+        if: always()
+        run: $COMPOSE --profile tiles --profile legacy down -v
+
+  postgres-managed:
+    name: bootstrap.sql as a non-superuser admin
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - run: infra/postgres/test/managed.sh
+
+  helm:
+    name: helm lint, render and API-server validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - run: infra/scripts/helm-check.sh
