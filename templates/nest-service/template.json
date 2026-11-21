@@ -1,0 +1,14 @@
+{
+  "$comment": "Manifest of templates/nest-service, read by scripts/new-service.mjs. See TEMPLATE.md.",
+  "exclude": ["TEMPLATE.md", "template.json", "template.test.mjs"],
+  "features": {
+    "example": {
+      "description": "Worked example: a pure domain function with @method TSDoc and golden tests, and the notes CRUD feature module (table, DTOs, drizzle repository, service, permission-protected controller, audit event) with unit and integration tests.",
+      "paths": ["src/domain", "src/modules/notes", "test/notes.int.test.ts"]
+    },
+    "detector": {
+      "description": "Detector SDK wiring (spec section 18): DetectorRunnerModule, the events hypertable and its AlertPersistence repository, GET /<service>/detectors and the toy speed_limit detector with a DetectorTestHarness unit test and an integration test.",
+      "paths": ["src/detectors", "test/detectors.int.test.ts"]
+    }
+  }
+}
