@@ -18,13 +18,13 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | # | Tahap | Status |
 |---|---|---|
 | 1 | Spesifikasi + kerangka repo pusat | ✅ selesai |
-| 2 | Fondasi v2: `@darmawanweb/ais-its-contracts` 0.2 + `@darmawanweb/ais-its-nest` (kit + Detector SDK) + template (+review, hardening) | 🔄 berjalan (contracts 0.1.0 selesai; dilanjutkan setelah limit) |
+| 2 | Fondasi v2: `@darmawanweb/ais-its-contracts` 0.3.0 (+katalog referensi) dan `@darmawanweb/ais-its-nest` 0.2.0 (kit + Detector SDK), template + generator; 2 review, 36/37 temuan diperbaiki | ✅ selesai |
 | 2b | Infrastruktur repo pusat: compose, Postgres bootstrap 9 role, NATS+MQTT, Traefik (18 router), Grafana, Helm `ais-its-*`, smoke 150/150 | ✅ selesai |
 | 2c | Quick fix MVP: BE `fix/phase-0-hardening` (242 test) dan FE `fix/phase-0` | ✅ selesai, ter-push |
 | 2d | Metodologi & referensi: `docs/METHODOLOGY.md`, 91 metode, 140 referensi (88 verified, 41 corrected, 11 unverified), 67 metode perlu sitasi tesis | ✅ selesai |
-| 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK + contracts v0.2 | 🔄 digabung ke tahap 2 (spec v1.1 ✅) |
-| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | ⏳ |
-| 5 | Web v2 (foundation → fitur → integrasi) | ⏳ |
+| 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK | ✅ selesai (digabung ke tahap 2) |
+| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | 🔄 berjalan (3 workflow paralel) |
+| 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation berjalan |
 | 6 | Integrasi, E2E seluruh stack, dokumentasi, push semua repo | ⏳ |
 
 ## Cara melanjutkan (untuk sesi berikutnya)
@@ -38,3 +38,4 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
   me-resume workflow yang terpotong; hasil agent yang sudah selesai tidak diulang.
 - 2026-11-20 16:00 UTC: limit pertama — fondasi (platform/template/review), perbaikan infra, polish MVP, verifikasi
   metodologi tertunda; di-resume 2026-11-21 08:30 UTC.
+- 2026-11-21 13:20 UTC: limit kedua (hardening fondasi tertunda); di-resume 14:27 UTC.
