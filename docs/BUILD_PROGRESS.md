@@ -23,8 +23,8 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | 2c | Quick fix MVP: BE `fix/phase-0-hardening` (242 test) dan FE `fix/phase-0` | ✅ selesai, ter-push |
 | 2d | Metodologi & referensi: `docs/METHODOLOGY.md`, 91 metode, 140 referensi (88 verified, 41 corrected, 11 unverified), 67 metode perlu sitasi tesis | ✅ selesai |
 | 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK | ✅ selesai (digabung ke tahap 2) |
-| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | 🔄 berjalan (3 workflow paralel) |
-| 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation berjalan |
+| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | 🔄 build parsial (WIP ter-push: auth, ais-pipeline, fleet, emission, geo, surveillance); dilanjutkan 19:23 UTC |
+| 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅ + review ✅ (ter-push `feat/platform-v2`), perbaikan review menunggu limit |
 | 6 | Integrasi, E2E seluruh stack, dokumentasi, push semua repo | ⏳ |
 
 ## Cara melanjutkan (untuk sesi berikutnya)
@@ -39,3 +39,4 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 - 2026-11-20 16:00 UTC: limit pertama — fondasi (platform/template/review), perbaikan infra, polish MVP, verifikasi
   metodologi tertunda; di-resume 2026-11-21 08:30 UTC.
 - 2026-11-21 13:20 UTC: limit kedua (hardening fondasi tertunda); di-resume 14:27 UTC.
+- 2026-11-21 ~16:20 UTC: limit ketiga (build 9 service + perbaikan web tertunda); WIP ter-push 18:28 UTC; resume terjadwal 19:23 UTC.
