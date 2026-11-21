@@ -66,12 +66,7 @@ jobs:
         run: pnpm build
 
       - name: OpenAPI document is up to date
-        run: |
-          node dist/openapi.js
-          git diff --exit-code -- openapi.json || {
-            echo "::error file=openapi.json::openapi.json is stale: run 'pnpm openapi' and commit the result"
-            exit 1
-          }
+        run: pnpm openapi:check
 
   image:
     name: Docker image

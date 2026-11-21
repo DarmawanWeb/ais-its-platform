@@ -5,6 +5,7 @@
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
 !.npmrc
+!.pnpmfile.cjs
 !tsconfig.json
 !tsconfig.build.json
 !src/

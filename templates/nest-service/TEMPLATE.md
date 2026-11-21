@@ -169,7 +169,9 @@ The generator prints these steps; they are the definition of done for a new serv
    route, §17 method ids in `docs/references/methods.json`.
 5. Detector services: add the service to contracts `SERVICE_NAMES`, its consumer
    `<name>-positions` to `CONSUMERS` and the alert types it raises to `ALERT_TYPES` (a contracts
-   minor release), then replace `POSITIONS_CONSUMER` with the key `'<name>-positions'`.
+   minor release), then replace `POSITIONS_CONSUMER` with the key `'<name>-positions'`. Until then
+   the local definition needs no type assertion (`service` is an open vocabulary since contracts
+   0.3.0).
 6. Replace the example (`src/modules/notes`, `src/domain/arrival.ts`) or the toy detector with the
    real features; update README sections marked `TODO`.
 
@@ -177,7 +179,8 @@ The generator prints these steps; they are the definition of done for a new serv
 
 - **Feature module**: a folder `src/modules/<feature>/` with module, controller (permissions from
   contracts `ROLE_PERMISSIONS`), service, drizzle repository, `dto/` and `*.spec.ts`; import the
-  module in `AppModule`; import `AuditModule` where writes are audited (it is not global).
+  module in `AppModule`; `AuditModule` is global: import it once (the example imports it in
+  `NotesModule`).
 - **Table**: a new migration `migrations/NNNN_<change>.sql` (never edit an applied file: the
   checksum is verified at startup) and the mirror in `src/db/schema.ts`. Time series are
   hypertables with explicit retention (and compression with `segmentby` where rows are immutable).

@@ -67,6 +67,8 @@ export class SpeedLimitDetector implements Detector<SpeedLimitConfig> {
   readonly id = 'speed_limit';
   readonly domain = '__DOMAIN__';
   readonly methodIds = ['speed_limit.max_sog_in_zone'];
+  /** Checked at registration (domain of registry types) and on every raise. */
+  readonly alertTypes = ['speeding'] as const;
   readonly configSchema = speedLimitConfigSchema;
 
   async onPosition(

@@ -80,6 +80,7 @@ open http://localhost:__PORT__/docs    # Swagger UI
 | `pnpm start:prod` | run `dist/` with `NODE_ENV=production` |
 | `pnpm migrate` | apply `migrations/` (also on boot when `DB_MIGRATE_ON_BOOT=true`) |
 | `pnpm openapi` | build, then write `openapi.json` without any infrastructure (commit it) |
+| `pnpm openapi:check` | fail when the committed `openapi.json` differs from `dist/` (CI) |
 | `pnpm test` | unit tests (`src/**/*.spec.ts`), no Docker needed |
 | `pnpm test:int` | integration tests (`test/**/*.int.test.ts`) against TimescaleDB/PostGIS and NATS containers |
 | `pnpm test:all` | both |
@@ -203,7 +204,13 @@ No methods yet.
 
   ```bash
   DOCKER_BUILDKIT=1 docker build --secret id=npmrc,src=$HOME/.npmrc -t __PACKAGE_NAME__ .
+  # behind a TLS-intercepting proxy, add the optional CA bundle secret (spec §11):
+  DOCKER_BUILDKIT=1 docker build --network host --secret id=npmrc,src=$HOME/.npmrc \
+    --secret id=ca,src=/path/to/ca-bundle.crt -t __PACKAGE_NAME__ .
   ```
+
+  `.pnpmfile.cjs` keeps compile-time-only optional peers (TypeScript for the Swagger CLI plugin)
+  out of the production install.
 
 - Non-root (`node`), `NODE_ENV=production`, `HEALTHCHECK` on `/health/live`, readiness on
   `/health/ready` (database, NATS), Prometheus metrics on `/metrics` (`aisits_*`).

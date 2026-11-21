@@ -2,7 +2,6 @@ import {
   DEFAULT_MAX_DELIVER,
   type DurableConsumerDefinition,
   EVENT_TYPES,
-  type ServiceName,
   SUBJECT_FILTERS,
 } from '@darmawanweb/ais-its-contracts/events';
 
@@ -17,9 +16,8 @@ export const POSITIONS_CONSUMER: DurableConsumerDefinition = {
   durableName: '__SERVICE_NAME__-positions',
   stream: 'AIS_POSITION',
   filterSubjects: [SUBJECT_FILTERS.AIS_POSITION],
-  // The kit uses `service` for documentation only; the assertion stands in
-  // until contracts lists the service.
-  service: '__SERVICE_NAME__' as ServiceName,
+  // An open vocabulary: no contracts release is needed to declare it.
+  service: '__SERVICE_NAME__',
   eventTypes: [EVENT_TYPES.AIS_POSITION_RECORDED],
   maxDeliver: DEFAULT_MAX_DELIVER,
   description: 'Feeds the detectors of the __SERVICE_NAME__ service.',

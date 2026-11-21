@@ -6,6 +6,9 @@
 #   - ca (optional): an extra CA bundle for TLS-intercepting proxies
 #
 #   DOCKER_BUILDKIT=1 docker build --secret id=npmrc,src=$HOME/.npmrc -t __PACKAGE_NAME__ .
+#   # behind a TLS-intercepting proxy (corepack downloads pnpm, pnpm fetches packages):
+#   DOCKER_BUILDKIT=1 docker build --network host --secret id=npmrc,src=$HOME/.npmrc \
+#     --secret id=ca,src=/path/to/ca-bundle.crt -t __PACKAGE_NAME__ .
 
 # --- base: Node.js with pnpm (version from package.json "packageManager") ------
 FROM node:24-alpine AS base
@@ -14,7 +17,7 @@ ENV PNPM_HOME=/pnpm \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     HUSKY=0
 WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc .pnpmfile.cjs ./
 RUN --mount=type=secret,id=ca,target=/tmp/build-ca.crt,required=false \
     if [ -s /tmp/build-ca.crt ]; then export NODE_EXTRA_CA_CERTS=/tmp/build-ca.crt; fi; \
     corepack enable && corepack install
