@@ -18,12 +18,12 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | # | Tahap | Status |
 |---|---|---|
 | 1 | Spesifikasi + kerangka repo pusat | ✅ selesai |
-| 2 | Fondasi: contracts, library NestJS, template service (+review, hardening) | 🔄 berjalan |
-| 2b | Infrastruktur repo pusat (+review) | 🔄 berjalan |
-| 2c | Quick fix MVP (BE `fix/phase-0-hardening`, FE `fix/phase-0`) (+review) | 🔄 berjalan |
-| 2d | Riset metodologi & referensi | 🔄 berjalan |
-| 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK + contracts v0.2 | ⏳ menunggu tahap 2 |
-| 4 | 9 service backend (build → review → fix) + migrator Mongo | ⏳ |
+| 2 | Fondasi v2: `@darmawanweb/ais-its-contracts` 0.2 + `@darmawanweb/ais-its-nest` (kit + Detector SDK) + template (+review, hardening) | 🔄 berjalan (contracts 0.1.0 selesai; dilanjutkan setelah limit) |
+| 2b | Infrastruktur repo pusat (build ✅, review ✅, perbaikan + rename + rute safety/geo/surveillance 🔄) | 🔄 berjalan |
+| 2c | Quick fix MVP (BE `fix/phase-0-hardening`, FE `fix/phase-0`) — ter-push; polish hasil review 🔄 | 🔄 berjalan |
+| 2d | Riset metodologi & referensi (inventaris 90 rumus, 127 referensi ✅; verifikasi + penulisan 🔄) | 🔄 berjalan |
+| 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK + contracts v0.2 | 🔄 digabung ke tahap 2 (spec v1.1 ✅) |
+| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | ⏳ |
 | 5 | Web v2 (foundation → fitur → integrasi) | ⏳ |
 | 6 | Integrasi, E2E seluruh stack, dokumentasi, push semua repo | ⏳ |
 
@@ -32,3 +32,9 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 2. Siapkan registry npm lokal (Verdaccio) untuk scope `@darmawanweb` bila package belum ada di GitHub Packages,
    dan image Docker yang dipakai test (`timescale/timescaledb-ha:pg17`, `nats`, `valkey/valkey:8-alpine`, `axllent/mailpit`, `rustfs/rustfs`).
 3. Lanjutkan tahap pertama yang belum ✅ pada tabel di atas; semua instruksi teknis ada di `docs/PLATFORM_SPEC.md`.
+
+## Catatan limit pemakaian
+- Jendela limit 5 jam. Check-in otomatis tiap 2 jam (scheduled task "Auto-lanjut build AIS Maritime Intelligence")
+  me-resume workflow yang terpotong; hasil agent yang sudah selesai tidak diulang.
+- 2026-11-20 16:00 UTC: limit pertama — fondasi (platform/template/review), perbaikan infra, polish MVP, verifikasi
+  metodologi tertunda; di-resume 2026-11-21 08:30 UTC.
