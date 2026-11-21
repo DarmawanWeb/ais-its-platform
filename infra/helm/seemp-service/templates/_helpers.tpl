@@ -21,11 +21,16 @@
 {{- .Values.image.tag | default ((.Values.global).imageTag) | default .Chart.AppVersion }}
 {{- end }}
 
+{{/* Image reference; a floating "latest" tag is refused (pin a version or a digest). */}}
 {{- define "seemp-service.image" -}}
 {{- if .Values.image.digest }}
 {{- printf "%s@%s" .Values.image.repository .Values.image.digest }}
 {{- else }}
-{{- printf "%s:%s" .Values.image.repository (include "seemp-service.imageTag" .) }}
+{{- $tag := include "seemp-service.imageTag" . }}
+{{- if eq $tag "latest" }}
+{{- fail (printf "%s: image tag \"latest\" is not allowed; pin image.tag (or global.imageTag) to a release, or set image.digest" .Values.image.repository) }}
+{{- end }}
+{{- printf "%s:%s" .Values.image.repository $tag }}
 {{- end }}
 {{- end }}
 

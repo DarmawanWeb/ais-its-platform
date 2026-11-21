@@ -7,12 +7,15 @@
 # host.docker.internal.
 #
 #   cp infra/compose/.env.example infra/compose/.env          # optional overrides
-#   docker compose -f infra/compose/docker-compose.yml up -d --wait
-#   docker compose -f infra/compose/docker-compose.yml --profile tiles up -d --wait martin
-#   docker compose -f infra/compose/docker-compose.yml --profile legacy up -d --build --wait
-#   docker compose -f infra/compose/docker-compose.yml down       # stop, keep data
-#   docker compose -f infra/compose/docker-compose.yml down -v    # stop and wipe data
+#   C="docker compose -f infra/compose/docker-compose.yml"
+#   $C up -d --wait                                 # default services
+#   $C --profile tiles up -d --wait martin          # + vector tiles
+#   $C --profile legacy up -d --build --wait        # + MongoDB and the MVP API
+#   $C --profile tiles --profile legacy down        # stop, keep data
+#   $C --profile tiles --profile legacy down -v     # stop and wipe all data
 #
+# `down` only removes the services of the profiles it is given: always name
+# both profiles, or their containers, the network and their volumes survive.
 # Every ${VAR:-default} below is documented in .env.example; the defaults are
 # development-only values (spec §4) and must never be used anywhere else.
 # See infra/README.md for URLs, credentials and connection strings.
@@ -45,7 +48,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}   # superuser "postgres"
       TIMESCALEDB_TELEMETRY: "off"
       TS_TUNE_MAX_CONNS: "200"         # 8 service pools × DATABASE_POOL_MAX + Martin + tools
-      # Passwords of the roles created by ../postgres/bootstrap.sql (first start only).
+      # Passwords of the roles of ../postgres/bootstrap.sql, applied on every start.
       AUTH_SVC_PASSWORD: ${AUTH_SVC_PASSWORD:-auth_svc}
       FLEET_SVC_PASSWORD: ${FLEET_SVC_PASSWORD:-fleet_svc}
       AIS_SVC_PASSWORD: ${AIS_SVC_PASSWORD:-ais_svc}
@@ -58,16 +61,19 @@ services:
       - "${BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/home/postgres/pgdata                      # PGDATA = /home/postgres/pgdata/data
-      - ../postgres:/opt/seemp/postgres:ro                # bootstrap.sql + tests
-      # Mounted as a single file so the image's own init scripts (TimescaleDB,
-      # timescaledb-tune) still run before it.
-      - ../postgres/init/100-seemp-bootstrap.sh:/docker-entrypoint-initdb.d/100-seemp-bootstrap.sh:ro
+      - ../postgres:/opt/seemp/postgres:ro                # bootstrap.sql/.sh + tests
+    # Applies the idempotent, transactional bootstrap.sql each time compose
+    # starts the container (also after a password change in .env, which
+    # recreates it). `up` waits for it and fails with psql's error if it fails.
+    post_start:
+      - command: ["bash", "/opt/seemp/postgres/bootstrap.sh"]
     shm_size: 256m                     # parallel query workers need more than Docker's 64 MB
     stop_grace_period: 60s             # image stops with SIGINT (fast shutdown)
     healthcheck:
-      # TCP on purpose: during first-start initialisation the server only listens
-      # on its Unix socket, so this turns healthy once bootstrap.sql has finished.
-      test: ["CMD", "pg_isready", "--host=127.0.0.1", "--port=5432", "--username=postgres", "--dbname=seemp"]
+      # Healthy = accepting TCP connections (never during first-start
+      # initialisation) AND bootstrap.sql committed: a failed bootstrap stays
+      # unhealthy, so dependents and `up --wait` do not proceed.
+      test: ["CMD", "bash", "/opt/seemp/postgres/bootstrap.sh", "--check"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -137,7 +143,7 @@ services:
   # ---------------------------------------------------------------------------
   s3:
     <<: *service
-    image: rustfs/rustfs:latest
+    image: rustfs/rustfs:1.0.6         # RUSTFS_* variables and the bundled `rc` client
     container_name: seemp-s3
     environment:
       RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-seemp-dev}
@@ -148,7 +154,8 @@ services:
       RUSTFS_CONSOLE_ADDRESS: ":9001"
       S3_BUCKETS: ${S3_BUCKETS:-vessel-photos}           # comma-separated; post_start hook
     ports:
-      - "${BIND_ADDRESS:-127.0.0.1}:${S3_API_PORT:-9000}:9000"
+      # Own bind address: presigned photo URLs must reach it from other devices.
+      - "${S3_BIND_ADDRESS:-127.0.0.1}:${S3_API_PORT:-9000}:9000"
       - "${BIND_ADDRESS:-127.0.0.1}:${S3_CONSOLE_PORT:-9001}:9001"
     volumes:
       - s3-data:/data
@@ -180,7 +187,7 @@ services:
   # ---------------------------------------------------------------------------
   mailpit:
     <<: *service
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.34.0
     container_name: seemp-mailpit
     environment:
       MP_MAX_MESSAGES: "5000"
@@ -208,13 +215,17 @@ services:
     <<: [*service, *host-access]
     image: traefik:v3.5
     container_name: seemp-gateway
+    # `legacy` reaches legacy-be, which nothing else may reach (see there).
+    networks: [seemp, legacy]
     ports:
-      - "${BIND_ADDRESS:-127.0.0.1}:${GATEWAY_PORT:-8000}:8000"
-      - "${BIND_ADDRESS:-127.0.0.1}:${GATEWAY_DASHBOARD_PORT:-8090}:8090"
+      # Own bind address: the only port to open for other devices (phone, LAN).
+      - "${GATEWAY_BIND_ADDRESS:-127.0.0.1}:${GATEWAY_PORT:-8000}:8000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${GATEWAY_DASHBOARD_PORT:-8090}:8090"   # unauthenticated API
     volumes:
       - ../traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       # Whole directory (not single files) so live reload survives editors that
-      # replace files atomically. Stack mode mounts ../traefik/stack instead.
+      # replace files atomically. Upstreams: host processes unless the gateway
+      # runs with SEEMP_GATEWAY_UPSTREAMS=stack (see routes.yml).
       - ../traefik/dynamic:/etc/traefik/dynamic:ro
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
@@ -233,11 +244,14 @@ services:
   # ---------------------------------------------------------------------------
   observability:
     <<: [*service, *host-access]
-    image: grafana/otel-lgtm:latest
+    # Pinned: the overlay references the image's receivers `otlp` and
+    # `prometheus/collector` by name. Bump deliberately.
+    image: grafana/otel-lgtm:0.41.1
     container_name: seemp-observability
     environment:
       OTELCOL_EXTRA_ARGS: "--config=file:/otel-lgtm/seemp/otelcol-seemp.yaml"
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer   # the image grants anonymous Admin otherwise
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
@@ -261,19 +275,22 @@ services:
         limits: { memory: 2g }
 
   # ---------------------------------------------------------------------------
-  # Martin vector tiles (profile "tiles"), read-only role tiles_ro (spec §6)
+  # Martin vector tiles (profile "tiles"), read-only role tiles_ro (spec §6).
+  # The gateway serves /tiles to signed-in users only (forwardAuth).
   # ---------------------------------------------------------------------------
   martin:
     <<: *service
-    image: ${MARTIN_IMAGE:-maplibre/martin:latest}
+    # Docker Hub's last Martin release; current ones are on GHCR (README).
+    image: ${MARTIN_IMAGE:-maplibre/martin:v0.8.0}
     container_name: seemp-martin
     profiles: [tiles]
     depends_on:
-      postgres: { condition: service_healthy }
+      postgres: { condition: service_healthy }   # healthy = bootstrapped, tiles_ro exists
     environment:
       # URL-encode the password if it contains reserved characters.
       DATABASE_URL: postgres://tiles_ro:${TILES_RO_PASSWORD:-tiles_ro}@postgres:5432/seemp
-    command: ["--listen-addresses", "0.0.0.0:3010", "--pool-size", "5"]
+    # String form: compose splits it into arguments, an empty MARTIN_EXTRA_ARGS adds none.
+    command: "--listen-addresses 0.0.0.0:3010 --pool-size 5 ${MARTIN_EXTRA_ARGS:-}"
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${MARTIN_PORT:-3010}:3010"
     healthcheck:
@@ -295,6 +312,7 @@ services:
     image: mongo:7
     container_name: seemp-mongo
     profiles: [legacy]
+    networks: [seemp, legacy]          # seemp: the legacy data migration (spec §1)
     command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-seemp}
@@ -324,6 +342,12 @@ services:
     profiles: [legacy]
     depends_on:
       mongo: { condition: service_healthy }
+    # TRUST_FORWARD_AUTH below accepts the identity headers of the gateway's
+    # forwardAuth, so the gateway must be the ONLY way in: no published port,
+    # and a network shared with the gateway (and Mongo) only. Debug from inside:
+    #   docker compose -f infra/compose/docker-compose.yml --profile legacy \
+    #     exec legacy-be wget -qO- http://127.0.0.1:3020/
+    networks: [legacy]
     environment:
       NODE_ENV: production
       PORT: "3020"
@@ -333,17 +357,13 @@ services:
       JWT_SECRET: ${LEGACY_JWT_SECRET:-dev-legacy-jwt-secret-change-me}
       REFRESH_TOKEN_SECRET: ${LEGACY_REFRESH_TOKEN_SECRET:-dev-legacy-refresh-secret-change-me}
       ALLOWED_ORIGINS: http://localhost:8000,http://localhost:5173
-      # Behind the gateway: one proxy hop, and identity comes from the forwardAuth
-      # headers (X-User-Id …) set by the v2 auth service (spec §12). The host port
-      # below bypasses the gateway — it is bound to BIND_ADDRESS (loopback) for
-      # local debugging only.
-      TRUST_PROXY: "1"
+      TRUST_PROXY: "1"                 # one proxy hop: the gateway
       TRUST_FORWARD_AUTH: "true"
+      # Empty = no live feed: the MVP API then dials its built-in default
+      # (http://localhost:8080) and logs a connection error every few seconds.
       WEBSOCKET_URI: ${LEGACY_AIS_PRIMARY_URL:-}
       WEBSOCKET_BATAM_URI: ${LEGACY_AIS_BATAM_URL:-}
       WEBSOCKET_TOKEN: ${LEGACY_AIS_TOKEN:-}
-    ports:
-      - "${BIND_ADDRESS:-127.0.0.1}:${LEGACY_BE_PORT:-3020}:3020"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3020/').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 15s
@@ -358,6 +378,7 @@ services:
 networks:
   seemp:
     name: seemp                        # fixed name: the stack mode and test runners can join it
+  legacy: {}                           # gateway ↔ legacy-be (↔ mongo) only
 
 volumes:
   pgdata:

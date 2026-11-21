@@ -30,6 +30,10 @@ spec:
         - name: {{ include "seemp-platform.middleware" (list $ .) }}
         {{- end }}
       {{- end }}
+      {{- if and (hasKey . "accessLogs") (not .accessLogs) }}
+      observability:
+        accessLogs: false
+      {{- end }}
       services:
         {{- if .backend }}
         - name: {{ $component.fullnameOverride | default .backend }}

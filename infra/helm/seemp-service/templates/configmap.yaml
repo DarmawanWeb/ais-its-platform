@@ -1,7 +1,9 @@
 {{- /*
   Non-secret environment: global.env (when platformEnv), then the process' own env. HOST and PORT
   are always derived from the chart (probes and Service depend on them);
-  SERVICE_NAME defaults to the resource name (spec §4).
+  SERVICE_NAME defaults to the resource name (spec §4). Values are rendered
+  with `tpl`, so one value can follow another instead of being copied, e.g.
+  ALLOWED_ORIGINS: "{{ .Values.global.env.CORS_ORIGINS }}".
 */ -}}
 {{- $env := dict "SERVICE_NAME" (include "seemp-service.fullname" .) }}
 {{- if .Values.platformEnv }}
@@ -18,5 +20,5 @@ metadata:
     {{- include "seemp-service.labels" . | nindent 4 }}
 data:
   {{- range $key, $value := $env }}
-  {{ $key }}: {{ $value | toString | quote }}
+  {{ $key }}: {{ tpl (toString $value) $ | quote }}
   {{- end }}

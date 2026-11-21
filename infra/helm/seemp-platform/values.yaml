@@ -194,7 +194,12 @@ legacy-be:
     # Identity comes from the gateway's forwardAuth headers. Only safe because
     # the NetworkPolicy below admits nothing but the gateway.
     TRUST_FORWARD_AUTH: "true"
-  # MONGO_URI, MONGO_DB_NAME, JWT_SECRET, REFRESH_TOKEN_SECRET
+    # Browser origins allowed to call /api/v1 (others get 403, also same-origin
+    # writes through the gateway): the same list as the v2 services, so they
+    # cannot drift. Append MVP dashboard origins after it if needed.
+    ALLOWED_ORIGINS: "{{ .Values.global.env.CORS_ORIGINS }}"
+  # MONGO_URI, MONGO_DB_NAME, JWT_SECRET, REFRESH_TOKEN_SECRET; WEBSOCKET_URI,
+  # WEBSOCKET_BATAM_URI, WEBSOCKET_TOKEN for the live AIS feed (infra/helm/README.md)
   existingSecret: seemp-mvp-api
   resources:
     requests: { cpu: 100m, memory: 256Mi }
@@ -207,9 +212,11 @@ martin:
   platformEnv: false
   image:
     repository: ghcr.io/maplibre/martin
-    tag: latest                   # PIN to a released version for production
+    tag: "1.16.1"                 # bump deliberately (CLI flags below are version-specific)
+    digest: sha256:59902019bf9038926ff0c71174237d6852e64c457830a6349abe7090be8818ca
   port: 3010
-  args: ["--listen-addresses", "0.0.0.0:3010", "--pool-size", "10"]
+  # --base-path: TileJSON advertises tile URLs under the gateway's /tiles prefix.
+  args: ["--listen-addresses", "0.0.0.0:3010", "--pool-size", "10", "--base-path", "/tiles"]
   probes:
     liveness: { path: /health, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
     readiness: { path: /health, periodSeconds: 5, timeoutSeconds: 3, failureThreshold: 3 }
@@ -246,8 +253,15 @@ gateway:
     period: 1m
     burst: 10
     # -- 0 = client address seen by Traefik; N = Nth address from the right of
-    # X-Forwarded-For (set to 1 behind one trusted load balancer).
+    # X-Forwarded-For (set to 1 behind one trusted load balancer). Applies to
+    # both rate limiters.
     ipStrategyDepth: 0
+  # -- Anonymous session endpoints (refresh, logout, verify), per client IP:
+  # looser, every browser tab refreshes its token and offices share one IP.
+  sessionRateLimit:
+    average: 120
+    period: 1m
+    burst: 60
   # -- Defaults to http://auth.<namespace>.svc.cluster.local:3001/api/v2/auth/verify
   forwardAuthAddress: ""
   # -- Cookie for sticky sessions on socket.io routes (long-polling needs the
@@ -257,8 +271,9 @@ gateway:
   # -- Route table: one entry per row of spec §12 plus sub-routes. `backend` is a
   # component alias above ("" = answered by the gateway itself; optional `port`
   # overrides the component's port); routes whose backend is disabled are
-  # skipped. Middlewares are the names defined in templates/gateway-middlewares.yaml.
-  # Keep in sync with infra/traefik/dynamic.
+  # skipped. Middlewares are the names defined in templates/gateway-middlewares.yaml;
+  # `accessLogs: false` keeps a route out of Traefik's access log.
+  # Keep in sync with infra/traefik/dynamic/routes.yml.
   routes:
     - name: blocked
       priority: 1000
@@ -271,6 +286,11 @@ gateway:
       prefixes: [/api/v2/auth/login, /api/v2/auth/password, /api/v2/auth/mfa/verify]
       backend: auth
       middlewares: [security-headers, auth-rate-limit, compress]
+    - name: auth-session
+      priority: 300
+      prefixes: [/api/v2/auth/refresh, /api/v2/auth/logout, /api/v2/auth/verify]
+      backend: auth
+      middlewares: [security-headers, session-rate-limit, compress]
     - name: auth
       priority: 200
       prefixes: [/api/v2/auth, /api/v2/me, /api/v2/users, /api/v2/organizations, /api/v2/api-keys, /api/v2/audit-logs]
@@ -324,21 +344,22 @@ gateway:
       prefixes: [/api/v2/alerts, /api/v2/alert-rules, /api/v2/notifications]
       backend: notification
       middlewares: [security-headers, compress]
-    - name: tiles
+    - name: tiles                 # signed-in users only (spec §6, §12)
       priority: 200
       prefixes: [/tiles]
       backend: martin
-      middlewares: [security-headers, strip-tiles-prefix, compress]
+      middlewares: [security-headers, forward-auth, strip-tiles-prefix, compress]
     - name: legacy
       priority: 200
       prefixes: [/api/v1]
       backend: legacy-be
-      middlewares: [security-headers, strip-identity-headers, legacy-auth, compress]
+      middlewares: [security-headers, strip-identity-headers, forward-auth, compress]
     - name: web
       priority: 1
       prefixes: [/]
       backend: web
       middlewares: [security-headers, compress]
+      accessLogs: false           # e-mailed reset/invite links land here (spec §13.1)
 
 # -- Restrict ingress to legacy-be (which trusts forwardAuth headers) to the
 # gateway Pods only. Requires a CNI that enforces NetworkPolicy.

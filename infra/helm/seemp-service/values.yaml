@@ -25,7 +25,8 @@ fullnameOverride: ""
 
 image:
   repository: ghcr.io/darmawanweb/seemp-auth-service
-  # -- Defaults to global.imageTag, then to the chart appVersion.
+  # -- Defaults to global.imageTag, then to the chart appVersion. "latest" is
+  # refused: pin a release (or set digest).
   tag: ""
   # -- Pin by digest (sha256:…); wins over the tag.
   digest: ""
@@ -52,6 +53,7 @@ args: []
 port: 3001
 
 # -- Non-secret environment for this process → ConfigMap (overrides global.env).
+# Values are templates: "{{ .Values.global.env.CORS_ORIGINS }}" reuses another value.
 env: {}
 # -- Secret environment rendered into a chart-managed Secret. Development only:
 # in production keep this empty and use existingSecret (External Secrets,

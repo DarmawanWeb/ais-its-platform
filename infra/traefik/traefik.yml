@@ -1,9 +1,9 @@
 # =============================================================================
 # SEEMP gateway — Traefik v3 static configuration (local dev and compose stack)
 # =============================================================================
-# Routes live in the dynamic configuration mounted at /etc/traefik/dynamic:
-#   dev mode   → infra/traefik/dynamic/  (backends on the host, `pnpm dev`)
-#   stack mode → infra/traefik/stack/    (backends are compose services)
+# Routes live in the dynamic configuration mounted at /etc/traefik/dynamic
+# (infra/traefik/dynamic/routes.yml): backends on the host (`pnpm dev`) by
+# default, compose services with SEEMP_GATEWAY_UPSTREAMS=stack.
 # Production uses Kubernetes IngressRoutes instead (infra/helm/seemp-platform).
 
 global:
@@ -42,12 +42,17 @@ log:
   level: INFO
   format: json
 
+# JSON access log. Request headers are dropped (Authorization, cookies,
+# X-API-Key) except the three below. RequestPath keeps the query string, so no
+# API may accept a secret there (tokens and API keys travel in headers, spec
+# §8.1); the `web` router, which receives the links of reset/invite e-mails, is
+# not logged at all (observability.accessLogs: false in dynamic/routes.yml).
 accessLog:
   format: json
   fields:
     defaultMode: keep
     headers:
-      defaultMode: drop      # never log Authorization, cookies or API keys
+      defaultMode: drop
       names:
         User-Agent: keep
         Content-Type: keep

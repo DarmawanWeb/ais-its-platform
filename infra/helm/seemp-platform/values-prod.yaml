@@ -36,9 +36,17 @@ fleet: *http-service
 telemetry: *http-service
 
 notification:
-  # One ordered (ephemeral) AIS_POSITION consumer per instance by design (§7.3),
-  # so it scales out; socket.io sessions stay on one replica (sticky cookie).
-  <<: *http-service
+  # ONE instance: socket.io events reach only the sockets of the replica that
+  # emits them, and alert.raised.v1 arrives through the shared durable consumer
+  # `notification-alerts` (one replica per message, §7.3), so with two replicas
+  # each realtime alert would reach only part of the clients (§9 rooms). Scale
+  # out only once the service fans out through a cross-instance adapter
+  # (e.g. @socket.io/redis-adapter on Valkey).
+  replicaCount: 1
+  autoscaling: { enabled: false }
+  resources:
+    requests: { cpu: 200m, memory: 256Mi }
+    limits: { memory: 768Mi }
 
 ais-ingestor:
   # Two instances keep the upstream feeds alive during a rollout or node loss;
@@ -75,9 +83,7 @@ web:
   replicaCount: 2
 
 martin:
-  replicaCount: 2
-  image:
-    tag: latest                          # PIN: ghcr.io/maplibre/martin release tag
+  replicaCount: 2                        # image pinned in values.yaml
 
 legacy-be:
   enabled: true                          # /api/v1 until the v2 cut-over (spec §1)

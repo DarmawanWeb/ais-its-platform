@@ -35,23 +35,26 @@ spec:
       Server: ""
       X-Powered-By: ""
 ---
+{{- /* Per-IP limits of the anonymous endpoints (spec §5): credentials, sessions. */}}
+{{- range $name, $limit := dict "auth-rate-limit" $gw.rateLimit "session-rate-limit" $gw.sessionRateLimit }}
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: {{ include "seemp-platform.middleware" (list . "auth-rate-limit") }}
+  name: {{ include "seemp-platform.middleware" (list $ $name) }}
   labels:
-    {{- include "seemp-platform.labels" . | nindent 4 }}
+    {{- include "seemp-platform.labels" $ | nindent 4 }}
 spec:
   rateLimit:
-    average: {{ int $gw.rateLimit.average }}
-    period: {{ $gw.rateLimit.period }}
-    burst: {{ int $gw.rateLimit.burst }}
-    {{- if $gw.rateLimit.ipStrategyDepth }}
+    average: {{ int $limit.average }}
+    period: {{ $limit.period }}
+    burst: {{ int $limit.burst }}
+    {{- with $gw.rateLimit.ipStrategyDepth }}
     sourceCriterion:
       ipStrategy:
-        depth: {{ int $gw.rateLimit.ipStrategyDepth }}
+        depth: {{ int . }}
     {{- end }}
 ---
+{{- end }}
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -73,7 +76,7 @@ spec:
   stripPrefix:
     prefixes: ["/tiles"]
 ---
-# Identity headers may only come from legacy-auth; drop client-supplied ones.
+# Identity headers may only come from forward-auth; drop client-supplied ones.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -87,11 +90,11 @@ spec:
       X-Org-Id: ""
       X-Roles: ""
 ---
-# /api/v1 needs a valid v2 access token (auth answers 200 + identity headers or 401).
+# /api/v1 and /tiles need a valid v2 access token (auth answers 200 + identity headers or 401).
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: {{ include "seemp-platform.middleware" (list . "legacy-auth") }}
+  name: {{ include "seemp-platform.middleware" (list . "forward-auth") }}
   labels:
     {{- include "seemp-platform.labels" . | nindent 4 }}
 spec:

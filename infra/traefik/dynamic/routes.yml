@@ -1,15 +1,20 @@
 # =============================================================================
-# SEEMP gateway — dynamic configuration, DEV MODE (backends run on the host)
+# SEEMP gateway — dynamic configuration (routes of docs/PLATFORM_SPEC.md §12)
 # =============================================================================
-# Implements the route table of docs/PLATFORM_SPEC.md §12. Services and the web
-# dev server run on the host with `pnpm dev` and are reached through
-# host.docker.internal on their §3 ports (they must listen on 0.0.0.0; run Vite
-# with `--host`). Martin and the legacy backend are containers of the infra
-# stack and are reached by compose hostname.
+# One table for both local modes; only the upstream URLs differ (bottom of the
+# file), selected by the gateway container's environment:
+#   dev mode   (default)                     services and the Vite dev server
+#              run on the host (`pnpm dev`) and are reached through
+#              host.docker.internal on their §3 ports (listen on 0.0.0.0; Vite
+#              with `--host`)
+#   stack mode SEEMP_GATEWAY_UPSTREAMS=stack every backend is a compose service
+#              on the `seemp` network, reached by its §3 hostname; the web image
+#              is nginx serving the built SPA on :8080
+# Martin and the legacy backend are compose services in both modes.
+# Traefik renders this file as a Go template (sprig functions) on every load.
 #
-# ../stack/routes.yml is the same file for STACK MODE: only the header, the
-# `services:` URLs and the forwardAuth address differ. Keep both in sync —
-# `diff dynamic/routes.yml stack/routes.yml` must only show those lines.
+# Production uses the same routers from infra/helm/seemp-platform/values.yaml
+# (gateway.routes) — keep both in sync.
 #
 # Router conventions (one router per §12 row; generated-friendly):
 #   name      = backend name, `<backend>-<purpose>` for sub-routes
@@ -18,6 +23,7 @@
 #               · 200 §12 rows · 1 the "/" catch-all (higher wins)
 #   middlewares, in order: security-headers, [route specific], compress
 # =============================================================================
+{{- $stack := eq (env "SEEMP_GATEWAY_UPSTREAMS") "stack" }}
 
 http:
   routers:
@@ -30,11 +36,17 @@ http:
       service: noop@internal
 
     # --- auth:3001 ----------------------------------------------------------
-    auth-throttled:            # anonymous credential endpoints: per-IP rate limit
+    auth-throttled:            # anonymous credential endpoints: strict per-IP limit
       entryPoints: [web]
       rule: "PathPrefix(`/api/v2/auth/login`) || PathPrefix(`/api/v2/auth/password`) || PathPrefix(`/api/v2/auth/mfa/verify`)"
       priority: 300
       middlewares: [security-headers, auth-rate-limit, compress]
+      service: auth
+    auth-session:              # anonymous session endpoints (cookie / bearer): looser per-IP limit
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/auth/refresh`) || PathPrefix(`/api/v2/auth/logout`) || PathPrefix(`/api/v2/auth/verify`)"
+      priority: 300
+      middlewares: [security-headers, session-rate-limit, compress]
       service: auth
     auth:
       entryPoints: [web]
@@ -111,12 +123,15 @@ http:
       middlewares: [security-headers, compress]
       service: notification
 
-    # --- martin:3010 (compose profile "tiles") ------------------------------
+    # --- martin:3010 (compose profile "tiles"), only for signed-in users -----
+    # Martin has no authentication of its own (spec §6: *_tiles views hold only
+    # data every signed-in user may see). The web app sends the access token
+    # with MapLibre's transformRequest.
     tiles:
       entryPoints: [web]
       rule: "PathPrefix(`/tiles`)"
       priority: 200
-      middlewares: [security-headers, strip-tiles-prefix, compress]
+      middlewares: [security-headers, forward-auth, strip-tiles-prefix, compress]
       service: martin
 
     # --- legacy-be:3020 (compose profile "legacy"), only for signed-in users --
@@ -124,16 +139,20 @@ http:
       entryPoints: [web]
       rule: "PathPrefix(`/api/v1`)"
       priority: 200
-      middlewares: [security-headers, strip-identity-headers, legacy-auth, compress]
+      middlewares: [security-headers, strip-identity-headers, forward-auth, compress]
       service: legacy-be
 
-    # --- web (Vite dev server, incl. its HMR WebSocket) -------------------------
+    # --- web (SPA: Vite dev server incl. its HMR WebSocket, or nginx) ---------
     web:
       entryPoints: [web]
       rule: "PathPrefix(`/`)"
       priority: 1
       middlewares: [security-headers, compress]
       service: web
+      # Not access-logged: links from e-mails land here (password reset and
+      # invites, spec §13.1) and their query strings must never reach a log.
+      observability:
+        accessLogs: false
 
   middlewares:
     # 403 for everyone: only loopback inside the gateway container is allowed,
@@ -153,13 +172,18 @@ http:
           X-Powered-By: ""
         # HSTS is only meaningful over HTTPS: enabled in the production IngressRoute.
 
-    # Gateway-level limit for anonymous credential endpoints (spec §5); auth adds
-    # per-account throttling in Valkey (spec §13.1). Per client IP.
-    auth-rate-limit:
+    # Gateway-level limits for anonymous endpoints (spec §5), per client IP;
+    # auth adds per-account login throttling in Valkey (spec §13.1).
+    auth-rate-limit:                           # login, password reset, MFA verify
       rateLimit:
         average: 30
         period: 1m
         burst: 30
+    session-rate-limit:                        # refresh, logout, verify: every tab
+      rateLimit:                               # refreshes, offices share one IP
+        average: 120
+        period: 1m
+        burst: 60
 
     compress:
       compress:
@@ -170,7 +194,7 @@ http:
       stripPrefix:
         prefixes: ["/tiles"]
 
-    # Identity headers are only ever set by legacy-auth below; drop spoofed ones.
+    # Identity headers are only ever set by forward-auth below; drop spoofed ones.
     strip-identity-headers:
       headers:
         customRequestHeaders:
@@ -178,39 +202,40 @@ http:
           X-Org-Id: ""
           X-Roles: ""
 
-    # /api/v1 requires a valid v2 access token; auth answers 200 + identity
-    # headers (forwarded to the legacy backend) or 401 (returned to the client).
-    legacy-auth:
+    # Requires a valid v2 access token: auth answers 200 + identity headers
+    # (forwarded to the backend) or 401 (returned to the client).
+    forward-auth:
       forwardAuth:
-        address: "http://host.docker.internal:3001/api/v2/auth/verify"
+        address: "http://{{ if $stack }}auth{{ else }}host.docker.internal{{ end }}:3001/api/v2/auth/verify"
         authRequestHeaders: [Authorization, X-Request-Id]
         authResponseHeaders: [X-User-Id, X-Org-Id, X-Roles]
 
+  # --- upstreams (the only part that differs between dev and stack mode) -----
   services:
     auth:
       loadBalancer:
-        servers: [{ url: "http://host.docker.internal:3001" }]
+        servers: [{ url: "http://{{ if $stack }}auth{{ else }}host.docker.internal{{ end }}:3001" }]
     fleet:
       loadBalancer:
-        servers: [{ url: "http://host.docker.internal:3002" }]
+        servers: [{ url: "http://{{ if $stack }}fleet{{ else }}host.docker.internal{{ end }}:3002" }]
     ais-ingestor:
       loadBalancer:
-        servers: [{ url: "http://host.docker.internal:3003" }]
+        servers: [{ url: "http://{{ if $stack }}ais-ingestor{{ else }}host.docker.internal{{ end }}:3003" }]
     ais-processor:
       loadBalancer:
-        servers: [{ url: "http://host.docker.internal:3004" }]
+        servers: [{ url: "http://{{ if $stack }}ais-processor{{ else }}host.docker.internal{{ end }}:3004" }]
     telemetry:
       loadBalancer:
-        servers: [{ url: "http://host.docker.internal:3005" }]
+        servers: [{ url: "http://{{ if $stack }}telemetry{{ else }}host.docker.internal{{ end }}:3005" }]
     emission:
       loadBalancer:
-        servers: [{ url: "http://host.docker.internal:3006" }]
+        servers: [{ url: "http://{{ if $stack }}emission{{ else }}host.docker.internal{{ end }}:3006" }]
     detection:
       loadBalancer:
-        servers: [{ url: "http://host.docker.internal:3007" }]
+        servers: [{ url: "http://{{ if $stack }}detection{{ else }}host.docker.internal{{ end }}:3007" }]
     notification:
       loadBalancer:
-        servers: [{ url: "http://host.docker.internal:3008" }]
+        servers: [{ url: "http://{{ if $stack }}notification{{ else }}host.docker.internal{{ end }}:3008" }]
     martin:
       loadBalancer:
         servers: [{ url: "http://martin:3010" }]
@@ -219,4 +244,4 @@ http:
         servers: [{ url: "http://legacy-be:3020" }]
     web:
       loadBalancer:
-        servers: [{ url: "http://host.docker.internal:5173" }]
+        servers: [{ url: "{{ if $stack }}http://web:8080{{ else }}http://host.docker.internal:5173{{ end }}" }]
