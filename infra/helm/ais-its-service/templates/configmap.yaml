@@ -5,7 +5,7 @@
   with `tpl`, so one value can follow another instead of being copied, e.g.
   ALLOWED_ORIGINS: "{{ .Values.global.env.CORS_ORIGINS }}".
 */ -}}
-{{- $env := dict "SERVICE_NAME" (include "seemp-service.fullname" .) }}
+{{- $env := dict "SERVICE_NAME" (include "ais-its-service.fullname" .) }}
 {{- if .Values.platformEnv }}
 {{- $env = mustMergeOverwrite $env (deepCopy ((.Values.global).env | default dict)) }}
 {{- end }}
@@ -15,9 +15,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "seemp-service.fullname" . }}
+  name: {{ include "ais-its-service.fullname" . }}
   labels:
-    {{- include "seemp-service.labels" . | nindent 4 }}
+    {{- include "ais-its-service.labels" . | nindent 4 }}
 data:
   {{- range $key, $value := $env }}
   {{ $key }}: {{ tpl (toString $value) $ | quote }}

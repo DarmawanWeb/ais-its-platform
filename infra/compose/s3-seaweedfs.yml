@@ -12,8 +12,8 @@ services:
     image: chrislusf/seaweedfs:4.54      # pinned: `mini` mode and its flags are version-specific
     command: ["mini", "-dir=/data", "-bucket=${S3_BUCKETS:-vessel-photos}"]
     environment:
-      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-seemp-dev}       # admin identity of the S3 gateway
-      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-seemp-dev-secret}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-aisits-dev}       # admin identity of the S3 gateway
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-aisits-dev-secret}
     ports: !override
       - "${S3_BIND_ADDRESS:-127.0.0.1}:${S3_API_PORT:-9000}:8333"
     post_start: !reset []                # buckets come from -bucket instead

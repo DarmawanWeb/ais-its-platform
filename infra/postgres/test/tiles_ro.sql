@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Read-only role test for Martin's tiles_ro (docs/PLATFORM_SPEC.md §6)
 -- =============================================================================
---   psql "postgres://tiles_ro:tiles_ro@localhost:5432/seemp" -f infra/postgres/test/tiles_ro.sql
+--   psql "postgres://tiles_ro:tiles_ro@localhost:5432/aisits" -f infra/postgres/test/tiles_ro.sql
 --
 -- Sessions start read-only, PostGIS is usable, and even with the read-only
 -- default switched off the role has no privilege to create anything.
@@ -29,7 +29,7 @@ DECLARE
 BEGIN
   FOREACH probe IN ARRAY ARRAY[
     'CREATE TABLE public.smoke_intruder (id int)',
-    'CREATE TABLE detection.smoke_intruder (id int)',   -- USAGE only, no CREATE
+    'CREATE TABLE geo.smoke_intruder (id int)',         -- USAGE only, no CREATE
     'CREATE SCHEMA smoke_intruder',
     'CREATE TEMP TABLE smoke_intruder (id int)'
   ] LOOP

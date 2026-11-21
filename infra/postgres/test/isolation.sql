@@ -4,7 +4,7 @@
 -- Run it AS the service role; its own schema is derived from the role name
 -- (<schema>_svc) and `other` names any other service schema:
 --
---   psql "postgres://fleet_svc:fleet_svc@localhost:5432/seemp" -v other=auth \
+--   psql "postgres://fleet_svc:fleet_svc@localhost:5432/aisits" -v other=auth \
 --        -f infra/postgres/test/isolation.sql
 --
 -- Proves that the role can build the time-series objects services need inside
@@ -89,7 +89,7 @@ BEGIN
   IF meters NOT BETWEEN 79000 AND 81000 THEN
     RAISE EXCEPTION 'PostGIS geography distance looks wrong: % m', meters;
   END IF;
-  PERFORM encode(digest('seemp', 'sha256'), 'hex'), gen_random_bytes(16);   -- pgcrypto
+  PERFORM encode(digest('aisits', 'sha256'), 'hex'), gen_random_bytes(16);   -- pgcrypto
 END
 $own$;
 

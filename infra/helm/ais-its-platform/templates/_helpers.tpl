@@ -1,26 +1,26 @@
 {{/* Gateway objects are named after the release (one platform per namespace). */}}
-{{- define "seemp-platform.fullname" -}}
+{{- define "ais-its-platform.fullname" -}}
 {{- .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{- define "seemp-platform.labels" -}}
+{{- define "ais-its-platform.labels" -}}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/part-of: seemp
+app.kubernetes.io/part-of: ais-its
 app.kubernetes.io/component: gateway
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{/* Middleware resource name: <release>-<short name>. Usage: include "seemp-platform.middleware" (list $ "compress") */}}
-{{- define "seemp-platform.middleware" -}}
-{{- printf "%s-%s" (include "seemp-platform.fullname" (index . 0)) (index . 1) | trunc 63 | trimSuffix "-" }}
+{{/* Middleware resource name: <release>-<short name>. Usage: include "ais-its-platform.middleware" (list $ "compress") */}}
+{{- define "ais-its-platform.middleware" -}}
+{{- printf "%s-%s" (include "ais-its-platform.fullname" (index . 0)) (index . 1) | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
   Traefik rule of a route: PathPrefix/Path terms joined with ||, scoped to the
-  configured hosts. Usage: include "seemp-platform.match" (dict "route" . "hosts" $.Values.gateway.hosts)
+  configured hosts. Usage: include "ais-its-platform.match" (dict "route" . "hosts" $.Values.gateway.hosts)
 */}}
-{{- define "seemp-platform.match" -}}
+{{- define "ais-its-platform.match" -}}
 {{- $terms := list }}
 {{- range .route.prefixes }}{{ $terms = append $terms (printf "PathPrefix(`%s`)" .) }}{{ end }}
 {{- range .route.paths }}{{ $terms = append $terms (printf "Path(`%s`)" .) }}{{ end }}

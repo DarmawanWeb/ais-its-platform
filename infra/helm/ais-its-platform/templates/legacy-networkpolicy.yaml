@@ -9,7 +9,7 @@ kind: NetworkPolicy
 metadata:
   name: {{ $legacy.fullnameOverride | default "legacy-be" }}-gateway-only
   labels:
-    {{- include "seemp-platform.labels" . | nindent 4 }}
+    {{- include "ais-its-platform.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:

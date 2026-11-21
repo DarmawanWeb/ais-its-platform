@@ -2,12 +2,12 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "seemp-service.fullname" . }}
+  name: {{ include "ais-its-service.fullname" . }}
   labels:
-    {{- include "seemp-service.labels" . | nindent 4 }}
+    {{- include "ais-its-service.labels" . | nindent 4 }}
 spec:
   maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
   selector:
     matchLabels:
-      {{- include "seemp-service.selectorLabels" . | nindent 6 }}
+      {{- include "ais-its-service.selectorLabels" . | nindent 6 }}
 {{- end }}

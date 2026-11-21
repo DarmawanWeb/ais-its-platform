@@ -1,11 +1,11 @@
 # =============================================================================
-# seemp-platform — DEVELOPMENT cluster (kind / k3d / minikube / shared dev)
+# ais-its-platform — DEVELOPMENT cluster (kind / k3d / minikube / shared dev)
 # =============================================================================
-#   helm upgrade --install seemp infra/helm/seemp-platform -n seemp-dev \
-#     --create-namespace -f infra/helm/seemp-platform/values-dev.yaml
+#   helm upgrade --install ais-its infra/helm/ais-its-platform -n ais-its-dev \
+#     --create-namespace -f infra/helm/ais-its-platform/values-dev.yaml
 #
 # One replica each, small requests, plain HTTP on Traefik's `web` entrypoint at
-# http://seemp.localtest.me (*.localtest.me resolves to 127.0.0.1). Backing
+# http://ais-its.localtest.me (*.localtest.me resolves to 127.0.0.1). Backing
 # services are expected in the same namespace under the compose hostnames of
 # spec §3 (postgres, nats, valkey, s3, mailpit, observability).
 #
@@ -18,8 +18,8 @@ global:
   existingSecret: ""
   env:
     LOG_LEVEL: debug
-    CORS_ORIGINS: http://seemp.localtest.me
-    PUBLIC_BASE_URL: http://seemp.localtest.me
+    CORS_ORIGINS: http://ais-its.localtest.me
+    PUBLIC_BASE_URL: http://ais-its.localtest.me
     OTEL_EXPORTER_OTLP_ENDPOINT: http://observability:4318
     INTERNAL_TOKEN: dev-internal-token-change-me   # spec §4 dev default (Secret in prod)
 
@@ -36,7 +36,7 @@ auth:
     COOKIE_SECURE: "false"               # plain HTTP in the dev cluster
   existingSecret: ""
   secretEnv:
-    DATABASE_URL: postgres://auth_svc:auth_svc@postgres:5432/seemp
+    DATABASE_URL: postgres://auth_svc:auth_svc@postgres:5432/aisits
     KEY_ENCRYPTION_SECRET: dev-key-encryption-secret-32-chars-min
     BOOTSTRAP_ADMIN_PASSWORD: ChangeMe123!
 
@@ -46,9 +46,9 @@ fleet:
     S3_PUBLIC_ENDPOINT: http://localhost:9000   # kubectl port-forward svc/s3 9000
   existingSecret: ""
   secretEnv:
-    DATABASE_URL: postgres://fleet_svc:fleet_svc@postgres:5432/seemp
-    S3_ACCESS_KEY: seemp-dev
-    S3_SECRET_KEY: seemp-dev-secret
+    DATABASE_URL: postgres://fleet_svc:fleet_svc@postgres:5432/aisits
+    S3_ACCESS_KEY: aisits-dev
+    S3_SECRET_KEY: aisits-dev-secret
 
 ais-ingestor:
   <<: *small
@@ -60,33 +60,45 @@ ais-processor:
   <<: *small
   existingSecret: ""
   secretEnv:
-    DATABASE_URL: postgres://ais_svc:ais_svc@postgres:5432/seemp
+    DATABASE_URL: postgres://ais_svc:ais_svc@postgres:5432/aisits
 
 telemetry:
   <<: *small
   existingSecret: ""
   secretEnv:
-    DATABASE_URL: postgres://telemetry_svc:telemetry_svc@postgres:5432/seemp
+    DATABASE_URL: postgres://telemetry_svc:telemetry_svc@postgres:5432/aisits
 
 emission:
   <<: *small
   existingSecret: ""
   secretEnv:
-    DATABASE_URL: postgres://emission_svc:emission_svc@postgres:5432/seemp
+    DATABASE_URL: postgres://emission_svc:emission_svc@postgres:5432/aisits
 
-detection:
+geo:
   <<: *small
   existingSecret: ""
   secretEnv:
-    DATABASE_URL: postgres://detection_svc:detection_svc@postgres:5432/seemp
+    DATABASE_URL: postgres://geo_svc:geo_svc@postgres:5432/aisits
+
+safety:
+  <<: *small
+  existingSecret: ""
+  secretEnv:
+    DATABASE_URL: postgres://safety_svc:safety_svc@postgres:5432/aisits
+
+surveillance:
+  <<: *small
+  existingSecret: ""
+  secretEnv:
+    DATABASE_URL: postgres://surveillance_svc:surveillance_svc@postgres:5432/aisits
 
 notification:
   <<: *small
   env:
-    SMTP_FROM: "SEEMP <no-reply@seemp.local>"
+    SMTP_FROM: "AIS Maritime Intelligence <no-reply@ais-its.local>"
   existingSecret: ""
   secretEnv:
-    DATABASE_URL: postgres://notify_svc:notify_svc@postgres:5432/seemp
+    DATABASE_URL: postgres://notify_svc:notify_svc@postgres:5432/aisits
     SMTP_URL: smtp://mailpit:1025
     TELEGRAM_BOT_TOKEN: ""
     WEBHOOK_SIGNING_SECRET: dev-webhook-signing-secret
@@ -98,13 +110,13 @@ martin:
   replicaCount: 1
   existingSecret: ""
   secretEnv:
-    DATABASE_URL: postgres://tiles_ro:tiles_ro@postgres:5432/seemp
+    DATABASE_URL: postgres://tiles_ro:tiles_ro@postgres:5432/aisits
 
 legacy-be:
   enabled: false                         # enable together with a MongoDB in the namespace
 
 gateway:
-  hosts: [seemp.localtest.me]
+  hosts: [ais-its.localtest.me]
   entryPoints: [web]
   tls:
     enabled: false

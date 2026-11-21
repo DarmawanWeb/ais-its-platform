@@ -1,20 +1,20 @@
 # =============================================================================
-# seemp-platform — base values (environment-neutral)
+# ais-its-platform — base values (environment-neutral)
 # =============================================================================
 # Layer an environment file on top:
-#   helm upgrade --install seemp infra/helm/seemp-platform -n seemp -f values-prod.yaml
+#   helm upgrade --install ais-its infra/helm/ais-its-platform -n ais-its -f values-prod.yaml
 #
-# Every process is an instance of ../seemp-service (see its values.yaml for all
-# knobs). fullnameOverride = spec §3 hostname, so in-cluster URLs are the same
-# as in the compose stack (http://auth:3001 …). Secrets are referenced by name
-# (existingSecret) and are never stored in these files.
+# Every process is an instance of ../ais-its-service (see its values.yaml for
+# all knobs). fullnameOverride = spec §3 hostname, so in-cluster URLs are the
+# same as in the compose stack (http://auth:3001 …). Secrets are referenced by
+# name (existingSecret) and are never stored in these files.
 
 global:
-  # -- Release tag applied to every SEEMP image without an explicit image.tag.
+  # -- Release tag applied to every platform image without an explicit image.tag.
   imageTag: ""
   imagePullSecrets: []
   # -- Secret with variables shared by all services (INTERNAL_TOKEN).
-  existingSecret: seemp-shared
+  existingSecret: ais-its-shared
   # -- Common environment (spec §4); in-cluster hostnames of the backing services.
   env:
     NODE_ENV: production
@@ -25,11 +25,11 @@ global:
     NATS_URL: nats://nats:4222
     REDIS_URL: redis://valkey:6379
     AUTH_JWKS_URL: http://auth:3001/.well-known/jwks.json
-    AUTH_ISSUER: seemp-auth
-    AUTH_AUDIENCE: seemp-api
+    AUTH_ISSUER: ais-its-auth
+    AUTH_AUDIENCE: ais-its-api
     AUTH_INTERNAL_URL: http://auth:3001
-    CORS_ORIGINS: https://seemp.example.com
-    PUBLIC_BASE_URL: https://seemp.example.com
+    CORS_ORIGINS: https://ais-its.example.com
+    PUBLIC_BASE_URL: https://ais-its.example.com
     OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
 
 # --- auth:3001 (spec §13.1) --------------------------------------------------
@@ -37,23 +37,23 @@ auth:
   enabled: true
   fullnameOverride: auth
   image:
-    repository: ghcr.io/darmawanweb/seemp-auth-service
+    repository: ghcr.io/darmawanweb/ais-its-auth-service
   port: 3001
   env:
     DATABASE_SCHEMA: auth
     ACCESS_TOKEN_TTL: "900"
     REFRESH_TOKEN_TTL_DAYS: "30"
     COOKIE_SECURE: "true"
-    BOOTSTRAP_ADMIN_EMAIL: admin@seemp.local
+    BOOTSTRAP_ADMIN_EMAIL: admin@ais-its.local
   # DATABASE_URL, KEY_ENCRYPTION_SECRET, BOOTSTRAP_ADMIN_PASSWORD
-  existingSecret: seemp-auth
+  existingSecret: ais-its-auth
 
 # --- fleet:3002 (spec §13.3) -------------------------------------------------
 fleet:
   enabled: true
   fullnameOverride: fleet
   image:
-    repository: ghcr.io/darmawanweb/seemp-fleet-service
+    repository: ghcr.io/darmawanweb/ais-its-fleet-service
   port: 3002
   env:
     DATABASE_SCHEMA: fleet
@@ -61,17 +61,17 @@ fleet:
     S3_REGION: us-east-1
     S3_BUCKET_PHOTOS: vessel-photos
     S3_FORCE_PATH_STYLE: "true"
-    S3_PUBLIC_ENDPOINT: https://s3.seemp.example.com
+    S3_PUBLIC_ENDPOINT: https://s3.ais-its.example.com
     FLEET_REPUBLISH_ON_BOOT: "false"
   # DATABASE_URL, S3_ACCESS_KEY, S3_SECRET_KEY
-  existingSecret: seemp-fleet
+  existingSecret: ais-its-fleet
 
 # --- ais-ingestor:3003 and ais-processor:3004 — one image, two processes (§13.2)
 ais-ingestor:
   enabled: true
   fullnameOverride: ais-ingestor
   image:
-    repository: ghcr.io/darmawanweb/seemp-ais-pipeline
+    repository: ghcr.io/darmawanweb/ais-its-pipeline
   command: ["node", "dist/apps/ingestor/main.js"]
   port: 3003
   env:
@@ -79,13 +79,13 @@ ais-ingestor:
     AIS_PRIMARY_URL: ""          # empty = upstream disabled
     AIS_BATAM_URL: ""
   # AIS_UPSTREAM_TOKEN (stateless: no database)
-  existingSecret: seemp-ais-ingestor
+  existingSecret: ais-its-ais-ingestor
 
 ais-processor:
   enabled: true
   fullnameOverride: ais-processor
   image:
-    repository: ghcr.io/darmawanweb/seemp-ais-pipeline
+    repository: ghcr.io/darmawanweb/ais-its-pipeline
   command: ["node", "dist/apps/processor/main.js"]
   port: 3004
   # Single consumer of AIS_RAW (durable "ais-processor") keeping per-vessel
@@ -100,60 +100,101 @@ ais-processor:
     PROCESSOR_BATCH_SIZE: "500"
     PROCESSOR_FLUSH_MS: "1000"
   # DATABASE_URL
-  existingSecret: seemp-ais-processor
+  existingSecret: ais-its-ais-processor
 
 # --- telemetry:3005 (spec §13.4) ---------------------------------------------
 telemetry:
   enabled: true
   fullnameOverride: telemetry
   image:
-    repository: ghcr.io/darmawanweb/seemp-telemetry-service
+    repository: ghcr.io/darmawanweb/ais-its-telemetry-service
   port: 3005
   env:
     DATABASE_SCHEMA: telemetry
     TELEMETRY_ACTIVE_WINDOW_MIN: "10"
   # DATABASE_URL
-  existingSecret: seemp-telemetry
+  existingSecret: ais-its-telemetry
 
 # --- emission:3006 (spec §13.5) ----------------------------------------------
 emission:
   enabled: true
   fullnameOverride: emission
   image:
-    repository: ghcr.io/darmawanweb/seemp-emission-service
+    repository: ghcr.io/darmawanweb/ais-its-emission-service
   port: 3006
   env:
     DATABASE_SCHEMA: emission
     CII_PUBLISH_INTERVAL_S: "60"
   # DATABASE_URL
-  existingSecret: seemp-emission
+  existingSecret: ais-its-emission
 
-# --- detection:3007 (spec §13.6) ---------------------------------------------
-detection:
+# --- geo:3009, zones / geofences (spec §13.6) --------------------------------
+geo:
   enabled: true
-  fullnameOverride: detection
+  fullnameOverride: geo
   image:
-    repository: ghcr.io/darmawanweb/seemp-detection-service
-  port: 3007
+    repository: ghcr.io/darmawanweb/ais-its-geo-service
+  port: 3009
   env:
-    DATABASE_SCHEMA: detection
+    DATABASE_SCHEMA: geo
+  # DATABASE_URL
+  existingSecret: ais-its-geo
+
+# --- safety:3011, navigational safety detectors (spec §13.7, §18) ------------
+safety:
+  enabled: true
+  fullnameOverride: safety
+  image:
+    repository: ghcr.io/darmawanweb/ais-its-safety-service
+  port: 3011
+  # Detectors keep per-vessel state in memory (Detector SDK VesselStateStore,
+  # pair search): one instance per durable consumer ("safety-positions"), never
+  # two at once, until the consumer is partitioned by ais.position.v1.<p>.>.
+  replicaCount: 1
+  strategy:
+    type: Recreate
+  env:
+    DATABASE_SCHEMA: safety
+    DETECTORS: ews,collision
+    EWS_DANGER_M: "500"
+    EWS_WARNING_M: "1750"
+    SAFETY_STATE_HEARTBEAT_S: "300"
+    COLLISION_SEARCH_RADIUS_NM: "6"
+  # DATABASE_URL
+  existingSecret: ais-its-safety
+
+# --- surveillance:3007, illegal-activity detectors (spec §13.8, §18) ---------
+surveillance:
+  enabled: true
+  fullnameOverride: surveillance
+  image:
+    repository: ghcr.io/darmawanweb/ais-its-surveillance-service
+  port: 3007
+  # Streaks, track buffers and transhipment pairs live in memory: one instance
+  # per durable consumer ("surveillance-positions"), as for safety.
+  replicaCount: 1
+  strategy:
+    type: Recreate
+  env:
+    DATABASE_SCHEMA: surveillance
+    DETECTORS: transhipment,anomaly,dark,geofence,fishing
     ANOMALY_MIN_POSITIONS: "3"
     DARK_GAP_MIN: "30"
   # DATABASE_URL
-  existingSecret: seemp-detection
+  existingSecret: ais-its-surveillance
 
-# --- notification:3008, HTTP + socket.io /ws (spec §13.7, §9) ------------------
+# --- notification:3008, HTTP + socket.io /ws (spec §13.9, §9) ------------------
 notification:
   enabled: true
   fullnameOverride: notification
   image:
-    repository: ghcr.io/darmawanweb/seemp-notification-service
+    repository: ghcr.io/darmawanweb/ais-its-notification-service
   port: 3008
   env:
     DATABASE_SCHEMA: notify
-    SMTP_FROM: "SEEMP <no-reply@seemp.example.com>"
+    SMTP_FROM: "AIS Maritime Intelligence <no-reply@ais-its.example.com>"
   # DATABASE_URL, SMTP_URL, TELEGRAM_BOT_TOKEN, WEBHOOK_SIGNING_SECRET
-  existingSecret: seemp-notification
+  existingSecret: ais-its-notification
 
 # --- web: nginx serving the built SPA on :8080 as non-root (spec §14) ----------
 web:
@@ -161,7 +202,7 @@ web:
   fullnameOverride: web
   platformEnv: false
   image:
-    repository: ghcr.io/darmawanweb/seemp-web
+    repository: ghcr.io/darmawanweb/ais-its-web
   port: 8080
   probes:
     liveness: { path: /, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
@@ -174,13 +215,13 @@ web:
     requests: { cpu: 20m, memory: 32Mi }
     limits: { memory: 128Mi }
 
-# --- legacy-be:3020 — seemp-mvp-api, /api/v1 until cut-over (spec §1, §12) -----
+# --- legacy-be:3020 — ais-its-mvp-api, /api/v1 until cut-over (spec §1, §12) ---
 legacy-be:
   enabled: false                  # needs MongoDB; enable per environment
   fullnameOverride: legacy-be
   platformEnv: false
   image:
-    repository: ghcr.io/darmawanweb/seemp-mvp-api
+    repository: ghcr.io/darmawanweb/ais-its-mvp-api
   port: 3020
   probes:
     liveness: { path: /, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
@@ -194,13 +235,13 @@ legacy-be:
     # Identity comes from the gateway's forwardAuth headers. Only safe because
     # the NetworkPolicy below admits nothing but the gateway.
     TRUST_FORWARD_AUTH: "true"
-    # Browser origins allowed to call /api/v1 (others get 403, also same-origin
-    # writes through the gateway): the same list as the v2 services, so they
-    # cannot drift. Append MVP dashboard origins after it if needed.
+    # Browser origins allowed to write to /api/v1 (others get 403, also
+    # same-origin writes through the gateway): the same list as the v2
+    # services, so they cannot drift. Append MVP dashboard origins if needed.
     ALLOWED_ORIGINS: "{{ .Values.global.env.CORS_ORIGINS }}"
   # MONGO_URI, MONGO_DB_NAME, JWT_SECRET, REFRESH_TOKEN_SECRET; WEBSOCKET_URI,
   # WEBSOCKET_BATAM_URI, WEBSOCKET_TOKEN for the live AIS feed (infra/helm/README.md)
-  existingSecret: seemp-mvp-api
+  existingSecret: ais-its-mvp-api
   resources:
     requests: { cpu: 100m, memory: 256Mi }
     limits: { memory: 1Gi }
@@ -223,8 +264,8 @@ martin:
     startup: { enabled: false }
   metrics:
     enabled: false
-  # DATABASE_URL=postgres://tiles_ro:…@<postgres>:5432/seemp
-  existingSecret: seemp-martin
+  # DATABASE_URL=postgres://tiles_ro:…@<postgres>:5432/aisits
+  existingSecret: ais-its-martin
   resources:
     requests: { cpu: 50m, memory: 64Mi }
     limits: { memory: 256Mi }
@@ -236,12 +277,12 @@ martin:
 gateway:
   enabled: true
   # -- Hostnames served; empty = any host.
-  hosts: [seemp.example.com]
+  hosts: [ais-its.example.com]
   entryPoints: [websecure]
   tls:
     enabled: true
     # -- TLS secret in the release namespace (e.g. issued by cert-manager) …
-    secretName: seemp-tls
+    secretName: ais-its-tls
     # -- … or a Traefik ACME resolver (leave secretName empty).
     certResolver: ""
   hsts:
@@ -266,7 +307,7 @@ gateway:
   forwardAuthAddress: ""
   # -- Cookie for sticky sessions on socket.io routes (long-polling needs the
   # same replica for a whole session).
-  stickyCookieName: seemp_affinity
+  stickyCookieName: aisits_affinity
 
   # -- Route table: one entry per row of spec §12 plus sub-routes. `backend` is a
   # component alias above ("" = answered by the gateway itself; optional `port`
@@ -328,10 +369,10 @@ gateway:
       prefixes: [/api/v2/cii, /api/v2/seemp, /api/v2/emission, /api/v2/reduction-factors]
       backend: emission
       middlewares: [security-headers, compress]
-    - name: detection
+    - name: surveillance
       priority: 200
-      prefixes: [/api/v2/detections, /api/v2/zones]
-      backend: detection
+      prefixes: [/api/v2/surveillance]
+      backend: surveillance
       middlewares: [security-headers, compress]
     - name: notification-ws
       priority: 300
@@ -343,6 +384,16 @@ gateway:
       priority: 200
       prefixes: [/api/v2/alerts, /api/v2/alert-rules, /api/v2/notifications]
       backend: notification
+      middlewares: [security-headers, compress]
+    - name: geo
+      priority: 200
+      prefixes: [/api/v2/zones]
+      backend: geo
+      middlewares: [security-headers, compress]
+    - name: safety
+      priority: 200
+      prefixes: [/api/v2/safety]
+      backend: safety
       middlewares: [security-headers, compress]
     - name: tiles                 # signed-in users only (spec §6, §12)
       priority: 200

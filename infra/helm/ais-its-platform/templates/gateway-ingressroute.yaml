@@ -7,9 +7,9 @@
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: {{ include "seemp-platform.fullname" . }}
+  name: {{ include "ais-its-platform.fullname" . }}
   labels:
-    {{- include "seemp-platform.labels" . | nindent 4 }}
+    {{- include "ais-its-platform.labels" . | nindent 4 }}
 spec:
   entryPoints:
     {{- toYaml .Values.gateway.entryPoints | nindent 4 }}
@@ -22,12 +22,12 @@ spec:
     {{- if or (not .backend) $component.enabled }}
     # {{ .name }}
     - kind: Rule
-      match: {{ include "seemp-platform.match" (dict "route" . "hosts" $.Values.gateway.hosts) | quote }}
+      match: {{ include "ais-its-platform.match" (dict "route" . "hosts" $.Values.gateway.hosts) | quote }}
       priority: {{ int .priority }}
       {{- with .middlewares }}
       middlewares:
         {{- range . }}
-        - name: {{ include "seemp-platform.middleware" (list $ .) }}
+        - name: {{ include "ais-its-platform.middleware" (list $ .) }}
         {{- end }}
       {{- end }}
       {{- if and (hasKey . "accessLogs") (not .accessLogs) }}

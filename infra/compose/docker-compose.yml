@@ -1,5 +1,5 @@
 # =============================================================================
-# SEEMP platform — local INFRASTRUCTURE stack (dev mode)
+# AIS Maritime Intelligence — local INFRASTRUCTURE stack (dev mode)
 # =============================================================================
 # Backing services only: the platform services and the web app run on the host
 # with `pnpm dev` and connect to the published ports below (spec §3/§4). The
@@ -15,17 +15,17 @@
 #   $C --profile tiles --profile legacy down -v     # stop and wipe all data
 #
 # `down` only removes the services of the profiles it is given: always name
-# both profiles, or their containers, the network and their volumes survive.
+# both profiles, or their containers, the networks and their volumes survive.
 # Every ${VAR:-default} below is documented in .env.example; the defaults are
 # development-only values (spec §4) and must never be used anywhere else.
 # See infra/README.md for URLs, credentials and connection strings.
 # =============================================================================
 
-name: seemp
+name: aisits
 
 x-service: &service
   restart: unless-stopped
-  networks: [seemp]
+  networks: [aisits]
   logging:
     driver: json-file
     options: { max-size: "10m", max-file: "3" }
@@ -43,37 +43,39 @@ services:
   postgres:
     <<: *service
     image: timescale/timescaledb-ha:pg17
-    container_name: seemp-postgres
+    container_name: aisits-postgres
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}   # superuser "postgres"
       TIMESCALEDB_TELEMETRY: "off"
-      TS_TUNE_MAX_CONNS: "200"         # 8 service pools × DATABASE_POOL_MAX + Martin + tools
+      TS_TUNE_MAX_CONNS: "200"         # 9 service pools × DATABASE_POOL_MAX + Martin + tools
       # Passwords of the roles of ../postgres/bootstrap.sql, applied on every start.
       AUTH_SVC_PASSWORD: ${AUTH_SVC_PASSWORD:-auth_svc}
       FLEET_SVC_PASSWORD: ${FLEET_SVC_PASSWORD:-fleet_svc}
       AIS_SVC_PASSWORD: ${AIS_SVC_PASSWORD:-ais_svc}
       TELEMETRY_SVC_PASSWORD: ${TELEMETRY_SVC_PASSWORD:-telemetry_svc}
       EMISSION_SVC_PASSWORD: ${EMISSION_SVC_PASSWORD:-emission_svc}
-      DETECTION_SVC_PASSWORD: ${DETECTION_SVC_PASSWORD:-detection_svc}
+      GEO_SVC_PASSWORD: ${GEO_SVC_PASSWORD:-geo_svc}
+      SAFETY_SVC_PASSWORD: ${SAFETY_SVC_PASSWORD:-safety_svc}
+      SURVEILLANCE_SVC_PASSWORD: ${SURVEILLANCE_SVC_PASSWORD:-surveillance_svc}
       NOTIFY_SVC_PASSWORD: ${NOTIFY_SVC_PASSWORD:-notify_svc}
       TILES_RO_PASSWORD: ${TILES_RO_PASSWORD:-tiles_ro}
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/home/postgres/pgdata                      # PGDATA = /home/postgres/pgdata/data
-      - ../postgres:/opt/seemp/postgres:ro                # bootstrap.sql/.sh + tests
+      - ../postgres:/opt/aisits/postgres:ro               # bootstrap.sql/.sh + tests
     # Applies the idempotent, transactional bootstrap.sql each time compose
     # starts the container (also after a password change in .env, which
     # recreates it). `up` waits for it and fails with psql's error if it fails.
     post_start:
-      - command: ["bash", "/opt/seemp/postgres/bootstrap.sh"]
+      - command: ["bash", "/opt/aisits/postgres/bootstrap.sh"]
     shm_size: 256m                     # parallel query workers need more than Docker's 64 MB
     stop_grace_period: 60s             # image stops with SIGINT (fast shutdown)
     healthcheck:
       # Healthy = accepting TCP connections (never during first-start
       # initialisation) AND bootstrap.sql committed: a failed bootstrap stays
       # unhealthy, so dependents and `up --wait` do not proceed.
-      test: ["CMD", "bash", "/opt/seemp/postgres/bootstrap.sh", "--check"]
+      test: ["CMD", "bash", "/opt/aisits/postgres/bootstrap.sh", "--check"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -89,7 +91,7 @@ services:
   nats:
     <<: *service
     image: nats:2.12-alpine
-    container_name: seemp-nats
+    container_name: aisits-nats
     command: ["nats-server", "--config", "/etc/nats/nats.conf"]
     environment:
       GOMEMLIMIT: 400MiB               # soft limit below the container limit
@@ -118,7 +120,7 @@ services:
   valkey:
     <<: *service
     image: valkey/valkey:8-alpine
-    container_name: seemp-valkey
+    container_name: aisits-valkey
     # AOF persistence; evict only keys that carry a TTL (caches, throttling
     # windows) if the dev memory cap is ever reached.
     command: ["valkey-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
@@ -144,10 +146,10 @@ services:
   s3:
     <<: *service
     image: rustfs/rustfs:1.0.6         # RUSTFS_* variables and the bundled `rc` client
-    container_name: seemp-s3
+    container_name: aisits-s3
     environment:
-      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-seemp-dev}
-      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-seemp-dev-secret}
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-aisits-dev}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-aisits-dev-secret}
       RUSTFS_REGION: ${S3_REGION:-us-east-1}
       RUSTFS_ADDRESS: ":9000"
       RUSTFS_CONSOLE_ENABLE: "true"
@@ -161,15 +163,21 @@ services:
       - s3-data:/data
     # Creates the buckets the services expect (idempotent) every time compose
     # starts the container; `up --wait` waits for it (Docker Compose ≥ 2.30).
+    # On a fresh volume the S3 API can answer 503 for a few seconds after the
+    # health endpoints are up, hence the retries.
     post_start:
       - command:
           - /bin/sh
           - -ec
           - |
-            until curl -fsS -o /dev/null http://127.0.0.1:9000/health; do sleep 1; done
-            rc alias set seemp http://127.0.0.1:9000 "$$RUSTFS_ACCESS_KEY" "$$RUSTFS_SECRET_KEY" >/dev/null
+            until curl -fs -o /dev/null http://127.0.0.1:9000/health/ready; do sleep 1; done
+            rc alias set aisits http://127.0.0.1:9000 "$$RUSTFS_ACCESS_KEY" "$$RUSTFS_SECRET_KEY" >/dev/null
             for bucket in $$(echo "$$S3_BUCKETS" | tr ',' ' '); do
-              rc bucket create --ignore-existing "seemp/$$bucket"
+              for attempt in $$(seq 1 30); do
+                rc bucket create --ignore-existing "aisits/$$bucket" && continue 2
+                sleep 1
+              done
+              echo "could not create bucket $$bucket" >&2; exit 1
             done
     healthcheck:
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9000/health"]
@@ -188,7 +196,7 @@ services:
   mailpit:
     <<: *service
     image: axllent/mailpit:v1.34.0
-    container_name: seemp-mailpit
+    container_name: aisits-mailpit
     environment:
       MP_MAX_MESSAGES: "5000"
       MP_SMTP_AUTH_ACCEPT_ANY: "true"      # services may send with or without SMTP auth
@@ -209,14 +217,18 @@ services:
         limits: { memory: 128m }
 
   # ---------------------------------------------------------------------------
-  # Gateway — Traefik v3, routes of spec §12 to the host processes (dev mode)
+  # Gateway — Traefik v3, routes of spec §12 (../traefik/dynamic/routes.yml)
   # ---------------------------------------------------------------------------
   gateway:
     <<: [*service, *host-access]
     image: traefik:v3.5
-    container_name: seemp-gateway
+    container_name: aisits-gateway
     # `legacy` reaches legacy-be, which nothing else may reach (see there).
-    networks: [seemp, legacy]
+    networks: [aisits, legacy]
+    environment:
+      # Upstreams: "host" = the `pnpm dev` processes on the host (default);
+      # "stack" = containers named after their §3 hostname on the aisits network.
+      AISITS_GATEWAY_UPSTREAMS: ${GATEWAY_UPSTREAMS:-host}
     ports:
       # Own bind address: the only port to open for other devices (phone, LAN).
       - "${GATEWAY_BIND_ADDRESS:-127.0.0.1}:${GATEWAY_PORT:-8000}:8000"
@@ -224,8 +236,7 @@ services:
     volumes:
       - ../traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       # Whole directory (not single files) so live reload survives editors that
-      # replace files atomically. Upstreams: host processes unless the gateway
-      # runs with SEEMP_GATEWAY_UPSTREAMS=stack (see routes.yml).
+      # replace files atomically.
       - ../traefik/dynamic:/etc/traefik/dynamic:ro
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
@@ -240,16 +251,16 @@ services:
 
   # ---------------------------------------------------------------------------
   # Observability — Grafana LGTM (Grafana 3000, OTLP gRPC 4317 / HTTP 4318),
-  # plus the SEEMP collector overlay (scrapes /metrics) and dashboards.
+  # plus the collector overlay (scrapes /metrics) and dashboards.
   # ---------------------------------------------------------------------------
   observability:
     <<: [*service, *host-access]
     # Pinned: the overlay references the image's receivers `otlp` and
     # `prometheus/collector` by name. Bump deliberately.
     image: grafana/otel-lgtm:0.41.1
-    container_name: seemp-observability
+    container_name: aisits-observability
     environment:
-      OTELCOL_EXTRA_ARGS: "--config=file:/otel-lgtm/seemp/otelcol-seemp.yaml"
+      OTELCOL_EXTRA_ARGS: "--config=file:/otel-lgtm/aisits/otelcol-aisits.yaml"
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer   # the image grants anonymous Admin otherwise
       GF_ANALYTICS_REPORTING_ENABLED: "false"
@@ -260,8 +271,8 @@ services:
       - "${BIND_ADDRESS:-127.0.0.1}:${OTLP_GRPC_PORT:-4317}:4317"
       - "${BIND_ADDRESS:-127.0.0.1}:${OTLP_HTTP_PORT:-4318}:4318"
     volumes:
-      - ../observability:/otel-lgtm/seemp:ro
-      - ../observability/grafana/provisioning/dashboards/seemp.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/seemp.yaml:ro
+      - ../observability:/otel-lgtm/aisits:ro
+      - ../observability/grafana/provisioning/dashboards/aisits.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/aisits.yaml:ro
       - observability-data:/data       # Prometheus, Loki, Tempo, Grafana state
     healthcheck:
       test: ["CMD", "/otel-lgtm/docker/healthcheck.sh"]
@@ -282,13 +293,13 @@ services:
     <<: *service
     # Docker Hub's last Martin release; current ones are on GHCR (README).
     image: ${MARTIN_IMAGE:-maplibre/martin:v0.8.0}
-    container_name: seemp-martin
+    container_name: aisits-martin
     profiles: [tiles]
     depends_on:
       postgres: { condition: service_healthy }   # healthy = bootstrapped, tiles_ro exists
     environment:
       # URL-encode the password if it contains reserved characters.
-      DATABASE_URL: postgres://tiles_ro:${TILES_RO_PASSWORD:-tiles_ro}@postgres:5432/seemp
+      DATABASE_URL: postgres://tiles_ro:${TILES_RO_PASSWORD:-tiles_ro}@postgres:5432/aisits
     # String form: compose splits it into arguments, an empty MARTIN_EXTRA_ARGS adds none.
     command: "--listen-addresses 0.0.0.0:3010 --pool-size 5 ${MARTIN_EXTRA_ARGS:-}"
     ports:
@@ -305,18 +316,18 @@ services:
         limits: { memory: 256m }
 
   # ---------------------------------------------------------------------------
-  # Legacy API /api/v1 (profile "legacy"): MongoDB 7 + the MVP backend
+  # MVP API /api/v1 (profile "legacy"): MongoDB 7 + the MVP backend (spec §1)
   # ---------------------------------------------------------------------------
   mongo:
     <<: *service
     image: mongo:7
-    container_name: seemp-mongo
+    container_name: aisits-mongo
     profiles: [legacy]
-    networks: [seemp, legacy]          # seemp: the legacy data migration (spec §1)
+    networks: [aisits, legacy]         # aisits: the legacy data migration (spec §1)
     command: ["mongod", "--wiredTigerCacheSizeGB", "0.25"]
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-seemp}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-seemp-dev}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-aisits}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-aisits-dev}
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${MONGO_PORT:-27017}:27017"   # legacy data import/migration
     volumes:
@@ -332,13 +343,13 @@ services:
       resources:
         limits: { memory: 768m }
 
-  legacy-be:                           # seemp-mvp-api (spec §1), /api/v1 until cut-over
+  legacy-be:                           # ais-its-mvp-api, /api/v1 until cut-over
     <<: *service
     build:
       context: ../../legacy/be
       dockerfile: Dockerfile
-    image: seemp-mvp-api:dev           # local tag; production image ghcr.io/darmawanweb/seemp-mvp-api
-    container_name: seemp-legacy-be
+    image: ais-its-mvp-api:dev         # local tag; production image ghcr.io/darmawanweb/ais-its-mvp-api
+    container_name: aisits-legacy-be
     profiles: [legacy]
     depends_on:
       mongo: { condition: service_healthy }
@@ -352,11 +363,12 @@ services:
       NODE_ENV: production
       PORT: "3020"
       WEBSOCKET_SERVER_PORT: "3021"    # legacy socket.io server, container-internal
-      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:-seemp}:${MONGO_ROOT_PASSWORD:-seemp-dev}@mongo:27017/${MONGO_DB_NAME:-seemp_legacy}?authSource=admin
-      MONGO_DB_NAME: ${MONGO_DB_NAME:-seemp_legacy}
-      JWT_SECRET: ${LEGACY_JWT_SECRET:-dev-legacy-jwt-secret-change-me}
-      REFRESH_TOKEN_SECRET: ${LEGACY_REFRESH_TOKEN_SECRET:-dev-legacy-refresh-secret-change-me}
-      ALLOWED_ORIGINS: http://localhost:8000,http://localhost:5173
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:-aisits}:${MONGO_ROOT_PASSWORD:-aisits-dev}@mongo:27017/${MONGO_DB_NAME:-aisits_legacy}?authSource=admin
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-aisits_legacy}
+      JWT_SECRET: ${LEGACY_JWT_SECRET:-dev-only-legacy-jwt-secret-change-me}
+      REFRESH_TOKEN_SECRET: ${LEGACY_REFRESH_TOKEN_SECRET:-dev-only-legacy-refresh-secret-change-me}
+      # Browser origins that may write to /api/v1 (others get 403).
+      ALLOWED_ORIGINS: ${LEGACY_ALLOWED_ORIGINS:-http://localhost:8000,http://localhost:5173}
       TRUST_PROXY: "1"                 # one proxy hop: the gateway
       TRUST_FORWARD_AUTH: "true"
       # Empty = no live feed: the MVP API then dials its built-in default
@@ -376,8 +388,8 @@ services:
         limits: { memory: 768m }
 
 networks:
-  seemp:
-    name: seemp                        # fixed name: the stack mode and test runners can join it
+  aisits:
+    name: aisits                       # fixed name: stack-mode services and test runners join it
   legacy: {}                           # gateway ↔ legacy-be (↔ mongo) only
 
 volumes:

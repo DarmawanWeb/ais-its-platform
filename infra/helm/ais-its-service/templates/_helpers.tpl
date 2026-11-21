@@ -1,10 +1,10 @@
 {{/* Chart name (the umbrella alias, e.g. "auth"). */}}
-{{- define "seemp-service.name" -}}
+{{- define "ais-its-service.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/* Resource name; the umbrella sets fullnameOverride to the spec §3 hostname. */}}
-{{- define "seemp-service.fullname" -}}
+{{- define "ais-its-service.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -17,16 +17,16 @@
 {{- end }}
 {{- end }}
 
-{{- define "seemp-service.imageTag" -}}
+{{- define "ais-its-service.imageTag" -}}
 {{- .Values.image.tag | default ((.Values.global).imageTag) | default .Chart.AppVersion }}
 {{- end }}
 
 {{/* Image reference; a floating "latest" tag is refused (pin a version or a digest). */}}
-{{- define "seemp-service.image" -}}
+{{- define "ais-its-service.image" -}}
 {{- if .Values.image.digest }}
 {{- printf "%s@%s" .Values.image.repository .Values.image.digest }}
 {{- else }}
-{{- $tag := include "seemp-service.imageTag" . }}
+{{- $tag := include "ais-its-service.imageTag" . }}
 {{- if eq $tag "latest" }}
 {{- fail (printf "%s: image tag \"latest\" is not allowed; pin image.tag (or global.imageTag) to a release, or set image.digest" .Values.image.repository) }}
 {{- end }}
@@ -34,58 +34,58 @@
 {{- end }}
 {{- end }}
 
-{{- define "seemp-service.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "seemp-service.name" . }}
+{{- define "ais-its-service.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "ais-its-service.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "seemp-service.labels" -}}
+{{- define "ais-its-service.labels" -}}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{ include "seemp-service.selectorLabels" . }}
-app.kubernetes.io/version: {{ include "seemp-service.imageTag" . | trunc 63 | trimSuffix "-" | quote }}
-app.kubernetes.io/component: {{ include "seemp-service.name" . }}
-app.kubernetes.io/part-of: seemp
+{{ include "ais-its-service.selectorLabels" . }}
+app.kubernetes.io/version: {{ include "ais-its-service.imageTag" . | trunc 63 | trimSuffix "-" | quote }}
+app.kubernetes.io/component: {{ include "ais-its-service.name" . }}
+app.kubernetes.io/part-of: ais-its
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{- define "seemp-service.serviceAccountName" -}}
+{{- define "ais-its-service.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "seemp-service.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "ais-its-service.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
 
 {{/* Name of the Secret holding this process' own variables ("" = none). */}}
-{{- define "seemp-service.secretName" -}}
+{{- define "ais-its-service.secretName" -}}
 {{- if .Values.existingSecret }}
 {{- .Values.existingSecret }}
 {{- else if .Values.secretEnv }}
-{{- include "seemp-service.fullname" . }}
+{{- include "ais-its-service.fullname" . }}
 {{- end }}
 {{- end }}
 
 {{/* Container port names are limited to 15 characters. */}}
-{{- define "seemp-service.secondaryPortName" -}}
+{{- define "ais-its-service.secondaryPortName" -}}
 {{- printf "http-%s" .Values.secondaryContainer.name | trunc 15 | trimSuffix "-" }}
 {{- end }}
 
 {{/* Writable emptyDir volume name for a path, e.g. /var/cache/nginx → w-var-cache-nginx. */}}
-{{- define "seemp-service.volumeName" -}}
+{{- define "ais-its-service.volumeName" -}}
 {{- printf "w-%s" (regexReplaceAll "[^a-z0-9]+" (lower .) "-" | trimAll "-") | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/* envFrom shared by every container of the Pod. */}}
-{{- define "seemp-service.envFrom" -}}
+{{- define "ais-its-service.envFrom" -}}
 - configMapRef:
-    name: {{ include "seemp-service.fullname" . }}
+    name: {{ include "ais-its-service.fullname" . }}
 {{- if .Values.platformEnv }}
 {{- with (.Values.global).existingSecret }}
 - secretRef:
     name: {{ . }}
 {{- end }}
 {{- end }}
-{{- with include "seemp-service.secretName" . }}
+{{- with include "ais-its-service.secretName" . }}
 - secretRef:
     name: {{ . }}
 {{- end }}
@@ -95,17 +95,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/* Downward-API variables: pod identity for logs and OpenTelemetry resources. */}}
-{{- define "seemp-service.podEnv" -}}
+{{- define "ais-its-service.podEnv" -}}
 - name: POD_NAME
   valueFrom: { fieldRef: { fieldPath: metadata.name } }
 - name: POD_NAMESPACE
   valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
 - name: OTEL_RESOURCE_ATTRIBUTES
-  value: "k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(POD_NAMESPACE),service.version={{ include "seemp-service.imageTag" . }}"
+  value: "k8s.pod.name=$(POD_NAME),k8s.namespace.name=$(POD_NAMESPACE),service.version={{ include "ais-its-service.imageTag" . }}"
 {{- end }}
 
-{{/* HTTP probes on a named port. Usage: include "seemp-service.probes" (dict "probes" .Values.probes "port" "http") */}}
-{{- define "seemp-service.probes" -}}
+{{/* HTTP probes on a named port. Usage: include "ais-its-service.probes" (dict "probes" .Values.probes "port" "http") */}}
+{{- define "ais-its-service.probes" -}}
 {{- with .probes.startup }}
 {{- if .enabled }}
 startupProbe:

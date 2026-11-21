@@ -1,5 +1,5 @@
 -- =============================================================================
--- SEEMP platform — PostgreSQL bootstrap: database, extensions, roles, schemas
+-- AIS Maritime Intelligence — PostgreSQL bootstrap: database, extensions, roles, schemas
 -- =============================================================================
 -- Implements docs/PLATFORM_SPEC.md §6. This file is the single source of truth:
 -- the local container applies it on every start (postgres/bootstrap.sh, compose
@@ -10,11 +10,12 @@
 --   psql "postgres://<admin>@<host>:5432/postgres?sslmode=require" \
 --     -v auth_svc_password='…'      -v fleet_svc_password='…' \
 --     -v ais_svc_password='…'       -v telemetry_svc_password='…' \
---     -v emission_svc_password='…'  -v detection_svc_password='…' \
+--     -v emission_svc_password='…'  -v geo_svc_password='…' \
+--     -v safety_svc_password='…'    -v surveillance_svc_password='…' \
 --     -v notify_svc_password='…'    -v tiles_ro_password='…' \
 --     -f infra/postgres/bootstrap.sql
 --
--- Optional: -v db_name=<name> (default "seemp").
+-- Optional: -v db_name=<name> (default "aisits").
 --
 -- Guarantees
 --   * Idempotent: every statement is create-if-missing or converging, so the
@@ -23,7 +24,8 @@
 --   * All or nothing: everything after CREATE DATABASE runs in one
 --     transaction, so a failure leaves the cluster exactly as it was.
 --   * Least privilege: service roles own exactly one schema, cannot create
---     schemas, extensions or objects in `public`, and cannot see other schemas.
+--     schemas, extensions or objects in `public`, cannot see other schemas, and
+--     can connect to no other database.
 --   * Runs as a superuser, or on a managed service as a role with CREATEDB and
 --     CREATEROLE that owns (or creates) the database and may create the three
 --     extensions — e.g. tsdbadmin on Timescale Cloud. Such an admin cannot
@@ -42,49 +44,53 @@ SET client_min_messages = warning;   -- hide "already exists, skipping" notices 
 
 \if :{?db_name}
 \else
-  \set db_name seemp
+  \set db_name aisits
 \endif
 
 -- -----------------------------------------------------------------------------
 -- 0. Fail fast — before changing anything — when a password is missing or empty
 --    (an empty PASSWORD would silently create a role that cannot log in).
 -- -----------------------------------------------------------------------------
-SELECT set_config('seemp.missing', concat_ws(', ',
-         CASE WHEN NOT :{?auth_svc_password}      THEN 'auth_svc_password'      END,
-         CASE WHEN NOT :{?fleet_svc_password}     THEN 'fleet_svc_password'     END,
-         CASE WHEN NOT :{?ais_svc_password}       THEN 'ais_svc_password'       END,
-         CASE WHEN NOT :{?telemetry_svc_password} THEN 'telemetry_svc_password' END,
-         CASE WHEN NOT :{?emission_svc_password}  THEN 'emission_svc_password'  END,
-         CASE WHEN NOT :{?detection_svc_password} THEN 'detection_svc_password' END,
-         CASE WHEN NOT :{?notify_svc_password}    THEN 'notify_svc_password'    END,
-         CASE WHEN NOT :{?tiles_ro_password}      THEN 'tiles_ro_password'      END),
+SELECT set_config('aisits.missing', concat_ws(', ',
+         CASE WHEN NOT :{?auth_svc_password}         THEN 'auth_svc_password'         END,
+         CASE WHEN NOT :{?fleet_svc_password}        THEN 'fleet_svc_password'        END,
+         CASE WHEN NOT :{?ais_svc_password}          THEN 'ais_svc_password'          END,
+         CASE WHEN NOT :{?telemetry_svc_password}    THEN 'telemetry_svc_password'    END,
+         CASE WHEN NOT :{?emission_svc_password}     THEN 'emission_svc_password'     END,
+         CASE WHEN NOT :{?geo_svc_password}          THEN 'geo_svc_password'          END,
+         CASE WHEN NOT :{?safety_svc_password}       THEN 'safety_svc_password'       END,
+         CASE WHEN NOT :{?surveillance_svc_password} THEN 'surveillance_svc_password' END,
+         CASE WHEN NOT :{?notify_svc_password}       THEN 'notify_svc_password'       END,
+         CASE WHEN NOT :{?tiles_ro_password}         THEN 'tiles_ro_password'         END),
        false) AS missing \gset bootstrap_
 
 DO $check$
 BEGIN
-  IF current_setting('seemp.missing') <> '' THEN
-    RAISE EXCEPTION 'bootstrap.sql: missing psql variable(s): %', current_setting('seemp.missing')
+  IF current_setting('aisits.missing') <> '' THEN
+    RAISE EXCEPTION 'bootstrap.sql: missing psql variable(s): %', current_setting('aisits.missing')
       USING HINT = 'Pass every password with -v <name>=<value> (see the header of bootstrap.sql).';
   END IF;
 END
 $check$;
 
 -- Reached only when every variable is defined (ON_ERROR_STOP above).
-SELECT set_config('seemp.empty', concat_ws(', ',
-         CASE WHEN :'auth_svc_password'      = '' THEN 'auth_svc_password'      END,
-         CASE WHEN :'fleet_svc_password'     = '' THEN 'fleet_svc_password'     END,
-         CASE WHEN :'ais_svc_password'       = '' THEN 'ais_svc_password'       END,
-         CASE WHEN :'telemetry_svc_password' = '' THEN 'telemetry_svc_password' END,
-         CASE WHEN :'emission_svc_password'  = '' THEN 'emission_svc_password'  END,
-         CASE WHEN :'detection_svc_password' = '' THEN 'detection_svc_password' END,
-         CASE WHEN :'notify_svc_password'    = '' THEN 'notify_svc_password'    END,
-         CASE WHEN :'tiles_ro_password'      = '' THEN 'tiles_ro_password'      END),
+SELECT set_config('aisits.empty', concat_ws(', ',
+         CASE WHEN :'auth_svc_password'         = '' THEN 'auth_svc_password'         END,
+         CASE WHEN :'fleet_svc_password'        = '' THEN 'fleet_svc_password'        END,
+         CASE WHEN :'ais_svc_password'          = '' THEN 'ais_svc_password'          END,
+         CASE WHEN :'telemetry_svc_password'    = '' THEN 'telemetry_svc_password'    END,
+         CASE WHEN :'emission_svc_password'     = '' THEN 'emission_svc_password'     END,
+         CASE WHEN :'geo_svc_password'          = '' THEN 'geo_svc_password'          END,
+         CASE WHEN :'safety_svc_password'       = '' THEN 'safety_svc_password'       END,
+         CASE WHEN :'surveillance_svc_password' = '' THEN 'surveillance_svc_password' END,
+         CASE WHEN :'notify_svc_password'       = '' THEN 'notify_svc_password'       END,
+         CASE WHEN :'tiles_ro_password'         = '' THEN 'tiles_ro_password'         END),
        false) AS empty \gset bootstrap_
 
 DO $check$
 BEGIN
-  IF current_setting('seemp.empty') <> '' THEN
-    RAISE EXCEPTION 'bootstrap.sql: empty password(s): %', current_setting('seemp.empty');
+  IF current_setting('aisits.empty') <> '' THEN
+    RAISE EXCEPTION 'bootstrap.sql: empty password(s): %', current_setting('aisits.empty');
   END IF;
 END
 $check$;
@@ -99,14 +105,16 @@ SELECT format('CREATE DATABASE %I', :'db_name')
 SET client_min_messages = warning;
 
 -- Make the passwords readable from the DO blocks below (session scope only).
-SELECT set_config('seemp.auth_svc_password',      :'auth_svc_password',      false),
-       set_config('seemp.fleet_svc_password',     :'fleet_svc_password',     false),
-       set_config('seemp.ais_svc_password',       :'ais_svc_password',       false),
-       set_config('seemp.telemetry_svc_password', :'telemetry_svc_password', false),
-       set_config('seemp.emission_svc_password',  :'emission_svc_password',  false),
-       set_config('seemp.detection_svc_password', :'detection_svc_password', false),
-       set_config('seemp.notify_svc_password',    :'notify_svc_password',    false),
-       set_config('seemp.tiles_ro_password',      :'tiles_ro_password',      false) \gset bootstrap_
+SELECT set_config('aisits.auth_svc_password',         :'auth_svc_password',         false),
+       set_config('aisits.fleet_svc_password',        :'fleet_svc_password',        false),
+       set_config('aisits.ais_svc_password',          :'ais_svc_password',          false),
+       set_config('aisits.telemetry_svc_password',    :'telemetry_svc_password',    false),
+       set_config('aisits.emission_svc_password',     :'emission_svc_password',     false),
+       set_config('aisits.geo_svc_password',          :'geo_svc_password',          false),
+       set_config('aisits.safety_svc_password',       :'safety_svc_password',       false),
+       set_config('aisits.surveillance_svc_password', :'surveillance_svc_password', false),
+       set_config('aisits.notify_svc_password',       :'notify_svc_password',       false),
+       set_config('aisits.tiles_ro_password',         :'tiles_ro_password',         false) \gset bootstrap_
 
 -- Steps 2–5 commit together or not at all (psql stops at the first error and
 -- the open transaction is rolled back when it disconnects).
@@ -158,12 +166,13 @@ DECLARE
   r record;
 BEGIN
   FOR r IN
-    SELECT u.role_name, current_setting('seemp.' || u.role_name || '_password') AS password,
+    SELECT u.role_name, current_setting('aisits.' || u.role_name || '_password') AS password,
            -- tiles_ro never inherits privileges from roles it might be granted.
            CASE WHEN u.role_name = 'tiles_ro' THEN 'NOINHERIT' ELSE 'INHERIT' END AS inherit,
            p.rolsuper, p.rolreplication, p.rolbypassrls, p.rolcreatedb, p.rolcreaterole
-      FROM unnest(ARRAY['tiles_ro', 'auth_svc', 'fleet_svc', 'ais_svc', 'telemetry_svc',
-                        'emission_svc', 'detection_svc', 'notify_svc']) WITH ORDINALITY AS u(role_name, ord)
+      FROM unnest(ARRAY['tiles_ro', 'auth_svc', 'fleet_svc', 'ais_svc', 'telemetry_svc', 'emission_svc',
+                        'geo_svc', 'safety_svc', 'surveillance_svc', 'notify_svc'])
+             WITH ORDINALITY AS u(role_name, ord)
       LEFT JOIN pg_roles p ON p.rolname = u.role_name
      ORDER BY u.ord
   LOOP
@@ -202,7 +211,7 @@ ALTER ROLE tiles_ro SET search_path = public;
 GRANT CONNECT ON DATABASE :"db_name" TO tiles_ro;
 
 -- -----------------------------------------------------------------------------
--- 5. One schema per service, owned by its LOGIN role <schema>_svc.
+-- 5. One schema per service, owned by its LOGIN role <schema>_svc (spec §6).
 -- -----------------------------------------------------------------------------
 DO $services$
 DECLARE
@@ -210,7 +219,8 @@ DECLARE
 BEGIN
   FOR svc IN
     SELECT s AS schema_name, s || '_svc' AS role_name
-      FROM unnest(ARRAY['auth', 'fleet', 'ais', 'telemetry', 'emission', 'detection', 'notify']) AS s
+      FROM unnest(ARRAY['auth', 'fleet', 'ais', 'telemetry', 'emission',
+                        'geo', 'safety', 'surveillance', 'notify']) AS s
   LOOP
     -- A non-superuser admin (managed services, PG16+) must be able to SET ROLE
     -- to the new owner for CREATE SCHEMA … AUTHORIZATION to be allowed.
@@ -249,5 +259,5 @@ SELECT n.nspname AS schema,
           FROM pg_extension e
          WHERE e.extname IN ('timescaledb', 'postgis', 'pgcrypto')) AS extensions
   FROM pg_namespace n
- WHERE n.nspname IN ('auth', 'fleet', 'ais', 'telemetry', 'emission', 'detection', 'notify')
+ WHERE n.nspname IN ('auth', 'fleet', 'ais', 'telemetry', 'emission', 'geo', 'safety', 'surveillance', 'notify')
  ORDER BY 1;

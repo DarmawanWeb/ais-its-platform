@@ -1,24 +1,24 @@
 # =============================================================================
-# seemp-platform — PRODUCTION
+# ais-its-platform — PRODUCTION
 # =============================================================================
-#   helm upgrade --install seemp infra/helm/seemp-platform -n seemp \
-#     -f infra/helm/seemp-platform/values-prod.yaml --atomic --timeout 10m
+#   helm upgrade --install ais-its infra/helm/ais-its-platform -n ais-its \
+#     -f infra/helm/ais-its-platform/values-prod.yaml --atomic --timeout 10m
 #
 # Prerequisites (infra/helm/README.md): Traefik v3 with CRDs and a `websecure`
 # entrypoint, the TLS secret, and the Secrets named by existingSecret
-# (seemp-shared, seemp-auth, …) created from your secret manager. Backing
-# services: managed PostgreSQL 17 + TimescaleDB, a 3-node NATS JetStream cluster,
-# Valkey, S3 and SMTP — see infra/README.md "Production".
+# (ais-its-shared, ais-its-auth, …) created from your secret manager. Backing
+# services: managed PostgreSQL 17 + TimescaleDB, a 3-node NATS JetStream
+# cluster, Valkey, S3 and SMTP — see infra/README.md "Production".
 
 global:
   imageTag: "0.1.0"                      # pin the platform release (or use image.digest)
-  existingSecret: seemp-shared           # INTERNAL_TOKEN
+  existingSecret: ais-its-shared         # INTERNAL_TOKEN
   env:
     # Use tls://… once the NATS cluster serves TLS (infra/nats/nats.conf, production).
     NATS_URL: nats://nats:4222
     REDIS_URL: redis://valkey:6379
-    CORS_ORIGINS: https://seemp.example.com
-    PUBLIC_BASE_URL: https://seemp.example.com
+    CORS_ORIGINS: https://ais-its.example.com
+    PUBLIC_BASE_URL: https://ais-its.example.com
     OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.observability:4318
 
 x-http-service: &http-service
@@ -31,9 +31,24 @@ x-http-service: &http-service
     requests: { cpu: 200m, memory: 256Mi }
     limits: { memory: 768Mi }
 
-auth: *http-service
+x-detector-service: &detector-service
+  # replicaCount 1 + Recreate from values.yaml (one consumer per durable).
+  resources:
+    requests: { cpu: 300m, memory: 384Mi }
+    limits: { memory: 1Gi }
+
+auth:
+  <<: *http-service
+  env:
+    BOOTSTRAP_ADMIN_EMAIL: admin@ais-its.example.com
 fleet: *http-service
 telemetry: *http-service
+# Stateless HTTP + transactional outbox (duplicates are harmless: the GEO stream
+# keeps one message per zone and dedups by Nats-Msg-Id).
+geo: *http-service
+
+safety: *detector-service
+surveillance: *detector-service
 
 notification:
   # ONE instance: socket.io events reach only the sockets of the replica that
@@ -69,16 +84,6 @@ emission:
     requests: { cpu: 300m, memory: 384Mi }
     limits: { memory: 1Gi }
 
-detection:
-  # Detectors keep per-vessel streaks: one instance until the consumer is
-  # partitioned by ais.position.v1.<p>.> (spec §7.3).
-  replicaCount: 1
-  strategy:
-    type: Recreate
-  resources:
-    requests: { cpu: 300m, memory: 384Mi }
-    limits: { memory: 1Gi }
-
 web:
   replicaCount: 2
 
@@ -90,11 +95,11 @@ legacy-be:
   replicaCount: 1                        # in-process schedulers of the MVP
 
 gateway:
-  hosts: [seemp.example.com]
+  hosts: [ais-its.example.com]
   entryPoints: [websecure]
   tls:
     enabled: true
-    secretName: seemp-tls
+    secretName: ais-its-tls
   hsts:
     enabled: true
     maxAgeSeconds: 31536000

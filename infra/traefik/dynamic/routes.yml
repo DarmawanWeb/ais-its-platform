@@ -1,29 +1,38 @@
 # =============================================================================
-# SEEMP gateway — dynamic configuration (routes of docs/PLATFORM_SPEC.md §12)
+# AIS Maritime Intelligence gateway — dynamic configuration (routes of
+# docs/PLATFORM_SPEC.md §12)
 # =============================================================================
 # One table for both local modes; only the upstream URLs differ (bottom of the
-# file), selected by the gateway container's environment:
-#   dev mode   (default)                     services and the Vite dev server
-#              run on the host (`pnpm dev`) and are reached through
-#              host.docker.internal on their §3 ports (listen on 0.0.0.0; Vite
-#              with `--host`)
-#   stack mode SEEMP_GATEWAY_UPSTREAMS=stack every backend is a compose service
-#              on the `seemp` network, reached by its §3 hostname; the web image
-#              is nginx serving the built SPA on :8080
-# Martin and the legacy backend are compose services in both modes.
+# file), selected by the gateway container's AISITS_GATEWAY_UPSTREAMS
+# (compose: GATEWAY_UPSTREAMS in infra/compose/.env):
+#   host  (default) services and the Vite dev server run on the host
+#                   (`pnpm dev`) and are reached through host.docker.internal
+#                   on their §3 ports (listen on 0.0.0.0; Vite with `--host`)
+#   stack           every backend is a compose service on the `aisits`
+#                   network, reached by its §3 hostname; the web image is nginx
+#                   serving the built SPA on :8080
+# Martin and the MVP API are compose services in both modes.
 # Traefik renders this file as a Go template (sprig functions) on every load.
 #
-# Production uses the same routers from infra/helm/seemp-platform/values.yaml
-# (gateway.routes) — keep both in sync.
+# Production uses the same routers from infra/helm/ais-its-platform/values.yaml
+# (gateway.routes) — keep both in sync; infra/scripts/routes-test.sh checks
+# this table end to end.
 #
-# Router conventions (one router per §12 row; generated-friendly):
+# Router conventions (one router per §12 row):
 #   name      = backend name, `<backend>-<purpose>` for sub-routes
 #   rule      = PathPrefix(`…`) per prefix of the §12 row, joined with ||
 #   priority  = 1000 blocked paths · 300 sub-routes needing other middlewares
 #               · 200 §12 rows · 1 the "/" catch-all (higher wins)
 #   middlewares, in order: security-headers, [route specific], compress
 # =============================================================================
-{{- $stack := eq (env "SEEMP_GATEWAY_UPSTREAMS") "stack" }}
+{{- $mode := env "AISITS_GATEWAY_UPSTREAMS" | default "host" }}
+{{- if not (has $mode (list "host" "stack")) }}
+{{- fail (printf "AISITS_GATEWAY_UPSTREAMS must be host or stack, not %q" $mode) }}
+{{- end }}
+{{- $stack := eq $mode "stack" }}
+{{- /* Platform services and their §3 ports; host mode reaches all of them on the host. */}}
+{{- $ports := dict "auth" 3001 "fleet" 3002 "ais-ingestor" 3003 "ais-processor" 3004 "telemetry" 3005
+      "emission" 3006 "surveillance" 3007 "notification" 3008 "geo" 3009 "safety" 3011 }}
 
 http:
   routers:
@@ -101,13 +110,13 @@ http:
       middlewares: [security-headers, compress]
       service: emission
 
-    # --- detection:3007 -------------------------------------------------------
-    detection:
+    # --- surveillance:3007 ----------------------------------------------------
+    surveillance:
       entryPoints: [web]
-      rule: "PathPrefix(`/api/v2/detections`) || PathPrefix(`/api/v2/zones`)"
+      rule: "PathPrefix(`/api/v2/surveillance`)"
       priority: 200
       middlewares: [security-headers, compress]
-      service: detection
+      service: surveillance
 
     # --- notification:3008 ----------------------------------------------------
     notification-ws:           # socket.io realtime gateway (spec §9)
@@ -123,10 +132,26 @@ http:
       middlewares: [security-headers, compress]
       service: notification
 
+    # --- geo:3009 -------------------------------------------------------------
+    geo:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/zones`)"
+      priority: 200
+      middlewares: [security-headers, compress]
+      service: geo
+
+    # --- safety:3011 ----------------------------------------------------------
+    safety:
+      entryPoints: [web]
+      rule: "PathPrefix(`/api/v2/safety`)"
+      priority: 200
+      middlewares: [security-headers, compress]
+      service: safety
+
     # --- martin:3010 (compose profile "tiles"), only for signed-in users -----
-    # Martin has no authentication of its own (spec §6: *_tiles views hold only
-    # data every signed-in user may see). The web app sends the access token
-    # with MapLibre's transformRequest.
+    # Martin has no authentication of its own, so a *_tiles view may only hold
+    # rows that every signed-in user may see (spec §6, §8.5). The web app sends
+    # the access token with MapLibre's transformRequest.
     tiles:
       entryPoints: [web]
       rule: "PathPrefix(`/tiles`)"
@@ -206,42 +231,23 @@ http:
     # (forwarded to the backend) or 401 (returned to the client).
     forward-auth:
       forwardAuth:
-        address: "http://{{ if $stack }}auth{{ else }}host.docker.internal{{ end }}:3001/api/v2/auth/verify"
+        address: "http://{{ if $stack }}auth{{ else }}host.docker.internal{{ end }}:{{ index $ports "auth" }}/api/v2/auth/verify"
         authRequestHeaders: [Authorization, X-Request-Id]
         authResponseHeaders: [X-User-Id, X-Org-Id, X-Roles]
 
-  # --- upstreams (the only part that differs between dev and stack mode) -----
+  # --- upstreams (the only part that differs between host and stack mode) -----
   services:
-    auth:
+{{- range $name, $port := $ports }}
+    {{ $name }}:
       loadBalancer:
-        servers: [{ url: "http://{{ if $stack }}auth{{ else }}host.docker.internal{{ end }}:3001" }]
-    fleet:
+        servers: [{ url: "http://{{ if $stack }}{{ $name }}{{ else }}host.docker.internal{{ end }}:{{ $port }}" }]
+{{- end }}
+    web:
       loadBalancer:
-        servers: [{ url: "http://{{ if $stack }}fleet{{ else }}host.docker.internal{{ end }}:3002" }]
-    ais-ingestor:
-      loadBalancer:
-        servers: [{ url: "http://{{ if $stack }}ais-ingestor{{ else }}host.docker.internal{{ end }}:3003" }]
-    ais-processor:
-      loadBalancer:
-        servers: [{ url: "http://{{ if $stack }}ais-processor{{ else }}host.docker.internal{{ end }}:3004" }]
-    telemetry:
-      loadBalancer:
-        servers: [{ url: "http://{{ if $stack }}telemetry{{ else }}host.docker.internal{{ end }}:3005" }]
-    emission:
-      loadBalancer:
-        servers: [{ url: "http://{{ if $stack }}emission{{ else }}host.docker.internal{{ end }}:3006" }]
-    detection:
-      loadBalancer:
-        servers: [{ url: "http://{{ if $stack }}detection{{ else }}host.docker.internal{{ end }}:3007" }]
-    notification:
-      loadBalancer:
-        servers: [{ url: "http://{{ if $stack }}notification{{ else }}host.docker.internal{{ end }}:3008" }]
+        servers: [{ url: "{{ if $stack }}http://web:8080{{ else }}http://host.docker.internal:5173{{ end }}" }]
     martin:
       loadBalancer:
         servers: [{ url: "http://martin:3010" }]
     legacy-be:
       loadBalancer:
         servers: [{ url: "http://legacy-be:3020" }]
-    web:
-      loadBalancer:
-        servers: [{ url: "{{ if $stack }}http://web:8080{{ else }}http://host.docker.internal:5173{{ end }}" }]

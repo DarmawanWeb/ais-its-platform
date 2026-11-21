@@ -1,5 +1,5 @@
-{{ include "seemp-service.fullname" . }} ({{ include "seemp-service.image" . }})
-  in-cluster URL : http://{{ include "seemp-service.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port | default .Values.port }}
+{{ include "ais-its-service.fullname" . }} ({{ include "ais-its-service.image" . }})
+  in-cluster URL : http://{{ include "ais-its-service.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port | default .Values.port }}
   health         : {{ .Values.probes.liveness.path }} (live), {{ .Values.probes.readiness.path }} (ready)
 {{- if .Values.secondaryContainer.enabled }}
   second process : {{ .Values.secondaryContainer.name }} on port {{ .Values.secondaryContainer.port }}

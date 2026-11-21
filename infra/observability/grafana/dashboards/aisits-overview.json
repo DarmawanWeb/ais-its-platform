@@ -1,9 +1,9 @@
 {
-  "uid": "seemp-overview",
-  "title": "SEEMP overview",
-  "description": "HTTP RED, event consumers, AIS ingest and gateway metrics of the SEEMP services (docs/PLATFORM_SPEC.md §10, §13). Source: infra/observability/grafana/dashboards.",
+  "uid": "aisits-overview",
+  "title": "AIS Maritime Intelligence overview",
+  "description": "HTTP RED, event consumers, detectors, AIS ingest, domain and gateway metrics of the AIS Maritime Intelligence services (docs/PLATFORM_SPEC.md §10, §13, §18). Source: infra/observability/grafana/dashboards.",
   "tags": [
-    "seemp"
+    "aisits"
   ],
   "editable": true,
   "graphTooltip": 1,
@@ -42,13 +42,13 @@
           "uid": "${datasource}"
         },
         "query": {
-          "query": "label_values(up{job=~\"auth|fleet|ais-ingestor|ais-processor|telemetry|emission|detection|notification\"}, job)",
+          "query": "label_values(up{job=~\"auth|fleet|ais-ingestor|ais-processor|telemetry|emission|geo|safety|surveillance|notification\"}, job)",
           "refId": "service"
         },
-        "definition": "label_values(up{job=~\"auth|fleet|ais-ingestor|ais-processor|telemetry|emission|detection|notification\"}, job)",
+        "definition": "label_values(up{job=~\"auth|fleet|ais-ingestor|ais-processor|telemetry|emission|geo|safety|surveillance|notification\"}, job)",
         "multi": true,
         "includeAll": true,
-        "allValue": "auth|fleet|ais-ingestor|ais-processor|telemetry|emission|detection|notification",
+        "allValue": "auth|fleet|ais-ingestor|ais-processor|telemetry|emission|geo|safety|surveillance|notification",
         "current": {
           "text": [
             "All"
@@ -186,7 +186,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (job) (rate(seemp_http_requests_total{job=~\"$service\"}[$__rate_interval]))",
+          "expr": "sum by (job) (rate(aisits_http_requests_total{job=~\"$service\"}[$__rate_interval]))",
           "legendFormat": "{{job}}"
         }
       ],
@@ -233,7 +233,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(sum by (job) (rate(seemp_http_requests_total{job=~\"$service\", status_code=~\"5..\"}[$__rate_interval])) or sum by (job) (rate(seemp_http_requests_total{job=~\"$service\", status=~\"5..\"}[$__rate_interval])) or 0 * sum by (job) (rate(seemp_http_requests_total{job=~\"$service\"}[$__rate_interval]))) / sum by (job) (rate(seemp_http_requests_total{job=~\"$service\"}[$__rate_interval]))",
+          "expr": "(sum by (job) (rate(aisits_http_requests_total{job=~\"$service\", status_code=~\"5..\"}[$__rate_interval])) or 0 * sum by (job) (rate(aisits_http_requests_total{job=~\"$service\"}[$__rate_interval]))) / sum by (job) (rate(aisits_http_requests_total{job=~\"$service\"}[$__rate_interval]))",
           "legendFormat": "{{job}}"
         }
       ],
@@ -281,7 +281,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum by (job, le) (rate(seemp_http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (job, le) (rate(aisits_http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
           "legendFormat": "{{job}}"
         }
       ],
@@ -328,7 +328,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.5, sum by (le) (rate(seemp_http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(aisits_http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
           "legendFormat": "p50"
         },
         {
@@ -337,7 +337,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(seemp_http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(aisits_http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
           "legendFormat": "p95"
         },
         {
@@ -346,7 +346,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(seemp_http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(aisits_http_request_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
           "legendFormat": "p99"
         }
       ],
@@ -393,7 +393,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk(10, histogram_quantile(0.95, sum by (job, method, route, le) (rate(seemp_http_request_duration_seconds_bucket{job=~\"$service\"}[5m]))))",
+          "expr": "topk(10, histogram_quantile(0.95, sum by (job, method, route, le) (rate(aisits_http_request_duration_seconds_bucket{job=~\"$service\"}[5m]))))",
           "legendFormat": "",
           "instant": true,
           "range": false,
@@ -455,7 +455,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (job) (rate(seemp_events_published_total{job=~\"$service\"}[$__rate_interval]))",
+          "expr": "sum by (job) (rate(aisits_events_published_total{job=~\"$service\"}[$__rate_interval]))",
           "legendFormat": "{{job}}"
         }
       ],
@@ -502,7 +502,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (consumer, outcome) (rate(seemp_events_consumed_total{job=~\"$service\"}[$__rate_interval]))",
+          "expr": "sum by (consumer, outcome) (rate(aisits_events_consumed_total{job=~\"$service\"}[$__rate_interval]))",
           "legendFormat": "{{consumer}} · {{outcome}}"
         }
       ],
@@ -549,7 +549,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum by (consumer, le) (rate(seemp_event_handler_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (consumer, le) (rate(aisits_event_handler_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
           "legendFormat": "{{consumer}}"
         }
       ],
@@ -596,7 +596,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (job, consumer) (increase(seemp_events_invalid_total{job=~\"$service\"}[$__rate_interval]))",
+          "expr": "sum by (job, consumer) (increase(aisits_events_invalid_total{job=~\"$service\"}[$__rate_interval]))",
           "legendFormat": "{{job}} · {{consumer}}"
         }
       ],
@@ -642,7 +642,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (outcome) (increase(seemp_events_consumed_total{job=~\"$service\"}[15m]))",
+          "expr": "sum by (outcome) (increase(aisits_events_consumed_total{job=~\"$service\"}[15m]))",
           "legendFormat": "{{outcome}}"
         }
       ],
@@ -698,7 +698,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (source) (rate(seemp_ais_messages_total[$__rate_interval]))",
+          "expr": "sum by (source) (rate(aisits_ais_messages_total[$__rate_interval]))",
           "legendFormat": "{{source}}"
         }
       ],
@@ -745,7 +745,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (outcome) (rate(seemp_ais_messages_total[$__rate_interval]))",
+          "expr": "sum by (outcome) (rate(aisits_ais_messages_total[$__rate_interval]))",
           "legendFormat": "{{outcome}}"
         }
       ],
@@ -792,7 +792,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum by (source, le) (rate(seemp_ais_ingest_lag_seconds_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (source, le) (rate(aisits_ais_ingest_lag_seconds_bucket[$__rate_interval])))",
           "legendFormat": "p95 {{source}}"
         },
         {
@@ -801,7 +801,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max by (source) (seemp_ais_ingest_lag_seconds{quantile=\"\"})",
+          "expr": "max by (source) (aisits_ais_ingest_lag_seconds{quantile=\"\"})",
           "legendFormat": "current {{source}}"
         }
       ],
@@ -830,8 +830,7 @@
     },
     {
       "type": "row",
-      "title": "Realtime, notifications and emission (spec §13.5, §13.7)",
-      "id": 19,
+      "title": "Detectors — safety and surveillance (spec §13.7, §13.8, §18)",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -839,12 +838,12 @@
         "x": 0,
         "y": 48
       },
-      "panels": []
+      "panels": [],
+      "id": 19
     },
     {
-      "type": "stat",
-      "title": "WebSocket connections",
-      "id": 20,
+      "type": "timeseries",
+      "title": "Evaluations / s by detector",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -862,7 +861,213 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(seemp_ws_connections)",
+          "expr": "sum by (detector) (rate(aisits_detector_evaluations_total{job=~\"$service\"}[$__rate_interval]))",
+          "legendFormat": "{{detector}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Positions (and ticks) evaluated per detector: aisits_detector_evaluations_total{detector}.",
+      "id": 20
+    },
+    {
+      "type": "timeseries",
+      "title": "Alerts raised / min by detector and severity",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 49
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "60 * sum by (detector, severity) (rate(aisits_detector_alerts_total{job=~\"$service\"}[$__rate_interval]))",
+          "legendFormat": "{{detector}} · {{severity}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "axisLabel": "alerts / min"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "alert.raised.v1 emitted by the AlertEmitter: aisits_detector_alerts_total{detector,severity}.",
+      "id": 21
+    },
+    {
+      "type": "timeseries",
+      "title": "Evaluation duration p95 by detector",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 49
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (detector, le) (rate(aisits_detector_duration_seconds_bucket{job=~\"$service\"}[$__rate_interval])))",
+          "legendFormat": "{{detector}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Time per evaluation: aisits_detector_duration_seconds{detector} (histogram).",
+      "id": 22
+    },
+    {
+      "type": "bargauge",
+      "title": "Alerts in the last 24 h by detector",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 49
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "instant": true,
+          "expr": "sum by (detector) (increase(aisits_detector_alerts_total{job=~\"$service\"}[24h]))",
+          "legendFormat": "{{detector}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "description": "Total alerts per detector; future detectors appear automatically.",
+      "id": 23
+    },
+    {
+      "type": "row",
+      "title": "Realtime, notifications and emission (spec §9, §13.5, §13.9)",
+      "id": 24,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 57
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "WebSocket connections",
+      "id": 25,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 58
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(aisits_ws_connections)",
           "legendFormat": "connections"
         }
       ],
@@ -888,7 +1093,7 @@
     {
       "type": "timeseries",
       "title": "Notifications / s by channel and outcome",
-      "id": 21,
+      "id": 26,
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -897,7 +1102,7 @@
         "h": 8,
         "w": 6,
         "x": 6,
-        "y": 49
+        "y": 58
       },
       "targets": [
         {
@@ -906,7 +1111,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (channel, outcome) (rate(seemp_notifications_sent_total[$__rate_interval]))",
+          "expr": "sum by (channel, outcome) (rate(aisits_notifications_sent_total[$__rate_interval]))",
           "legendFormat": "{{channel}} · {{outcome}}"
         }
       ],
@@ -935,7 +1140,7 @@
     {
       "type": "timeseries",
       "title": "Emission segments / s by fuel method",
-      "id": 22,
+      "id": 27,
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -944,7 +1149,7 @@
         "h": 8,
         "w": 6,
         "x": 12,
-        "y": 49
+        "y": 58
       },
       "targets": [
         {
@@ -953,7 +1158,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (method) (rate(seemp_emission_segments_total[$__rate_interval]))",
+          "expr": "sum by (method) (rate(aisits_emission_segments_total[$__rate_interval]))",
           "legendFormat": "{{method}}"
         }
       ],
@@ -982,7 +1187,7 @@
     {
       "type": "timeseries",
       "title": "Weather cache hits / s",
-      "id": 23,
+      "id": 28,
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -991,7 +1196,7 @@
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 49
+        "y": 58
       },
       "targets": [
         {
@@ -1000,7 +1205,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(seemp_weather_cache_hits_total[$__rate_interval]))",
+          "expr": "sum(rate(aisits_weather_cache_hits_total[$__rate_interval]))",
           "legendFormat": "hits"
         }
       ],
@@ -1029,20 +1234,20 @@
     {
       "type": "row",
       "title": "Gateway — Traefik",
-      "id": 24,
+      "id": 29,
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 57
+        "y": 66
       },
       "panels": []
     },
     {
       "type": "timeseries",
       "title": "Requests / s by backend",
-      "id": 25,
+      "id": 30,
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1051,7 +1256,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 58
+        "y": 67
       },
       "targets": [
         {
@@ -1089,7 +1294,7 @@
     {
       "type": "timeseries",
       "title": "Responses / s by status code (entrypoint web)",
-      "id": 26,
+      "id": 31,
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1098,7 +1303,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 58
+        "y": 67
       },
       "targets": [
         {
@@ -1136,7 +1341,7 @@
     {
       "type": "timeseries",
       "title": "Latency p95 by backend",
-      "id": 27,
+      "id": 32,
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1145,7 +1350,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 58
+        "y": 67
       },
       "targets": [
         {

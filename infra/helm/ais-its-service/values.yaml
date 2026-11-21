@@ -1,11 +1,12 @@
 # =============================================================================
-# seemp-service — defaults for one SEEMP process (docs/PLATFORM_SPEC.md §5, §10, §11)
+# ais-its-service — defaults for one AIS Maritime Intelligence process
+# (docs/PLATFORM_SPEC.md §5, §10, §11)
 # =============================================================================
-# The umbrella chart seemp-platform instantiates this chart once per process
+# The umbrella chart ais-its-platform instantiates this chart once per process
 # (alias = component name). Shared settings arrive through `global`.
 
 global:
-  # -- Image tag for every SEEMP image whose own image.tag is empty (platform release).
+  # -- Image tag for every platform image whose own image.tag is empty (release).
   imageTag: ""
   imagePullSecrets: []
   # -- Environment shared by all services (NATS_URL, REDIS_URL, AUTH_* …), rendered
@@ -24,7 +25,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: ghcr.io/darmawanweb/seemp-auth-service
+  repository: ghcr.io/darmawanweb/ais-its-auth-service
   # -- Defaults to global.imageTag, then to the chart appVersion. "latest" is
   # refused: pin a release (or set digest).
   tag: ""

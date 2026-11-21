@@ -8,9 +8,9 @@
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: {{ include "seemp-platform.middleware" (list . "deny-all") }}
+  name: {{ include "ais-its-platform.middleware" (list . "deny-all") }}
   labels:
-    {{- include "seemp-platform.labels" . | nindent 4 }}
+    {{- include "ais-its-platform.labels" . | nindent 4 }}
 spec:
   ipAllowList:
     sourceRange: ["127.0.0.1/32", "::1/128"]
@@ -18,9 +18,9 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: {{ include "seemp-platform.middleware" (list . "security-headers") }}
+  name: {{ include "ais-its-platform.middleware" (list . "security-headers") }}
   labels:
-    {{- include "seemp-platform.labels" . | nindent 4 }}
+    {{- include "ais-its-platform.labels" . | nindent 4 }}
 spec:
   headers:
     contentTypeNosniff: true
@@ -40,9 +40,9 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: {{ include "seemp-platform.middleware" (list $ $name) }}
+  name: {{ include "ais-its-platform.middleware" (list $ $name) }}
   labels:
-    {{- include "seemp-platform.labels" $ | nindent 4 }}
+    {{- include "ais-its-platform.labels" $ | nindent 4 }}
 spec:
   rateLimit:
     average: {{ int $limit.average }}
@@ -58,9 +58,9 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: {{ include "seemp-platform.middleware" (list . "compress") }}
+  name: {{ include "ais-its-platform.middleware" (list . "compress") }}
   labels:
-    {{- include "seemp-platform.labels" . | nindent 4 }}
+    {{- include "ais-its-platform.labels" . | nindent 4 }}
 spec:
   compress:
     minResponseBodyBytes: 1024
@@ -69,9 +69,9 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: {{ include "seemp-platform.middleware" (list . "strip-tiles-prefix") }}
+  name: {{ include "ais-its-platform.middleware" (list . "strip-tiles-prefix") }}
   labels:
-    {{- include "seemp-platform.labels" . | nindent 4 }}
+    {{- include "ais-its-platform.labels" . | nindent 4 }}
 spec:
   stripPrefix:
     prefixes: ["/tiles"]
@@ -80,9 +80,9 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: {{ include "seemp-platform.middleware" (list . "strip-identity-headers") }}
+  name: {{ include "ais-its-platform.middleware" (list . "strip-identity-headers") }}
   labels:
-    {{- include "seemp-platform.labels" . | nindent 4 }}
+    {{- include "ais-its-platform.labels" . | nindent 4 }}
 spec:
   headers:
     customRequestHeaders:
@@ -94,9 +94,9 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: {{ include "seemp-platform.middleware" (list . "forward-auth") }}
+  name: {{ include "ais-its-platform.middleware" (list . "forward-auth") }}
   labels:
-    {{- include "seemp-platform.labels" . | nindent 4 }}
+    {{- include "ais-its-platform.labels" . | nindent 4 }}
 spec:
   forwardAuth:
     {{- $auth := index .Values "auth" }}

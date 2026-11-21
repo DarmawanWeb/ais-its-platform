@@ -1,0 +1,17 @@
+apiVersion: v2
+name: ais-its-service
+description: >-
+  Reusable chart for one AIS Maritime Intelligence process (NestJS/Fastify
+  service, the web app or a helper such as Martin): Deployment, Service,
+  ServiceAccount, ConfigMap/Secret environment, optional HPA and
+  PodDisruptionBudget.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/DarmawanWeb/ais-its-platform
+sources:
+  - https://github.com/DarmawanWeb/ais-its-platform/tree/main/infra/helm/ais-its-service
+keywords: [ais-its, ais, nestjs, service]
+maintainers:
+  - name: DarmawanWeb

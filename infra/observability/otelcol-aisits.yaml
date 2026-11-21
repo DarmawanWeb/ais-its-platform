@@ -1,19 +1,19 @@
 # =============================================================================
-# SEEMP — OpenTelemetry Collector overlay for grafana/otel-lgtm
+# AIS Maritime Intelligence — OpenTelemetry Collector overlay for grafana/otel-lgtm
 # =============================================================================
 # Merged on top of the image's own /otel-lgtm/otelcol-config.yaml through
-# OTELCOL_EXTRA_ARGS=--config=file:/otel-lgtm/seemp/otelcol-seemp.yaml (maps are
-# merged, lists replaced). It adds a Prometheus scrape of every service's
+# OTELCOL_EXTRA_ARGS=--config=file:/otel-lgtm/aisits/otelcol-aisits.yaml (maps
+# are merged, lists replaced). It adds a Prometheus scrape of every service's
 # GET /metrics (prom-client, spec §10) and of the gateway, and feeds the result
 # into the existing metrics pipeline → Prometheus inside the container.
 #
 # Dev mode: services run on the host with `pnpm dev`, so targets are
 # host.docker.internal:<port> (spec §3); a stopped service simply reports
 # up == 0. The Prometheus `job` label is the service name used by the
-# "SEEMP overview" dashboard.
+# "AIS Maritime Intelligence overview" dashboard.
 
 receivers:
-  prometheus/seemp:
+  prometheus/aisits:
     config:
       global:
         scrape_interval: 15s
@@ -31,10 +31,14 @@ receivers:
           static_configs: [{ targets: ["host.docker.internal:3005"] }]
         - job_name: emission
           static_configs: [{ targets: ["host.docker.internal:3006"] }]
-        - job_name: detection
+        - job_name: surveillance
           static_configs: [{ targets: ["host.docker.internal:3007"] }]
         - job_name: notification
           static_configs: [{ targets: ["host.docker.internal:3008"] }]
+        - job_name: geo
+          static_configs: [{ targets: ["host.docker.internal:3009"] }]
+        - job_name: safety
+          static_configs: [{ targets: ["host.docker.internal:3011"] }]
         - job_name: gateway                  # Traefik, compose network
           static_configs: [{ targets: ["gateway:8090"] }]
 
@@ -42,4 +46,4 @@ service:
   pipelines:
     metrics:
       # The image's receivers (OTLP + collector self-metrics) plus ours.
-      receivers: [otlp, prometheus/collector, prometheus/seemp]
+      receivers: [otlp, prometheus/collector, prometheus/aisits]

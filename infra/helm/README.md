@@ -1,11 +1,11 @@
-# SEEMP Helm charts
+# AIS Maritime Intelligence Helm charts
 
-Kubernetes packaging of the SEEMP platform v2 (`docs/PLATFORM_SPEC.md`).
+Kubernetes packaging of AIS Maritime Intelligence v2 (`docs/PLATFORM_SPEC.md`).
 
 | Chart | Kind | Purpose |
 |---|---|---|
-| [`seemp-service`](seemp-service) | application | One SEEMP process: Deployment (probes on `/health/live` + `/health/ready`, non-root, read-only root filesystem), Service, ServiceAccount, ConfigMap/Secret environment, optional HPA, PodDisruptionBudget, optional second container. Reusable by every service repository. |
-| [`seemp-platform`](seemp-platform) | umbrella | Instantiates `seemp-service` once per process of spec §1 (aliases below) and renders the Traefik `IngressRoute` + `Middleware`s mirroring the gateway table of spec §12. |
+| [`ais-its-service`](ais-its-service) | application | One platform process: Deployment (probes on `/health/live` + `/health/ready`, non-root, read-only root filesystem), Service, ServiceAccount, ConfigMap/Secret environment, optional HPA, PodDisruptionBudget, optional second container. Reusable by every service repository. |
+| [`ais-its-platform`](ais-its-platform) | umbrella | Instantiates `ais-its-service` once per process of spec §1 (aliases below) and renders the Traefik `IngressRoute` + `Middleware`s mirroring the gateway table of spec §12. |
 
 The charts deploy the platform's own processes only. The backing services — PostgreSQL 17 +
 TimescaleDB + PostGIS, NATS JetStream, Valkey, S3, SMTP and an OpenTelemetry collector — come
@@ -15,20 +15,30 @@ from managed offerings or their own charts (see "Production" in [`../README.md`]
 
 | Alias = Service name | Image | Port | Notes |
 |---|---|---|---|
-| `auth` | `ghcr.io/darmawanweb/seemp-auth-service` | 3001 | HPA in prod |
-| `fleet` | `ghcr.io/darmawanweb/seemp-fleet-service` | 3002 | HPA in prod |
-| `ais-ingestor` | `ghcr.io/darmawanweb/seemp-ais-pipeline` | 3003 | `command: node dist/apps/ingestor/main.js`, 2 replicas in prod |
-| `ais-processor` | `ghcr.io/darmawanweb/seemp-ais-pipeline` | 3004 | `command: node dist/apps/processor/main.js`, 1 replica, `Recreate` |
-| `telemetry` | `ghcr.io/darmawanweb/seemp-telemetry-service` | 3005 | HPA in prod |
-| `emission` | `ghcr.io/darmawanweb/seemp-emission-service` | 3006 | |
-| `detection` | `ghcr.io/darmawanweb/seemp-detection-service` | 3007 | 1 replica until its consumer is partitioned |
-| `notification` | `ghcr.io/darmawanweb/seemp-notification-service` | 3008 | socket.io `/ws`, sticky cookie, HPA in prod |
-| `web` | `ghcr.io/darmawanweb/seemp-web` | 8080 | nginx, non-root, probes on `/` |
-| `legacy-be` | `ghcr.io/darmawanweb/seemp-mvp-api` | 3020 | `/api/v1` until cut-over; gateway-only NetworkPolicy |
-| `martin` | `ghcr.io/maplibre/martin` | 3010 | vector tiles as `tiles_ro` |
+| `auth` | `ghcr.io/darmawanweb/ais-its-auth-service` | 3001 | HPA in prod |
+| `fleet` | `ghcr.io/darmawanweb/ais-its-fleet-service` | 3002 | HPA in prod |
+| `ais-ingestor` | `ghcr.io/darmawanweb/ais-its-pipeline` | 3003 | `command: node dist/apps/ingestor/main.js`, 2 replicas in prod |
+| `ais-processor` | `ghcr.io/darmawanweb/ais-its-pipeline` | 3004 | `command: node dist/apps/processor/main.js`, 1 replica, `Recreate` |
+| `telemetry` | `ghcr.io/darmawanweb/ais-its-telemetry-service` | 3005 | HPA in prod |
+| `emission` | `ghcr.io/darmawanweb/ais-its-emission-service` | 3006 | 2 replicas in prod |
+| `surveillance` | `ghcr.io/darmawanweb/ais-its-surveillance-service` | 3007 | detectors `DETECTORS=transhipment,anomaly,dark,geofence,fishing`; 1 replica, `Recreate` |
+| `notification` | `ghcr.io/darmawanweb/ais-its-notification-service` | 3008 | socket.io `/ws`, sticky cookie; 1 replica (see below) |
+| `geo` | `ghcr.io/darmawanweb/ais-its-geo-service` | 3009 | zones / geofences, HPA in prod |
+| `safety` | `ghcr.io/darmawanweb/ais-its-safety-service` | 3011 | detectors `DETECTORS=ews,collision`; 1 replica, `Recreate` |
+| `web` | `ghcr.io/darmawanweb/ais-its-web` | 8080 | nginx, non-root, probes on `/` |
+| `legacy-be` | `ghcr.io/darmawanweb/ais-its-mvp-api` | 3020 | `/api/v1` until cut-over; gateway-only NetworkPolicy |
+| `martin` | `ghcr.io/maplibre/martin` (1.16.1, by digest) | 3010 | vector tiles as `tiles_ro`, `--base-path /tiles` |
 
 Service names equal the compose hostnames of spec §3, so in-cluster URLs are identical in both
 worlds (`AUTH_INTERNAL_URL=http://auth:3001`, `NATS_URL=nats://nats:4222`, …).
+
+Replica rules: `ais-processor`, `safety` and `surveillance` each own one durable consumer whose
+handlers keep per-vessel state in memory (spec §7.3, §18), so they run exactly one Pod and roll
+out with `Recreate` until their consumers are partitioned (`ais.position.v1.<p>.>`).
+`notification` stays at one replica because socket.io events reach only the sockets of the
+replica that emits them, while `alert.raised.v1` arrives through the shared durable
+`notification-alerts`; scale it out only once it fans out through a cross-instance adapter
+(e.g. `@socket.io/redis-adapter` on Valkey).
 
 ## Prerequisites
 
@@ -39,21 +49,21 @@ worlds (`AUTH_INTERNAL_URL=http://auth:3001`, `NATS_URL=nats://nats:4222`, …).
 
 | Secret | Keys |
 |---|---|
-| `seemp-shared` | `INTERNAL_TOKEN` |
-| `seemp-auth` | `DATABASE_URL`, `KEY_ENCRYPTION_SECRET`, `BOOTSTRAP_ADMIN_PASSWORD` |
-| `seemp-fleet` | `DATABASE_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` |
-| `seemp-ais-ingestor` | `AIS_UPSTREAM_TOKEN` |
-| `seemp-ais-processor`, `seemp-telemetry`, `seemp-emission`, `seemp-detection` | `DATABASE_URL` |
-| `seemp-notification` | `DATABASE_URL`, `SMTP_URL`, `TELEGRAM_BOT_TOKEN`, `WEBHOOK_SIGNING_SECRET` |
-| `seemp-martin` | `DATABASE_URL` (role `tiles_ro`) |
-| `seemp-mvp-api` | `MONGO_URI`, `MONGO_DB_NAME`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET` |
-| `seemp-tls` | TLS certificate for the gateway host (e.g. from cert-manager) |
+| `ais-its-shared` | `INTERNAL_TOKEN` |
+| `ais-its-auth` | `DATABASE_URL`, `KEY_ENCRYPTION_SECRET`, `BOOTSTRAP_ADMIN_PASSWORD` |
+| `ais-its-fleet` | `DATABASE_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` |
+| `ais-its-ais-ingestor` | `AIS_UPSTREAM_TOKEN` |
+| `ais-its-ais-processor`, `ais-its-telemetry`, `ais-its-emission`, `ais-its-geo`, `ais-its-safety`, `ais-its-surveillance` | `DATABASE_URL` (role `<schema>_svc`, database `aisits`) |
+| `ais-its-notification` | `DATABASE_URL`, `SMTP_URL`, `TELEGRAM_BOT_TOKEN`, `WEBHOOK_SIGNING_SECRET` |
+| `ais-its-martin` | `DATABASE_URL` (role `tiles_ro`) |
+| `ais-its-mvp-api` | `MONGO_URI`, `MONGO_DB_NAME`, `JWT_SECRET` (≥ 32 chars), `REFRESH_TOKEN_SECRET`, and for the live AIS feed `WEBSOCKET_URI`, `WEBSOCKET_BATAM_URI`, `WEBSOCKET_TOKEN` — without them the MVP API dials `http://localhost:8080`, logs a connection error every few seconds and its `/api/v1` AIS and CII data goes stale |
+| `ais-its-tls` | TLS certificate for the gateway host (e.g. from cert-manager) |
 
 Create them from your secret manager (External Secrets Operator, Sealed Secrets, SOPS…). By hand:
 
 ```bash
-kubectl -n seemp create secret generic seemp-auth \
-  --from-literal=DATABASE_URL='postgres://auth_svc:…@db.internal:5432/seemp?sslmode=require' \
+kubectl -n ais-its create secret generic ais-its-auth \
+  --from-literal=DATABASE_URL='postgres://auth_svc:…@db.internal:5432/aisits?sslmode=require' \
   --from-literal=KEY_ENCRYPTION_SECRET="$(openssl rand -base64 48)" \
   --from-literal=BOOTSTRAP_ADMIN_PASSWORD='…'
 ```
@@ -61,24 +71,25 @@ kubectl -n seemp create secret generic seemp-auth \
 ## Install
 
 ```bash
-helm dependency build infra/helm/seemp-platform          # packages ../seemp-service into charts/
+helm dependency build infra/helm/ais-its-platform          # packages ../ais-its-service into charts/
 
 # production
-helm upgrade --install seemp infra/helm/seemp-platform -n seemp --create-namespace \
-  -f infra/helm/seemp-platform/values-prod.yaml --atomic --timeout 10m
+helm upgrade --install ais-its infra/helm/ais-its-platform -n ais-its --create-namespace \
+  -f infra/helm/ais-its-platform/values-prod.yaml --atomic --timeout 10m
 
-# development cluster (kind/k3d/minikube): inline dev credentials, HTTP, http://seemp.localtest.me
-helm upgrade --install seemp infra/helm/seemp-platform -n seemp-dev --create-namespace \
-  -f infra/helm/seemp-platform/values-dev.yaml
+# development cluster (kind/k3d/minikube): inline dev credentials, HTTP, http://ais-its.localtest.me
+helm upgrade --install ais-its infra/helm/ais-its-platform -n ais-its-dev --create-namespace \
+  -f infra/helm/ais-its-platform/values-dev.yaml
 ```
 
 `values.yaml` holds the environment-neutral base; `values-dev.yaml` / `values-prod.yaml` only
 contain what differs. Pin the release with `global.imageTag` (or `image.digest` per component);
-`martin.image.tag` must be pinned to a released Martin version before going live.
+a floating `latest` tag makes the render fail. Martin is pinned by tag and digest in
+`values.yaml` — its CLI flags are version-specific, so bump it deliberately.
 
-Upgrades are rolling (`maxUnavailable: 0`) except `ais-processor` and `detection` (`Recreate`:
-never two consumers of the same ordered stream). Config changes roll the Pods automatically
-(checksum annotations).
+Upgrades are rolling (`maxUnavailable: 0`) except `ais-processor`, `safety` and `surveillance`
+(`Recreate`: never two consumers of the same stateful durable). Config changes roll the Pods
+automatically (checksum annotations).
 
 ## Validate
 
@@ -86,26 +97,26 @@ No Helm on the machine? Use the container image:
 
 ```bash
 H="docker run --rm -v $PWD/infra/helm:/charts -w /charts alpine/helm:3.19.0"
-$H dependency build seemp-platform
-$H lint --strict seemp-service
-$H lint --strict seemp-platform -f seemp-platform/values-dev.yaml
-$H lint --strict seemp-platform -f seemp-platform/values-prod.yaml
-$H template seemp seemp-platform -n seemp -f seemp-platform/values-prod.yaml > /tmp/seemp-prod.yaml
+$H dependency build ais-its-platform
+$H lint --strict ais-its-service
+$H lint --strict ais-its-platform -f ais-its-platform/values-dev.yaml
+$H lint --strict ais-its-platform -f ais-its-platform/values-prod.yaml
+$H template ais-its ais-its-platform -n ais-its -f ais-its-platform/values-prod.yaml > /tmp/ais-its-prod.yaml
 ```
 
-## The `seemp-service` chart
+## The `ais-its-service` chart
 
-Main knobs (`seemp-service/values.yaml` documents all of them):
+Main knobs (`ais-its-service/values.yaml` documents all of them):
 
 | Value | Default | Purpose |
 |---|---|---|
-| `image.repository` / `tag` / `digest` | — / `global.imageTag` / — | image reference |
+| `image.repository` / `tag` / `digest` | — / `global.imageTag` / — | image reference (`latest` refused) |
 | `command`, `args` | `[]` | other entrypoint of the same image (ais-pipeline) |
 | `port` | `3001` | container port, `PORT` env, Service port |
-| `env` / `secretEnv` / `existingSecret` | `{}` / `{}` / `""` | ConfigMap / dev-only Secret / external Secret |
+| `env` / `secretEnv` / `existingSecret` / `extraEnvFrom` | `{}` / `{}` / `""` / `[]` | ConfigMap (values are templates) / dev-only Secret / external Secret / more sources |
 | `platformEnv` | `true` | inject `global.env` + `global.existingSecret` |
 | `probes.{startup,liveness,readiness}` | `/health/live`, `/health/ready` | spec §10; `enabled: false` to drop one |
-| `replicaCount`, `strategy` | `1`, RollingUpdate | |
+| `replicaCount`, `strategy` | `1`, RollingUpdate | `strategy: {type: Recreate}` drops the rolling-update parameters |
 | `autoscaling.*` | disabled | HPA on CPU (and optionally memory) |
 | `podDisruptionBudget.maxUnavailable` | `1` | never blocks node drains |
 | `secondaryContainer.*` | disabled | second process in the same Pod |
@@ -120,12 +131,17 @@ capabilities dropped, `RuntimeDefault` seccomp, no service-account token and no 
 
 The umbrella deploys the ingestor and the processor as two releases of the same image
 (`command` differs), so each scales and rolls out on its own. For a very small cluster they can
-share one Pod instead:
+share one Pod instead — then that Pod contains the single AIS_RAW processor, so it must never
+run twice either:
 
 ```yaml
 ais-ingestor:
+  replicaCount: 1                 # never two processors at once (values-prod runs 2 ingestors) …
+  strategy: { type: Recreate }    # … not even during a rollout
+  extraEnvFrom:                   # DATABASE_URL of the processor
+    - secretRef: { name: ais-its-ais-processor }
   secondaryContainer:
-    enabled: true            # node dist/apps/processor/main.js on :3004
+    enabled: true                 # node dist/apps/processor/main.js on :3004
     env: { SERVICE_NAME: ais-processor, DATABASE_SCHEMA: ais }
 ais-processor:
   enabled: false
@@ -137,13 +153,22 @@ into your values file and change the `ais-processor` route to `backend: ais-inge
 
 ## Gateway (IngressRoute)
 
-`gateway.routes` in `seemp-platform/values.yaml` is the route table of spec §12 — the same
-routers, priorities and middlewares as the local gateway (`infra/traefik/dynamic/routes.yml`).
-Each entry lists `prefixes` (PathPrefix), `paths` (exact Path), a `backend` component (empty =
-answered by Traefik: `/internal`, `/metrics`, `/docs`, `/openapi.json` → 403), `priority`,
-`middlewares` and `sticky` (socket.io routes). Routes of disabled components are skipped.
+`gateway.routes` in `ais-its-platform/values.yaml` is the route table of spec §12 — the same
+routers, priorities and middlewares as the local gateway (`infra/traefik/dynamic/routes.yml`,
+tested end to end by `infra/scripts/routes-test.sh`). Each entry lists `prefixes` (PathPrefix),
+`paths` (exact Path), a `backend` component (empty = answered by Traefik: `/internal`,
+`/metrics`, `/docs`, `/openapi.json` → 403), `priority`, `middlewares`, `sticky` (socket.io
+routes) and `accessLogs: false` (the SPA route, which receives the e-mailed reset and invite
+links). Routes of disabled components are skipped.
+
+`/api/v1` and `/tiles` require a valid v2 access token (forwardAuth to auth
+`/api/v2/auth/verify`); the login, password and MFA endpoints and the session endpoints
+(refresh, logout, verify) have per-IP rate limits (`gateway.rateLimit`,
+`gateway.sessionRateLimit`).
 
 Production differences from dev: `websecure` + TLS, HSTS, stricter login rate limit
 (10/min/IP; set `rateLimit.ipStrategyDepth: 1` behind one trusted load balancer), forwardAuth to
 `auth.<namespace>.svc.cluster.local`, and a NetworkPolicy that lets only Traefik reach
-`legacy-be` (it trusts the forwarded identity headers).
+`legacy-be` (it trusts the forwarded identity headers). Configure the Traefik installation
+itself like `infra/traefik/traefik.yml`: JSON access log with request headers dropped, API and
+dashboard not exposed.
