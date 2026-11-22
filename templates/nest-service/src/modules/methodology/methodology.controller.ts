@@ -5,7 +5,7 @@ import { MethodologyDto } from './methodology.dto.js';
 import { MethodologyService } from './methodology.service.js';
 
 @ApiTags('methodology')
-@Controller('__SERVICE_NAME__/methodology')
+@Controller('__ROUTE_PREFIX__/methodology')
 export class MethodologyController {
   constructor(private readonly methodology: MethodologyService) {}
 

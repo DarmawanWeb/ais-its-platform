@@ -11,7 +11,7 @@ import {
   pointGeography,
 } from '@darmawanweb/ais-its-nest/db';
 import { Injectable } from '@nestjs/common';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 
 import * as schema from '../db/schema.js';
 
@@ -83,18 +83,34 @@ export class DetectorEventsRepository implements AlertPersistence {
     });
   }
 
-  /** A de-escalation or a suppressed re-raise (which may reopen the row). */
+  /**
+   * A de-escalation or a suppressed re-raise (which may reopen the row).
+   * `last_seen_at` stores event time (`occurredAt` of the signal), never the
+   * clock of the instance that processed it.
+   */
   async onUpdated(update: AlertUpdate): Promise<void> {
     await this.db
       .update(events)
       .set({
         currentSeverity: update.alert.severity,
-        lastSeenAt: update.at,
+        lastSeenAt: update.occurredAt ?? update.at,
         ...(update.reopened
           ? { status: 'open' as const, resolvedAt: null, resolution: null }
           : {}),
       })
       .where(eq(events.id, update.alert.alertId));
+  }
+
+  /**
+   * An unchanged signal of the open occurrence (throttled by the runner's
+   * `alertRepeatedIntervalMs`, default 60 s of event time): moves
+   * `last_seen_at` forward, never backwards (redeliveries arrive late).
+   */
+  async onRepeated(alert: OpenAlert, occurredAt: Date): Promise<void> {
+    await this.db
+      .update(events)
+      .set({ lastSeenAt: sql`greatest(${events.lastSeenAt}, ${occurredAt})` })
+      .where(eq(events.id, alert.alertId));
   }
 
   /** Marks the open row of the occurrence resolved (no-op when already resolved). */
@@ -111,7 +127,10 @@ export class DetectorEventsRepository implements AlertPersistence {
       );
   }
 
-  /** Open occurrences, restored at startup so a restart does not re-raise them. */
+  /**
+   * Open occurrences, restored at startup and reloaded on every activation
+   * (failover), so a restart or a takeover does not re-raise them.
+   */
   async loadOpen(): Promise<readonly OpenAlert[]> {
     const rows = await this.db
       .select()
@@ -130,6 +149,12 @@ export class DetectorEventsRepository implements AlertPersistence {
       // The row is written right before the alert is published.
       publishedAt: row.createdAt,
       lastSeenAt: row.lastSeenAt,
+      // Event times of the occurrence (both columns store signal times).
+      firstOccurredAt: row.openedAt,
+      lastOccurredAt: row.lastSeenAt,
+      // Published with the resolution (alert.resolved.v1).
+      domain: row.domain,
+      methodId: row.methodId,
     }));
   }
 }

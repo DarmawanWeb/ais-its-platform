@@ -7,8 +7,8 @@
  *
  *   node scripts/new-service.mjs --name fleet --schema fleet --port 3002 \
  *     --title "Fleet service" --description "Vessel master and reference data" \
- *     [--out services/fleet] [--package ais-its-fleet-service] [--with-example] \
- *     [--kind detector [--domain safety|surveillance]] [--dry-run]
+ *     [--out services/fleet] [--package ais-its-fleet-service] [--route-prefix fleet] \
+ *     [--with-example] [--kind detector [--domain safety|surveillance]] [--dry-run]
  */
 import { execFileSync } from 'node:child_process';
 import {
@@ -43,7 +43,7 @@ const DOMAINS = /** @type {const} */ (['safety', 'surveillance']);
 
 /** Every placeholder of the template; free-text ones are escaped per file type. */
 const PLACEHOLDER_PATTERN =
-  /__(SERVICE_NAME|PACKAGE_NAME|SCHEMA|PORT|TITLE|DESCRIPTION|DOMAIN)__/g;
+  /__(SERVICE_NAME|PACKAGE_NAME|SCHEMA|PORT|TITLE|DESCRIPTION|DOMAIN|ROUTE_PREFIX)__/g;
 const FREE_TEXT_PLACEHOLDERS = new Set(['TITLE', 'DESCRIPTION']);
 /** What a placeholder looks like, to catch typos left in the output. */
 const LEFTOVER_PATTERN = /__[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*__/;
@@ -56,7 +56,7 @@ const USAGE = `Usage: node scripts/new-service.mjs --name <name> --schema <schem
          --title "<title>" --description "<description>" [options]
 
 Required
-  --name <name>          SERVICE_NAME and route prefix: lowercase letters, digits, dashes (e.g. fleet)
+  --name <name>          SERVICE_NAME (and default route prefix): lowercase letters, digits, dashes
   --schema <schema>      PostgreSQL schema owned by <schema>_svc (e.g. fleet)
   --port <port>          HTTP port of the service (spec §3, e.g. 3002)
   --title <title>        human name, e.g. "Fleet service"
@@ -66,6 +66,8 @@ Options
   --out <dir>            target directory (default: services/<name> in the central repository);
                          it must not exist, be empty or contain only .git
   --package <name>       package/repository/image name (default: ais-its-<name>-service)
+  --route-prefix <seg>   path segment of the service's own routes, /api/v2/<seg>/… (default: <name>);
+                         the gateway must route it (spec §12)
   --with-example         keep the worked example (notes CRUD feature, domain function, tests)
   --kind <kind>          service (default) or detector (Detector SDK wiring and a toy detector)
   --domain <domain>      detector kind only: safety (default) or surveillance
@@ -82,6 +84,7 @@ class UsageError extends Error {}
  * @property {string} title
  * @property {string} description
  * @property {string} packageName
+ * @property {string} routePrefix
  * @property {string} out
  * @property {boolean} withExample
  * @property {'service' | 'detector'} kind
@@ -114,6 +117,7 @@ export function parseOptions(argv) {
       description: { type: 'string' },
       out: { type: 'string' },
       package: { type: 'string' },
+      'route-prefix': { type: 'string' },
       'with-example': { type: 'boolean', default: false },
       kind: { type: 'string', default: 'service' },
       domain: { type: 'string' },
@@ -206,6 +210,19 @@ export function parseOptions(argv) {
     );
   }
 
+  const routePrefix = values['route-prefix']?.trim() ?? name;
+  if (
+    (values['route-prefix'] !== undefined || nameIsValid) &&
+    !(
+      /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(routePrefix) &&
+      routePrefix.length <= 40
+    )
+  ) {
+    problems.push(
+      `--route-prefix "${routePrefix}": one path segment of at most 40 lowercase letters, digits and single dashes, starting with a letter (e.g. fleet, vessels)`,
+    );
+  }
+
   if (problems.length > 0) {
     throw new UsageError(
       problems.map((problem) => `  - ${problem}`).join('\n'),
@@ -218,6 +235,7 @@ export function parseOptions(argv) {
     title,
     description,
     packageName,
+    routePrefix,
     out: path.resolve(values.out ?? path.join(REPO_ROOT, 'services', name)),
     withExample: values['with-example'],
     kind: /** @type {Options['kind']} */ (kind),
@@ -664,6 +682,7 @@ export async function generateService(options, context = {}) {
     TITLE: options.title,
     DESCRIPTION: options.description,
     DOMAIN: options.domain,
+    ROUTE_PREFIX: options.routePrefix,
   };
 
   const manifest = await readManifest(templateDir);
@@ -748,7 +767,8 @@ function nextSteps(options) {
     `  - §1 repositories table and the central repository submodule (${options.packageName})`,
     `  - §3 port ${options.port}, compose service "${options.name}"`,
     `  - §6 schema "${options.schema}" and role ${options.schema}_svc in infra/postgres/bootstrap.sql`,
-    `  - §12 gateway route /api/v2/${options.name} → ${options.name}:${options.port}`,
+    `  - §12 gateway route /api/v2/${options.routePrefix} → ${options.name}:${options.port}: the service's own`,
+    `    routes (GET /api/v2/${options.routePrefix}/methodology${options.kind === 'detector' ? `, …/detectors` : ''}) answer 404 at the gateway until it is added`,
     '  - §17 method ids in docs/references/methods.json (see src/modules/methodology/implemented-methods.ts)',
   ];
   if (options.kind === 'detector') {

@@ -3,6 +3,7 @@ import {
   type Principal,
   RequirePermissions,
 } from '@darmawanweb/ais-its-nest/auth';
+import { UuidParam } from '@darmawanweb/ais-its-nest/http';
 import {
   Body,
   Controller,
@@ -10,8 +11,6 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -33,12 +32,12 @@ import { UpdateNoteDto } from './dto/update-note.dto.js';
 import { NotesService } from './notes.service.js';
 
 /**
- * Vessel notes (example feature): `/api/v2/__SERVICE_NAME__/notes`.
+ * Vessel notes (example feature): `/api/v2/__ROUTE_PREFIX__/notes`.
  * Reads need `vessel:read`, writes `vessel:write` (contracts
  * `ROLE_PERMISSIONS`); notes are private to the organization.
  */
 @ApiTags('notes')
-@Controller('__SERVICE_NAME__/notes')
+@Controller('__ROUTE_PREFIX__/notes')
 export class NotesController {
   constructor(private readonly notes: NotesService) {}
 
@@ -73,7 +72,7 @@ export class NotesController {
   @ApiOperation({ summary: 'Get a note' })
   @ApiOkResponse({ type: NoteDto })
   async get(
-    @Param('id', new ParseUUIDPipe()) id: string,
+    @UuidParam() id: string,
     @CurrentPrincipal() principal: Principal,
   ): Promise<NoteDto> {
     return new NoteDto(await this.notes.get(id, principal));
@@ -84,7 +83,7 @@ export class NotesController {
   @ApiOperation({ summary: 'Change the title, body or tags of a note' })
   @ApiOkResponse({ type: NoteDto })
   async update(
-    @Param('id', new ParseUUIDPipe()) id: string,
+    @UuidParam() id: string,
     @Body() body: UpdateNoteDto,
     @CurrentPrincipal() principal: Principal,
     @Req() request: FastifyRequest,
@@ -98,7 +97,7 @@ export class NotesController {
   @ApiOperation({ summary: 'Delete a note' })
   @ApiNoContentResponse()
   async remove(
-    @Param('id', new ParseUUIDPipe()) id: string,
+    @UuidParam() id: string,
     @CurrentPrincipal() principal: Principal,
     @Req() request: FastifyRequest,
   ): Promise<void> {

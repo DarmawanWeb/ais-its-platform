@@ -11,6 +11,7 @@ import { MethodologyModule } from './modules/methodology/methodology.module.js';
 // @template:if example
 import { NotesModule } from './modules/notes/notes.module.js';
 // @template:endif
+import { MIGRATIONS_DIR } from './service.js';
 
 /**
  * Root module. `bootstrapService()` wraps it in the kit's platform root module
@@ -20,8 +21,9 @@ import { NotesModule } from './modules/notes/notes.module.js';
  */
 @Module({
   imports: [
-    // pg pool + drizzle (search_path=<DATABASE_SCHEMA>,public); migrations on boot.
-    DatabaseModule.forRoot({ schema }),
+    // pg pool + drizzle (search_path=<DATABASE_SCHEMA>,public); migrations on boot
+    // from this package's migrations/ (not the working directory).
+    DatabaseModule.forRoot({ schema, migrationsDir: MIGRATIONS_DIR }),
     // Streams this service PRODUCES to (created / widened at boot); consumers only
     // create a missing stream they read and never change an existing one (spec §7.2).
     NatsModule.forRoot({ streams: [] }),

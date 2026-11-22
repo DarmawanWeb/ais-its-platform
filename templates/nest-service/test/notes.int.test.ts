@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SERVICE } from '../src/service.js';
 import { startTestService, type TestService } from './support/test-service.js';
 
-const NOTES_URL = `/api/v2/${SERVICE.name}/notes`;
+const NOTES_URL = `/api/v2/${SERVICE.routePrefix}/notes`;
 
 /** A random 9-digit MMSI, so runs never collide on the unique title. */
 function randomMmsi(): number {
@@ -104,6 +104,45 @@ describe('notes (example CRUD feature)', () => {
     expect(gone.statusCode).toBe(404);
     expect(gone.headers['content-type']).toContain('application/problem+json');
     expect(gone.json()).toMatchObject({ status: 404, code: 'NOTE_NOT_FOUND' });
+  });
+
+  it('rejects null for a NOT NULL field and a malformed id with field errors', async () => {
+    const headers = await as('fleet_manager');
+    const created = await service.app.inject({
+      method: 'POST',
+      url: NOTES_URL,
+      headers,
+      payload: { mmsi: randomMmsi(), title: 'Null check' },
+    });
+    expect(created.statusCode).toBe(201);
+    const { id } = created.json<{ id: string }>();
+
+    const nulled = await service.app.inject({
+      method: 'PATCH',
+      url: `${NOTES_URL}/${id}`,
+      headers,
+      payload: { title: null },
+    });
+    expect(nulled.statusCode).toBe(400);
+    const problem = nulled.json<{
+      code: string;
+      errors: { field: string }[];
+    }>();
+    expect(problem.code).toBe('VALIDATION_FAILED');
+    expect(new Set(problem.errors.map((error) => error.field))).toEqual(
+      new Set(['title']),
+    );
+
+    const malformed = await service.app.inject({
+      method: 'GET',
+      url: `${NOTES_URL}/not-a-uuid`,
+      headers,
+    });
+    expect(malformed.statusCode).toBe(400);
+    expect(malformed.json()).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      errors: [expect.objectContaining({ field: 'id', code: 'isUuid' })],
+    });
   });
 
   it('rejects invalid input with 400 VALIDATION_FAILED and field errors', async () => {

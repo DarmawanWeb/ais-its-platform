@@ -18,13 +18,14 @@ node scripts/new-service.mjs --name fleet --schema fleet --port 3002 \
 
 | Option                 | Required | Meaning                                                                                                              |
 | ---------------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
-| `--name <name>`        | yes      | `SERVICE_NAME`, route prefix `/api/v2/<name>`, `audit.v1.<name>`: ≤ 40 lowercase letters, digits, single dashes      |
+| `--name <name>`        | yes      | `SERVICE_NAME`, default route prefix, `audit.v1.<name>`: ≤ 40 lowercase letters, digits, single dashes               |
 | `--schema <schema>`    | yes      | PostgreSQL schema owned by `<schema>_svc` (lowercase SQL identifier; `public`, `pg_*`, `information_schema` refused) |
 | `--port <port>`        | yes      | default HTTP port (spec §3)                                                                                          |
 | `--title <title>`      | yes      | human name, e.g. `Fleet service` (OpenAPI title, README); one line, ≤ 120 characters                                 |
 | `--description <text>` | yes      | one line, ≤ 300 characters (package.json, README, OpenAPI)                                                           |
 | `--out <dir>`          | no       | target directory; default `services/<name>` of the central repository                                                |
 | `--package <name>`     | no       | package, repository and image name; default `ais-its-<name>-service` (a trailing `-service` is not doubled)          |
+| `--route-prefix <seg>` | no       | one path segment for the service's own routes, `/api/v2/<seg>/…` (methodology, example, detectors); default `<name>` |
 | `--with-example`       | no       | keep the worked example (see [Features](#features)); stripped by default                                             |
 | `--kind <kind>`        | no       | `service` (default) or `detector` (Detector SDK wiring and a toy detector)                                           |
 | `--domain <domain>`    | no       | detector kind only: `safety` (default) or `surveillance` — the detector domain and the `<domain>:read` permission    |
@@ -44,18 +45,19 @@ Behaviour:
   kept as is. Without git it prints a hint instead.
 - It prints the next steps: install, format, lint, typecheck, unit and integration tests,
   `pnpm openapi`, first commit, and the platform registration checklist (spec §1, §3, §6, §12, §17,
-  contracts for detector services).
+  contracts for detector services), including the reminder that the gateway must route
+  `/api/v2/<route prefix>` before the service's own routes are reachable (spec §12).
 
 The generated output is Prettier-clean (`pnpm format:check` passes without `pnpm format`), lints
 and typechecks with zero warnings, and its unit and integration tests pass.
 
 ## Features
 
-| Variant           | What the service gets                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| always            | bootstrap (`main.ts` → telemetry → `server.ts`), `config.ts`, `service.ts`, `DatabaseModule` + migrations, `NatsModule`, `AuthModule` (default-deny), health, metrics, Swagger, `GET /api/v2/<name>/methodology` (any signed-in user), `src/db/errors.ts`, unit tests (config, methodology, errors), an integration test of the platform behaviour (health, migrations, 401, methodology, OpenAPI, metrics), CI, Docker        |
-| `--with-example`  | `src/domain/arrival.ts` (pure function with `@method` TSDoc and golden tests) and `src/modules/notes/` — table, DTOs with class-validator + Swagger, drizzle repository, service with tenancy and `409` mapping, `vessel:read`/`vessel:write` controller, `audit.recorded.v1` events — with unit tests and `test/notes.int.test.ts`                                                                                            |
-| `--kind detector` | `src/detectors/`: `DetectorRunnerModule` on the durable consumer `<name>-positions`, the `events` hypertable and its `AlertPersistence` repository, `GET /api/v2/<name>/detectors` (`<domain>:read`), the toy `speed_limit` detector (`SPEED_LIMIT_*` config, warning/critical, hysteresis) with a `DetectorTestHarness` unit test, and `test/detectors.int.test.ts` (zone + position events → alert in `ALERTS` + stored row) |
+| Variant           | What the service gets                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| always            | bootstrap (`main.ts` → telemetry → `server.ts`), `config.ts`, `service.ts`, `DatabaseModule` + migrations, `NatsModule`, `AuthModule` (default-deny), health, metrics, Swagger, `GET /api/v2/<route prefix>/methodology` (any signed-in user), migrations resolved from the package (`MIGRATIONS_DIR`), unit tests (config, methodology), an integration test of the platform behaviour (health, migrations, boot from another working directory, 401, methodology, OpenAPI, metrics), CI, Docker                                                                                                                                                                                                                     |
+| `--with-example`  | `src/domain/arrival.ts` (pure function with `@method` TSDoc and golden tests) and `src/modules/notes/` — table, DTOs with class-validator + Swagger (`IsOptionalNotNull()` for optional `NOT NULL` fields, `PATCH { "title": null }` → 400), drizzle repository, service with tenancy and `409` mapping (kit `isUniqueViolation`), `vessel:read`/`vessel:write` controller with `@UuidParam()`, `audit.recorded.v1` events — with unit tests and `test/notes.int.test.ts`                                                                                                                                                                                                                                             |
+| `--kind detector` | `src/detectors/`: `DetectorRunnerModule` on the durable consumer `<name>-positions` (contracts `positionFeedConsumer`, exact envelope types), the `events` hypertable and its `AlertPersistence` repository (event-time `last_seen_at` with `onRepeated`, `loadOpen` with `domain`, `methodId` and occurrence times for failover), `GET /api/v2/<route prefix>/detectors` (`<domain>:read`), the toy `speed_limit` detector (`SPEED_LIMIT_*` config, warning/critical, hysteresis, `onActivated`) with a `DetectorTestHarness` unit test (published resolution, failover), and `test/detectors.int.test.ts` (zone + position events → alert in `ALERTS` + stored row, repeated signal → `last_seen_at` in event time) |
 
 ## Layout of a generated service
 
@@ -104,6 +106,7 @@ Scripts: `dev` (`nest start --watch --builder swc`: ESM output with decorator me
 | `__TITLE__`        | `--title`                                      | `package.json` (`displayName`), README                                     |
 | `__DESCRIPTION__`  | `--description`                                | `package.json` (`description`), README                                     |
 | `__DOMAIN__`       | `--domain` (default `safety`)                  | detector domain, `<domain>:read` permission, detector tests, README        |
+| `__ROUTE_PREFIX__` | `--route-prefix` (default `--name`)            | `service.ts` (`SERVICE.routePrefix`), controller paths, README             |
 
 Rules for template authors:
 
@@ -166,12 +169,13 @@ The generator prints these steps; they are the definition of done for a new serv
 3. `pnpm openapi` and commit `openapi.json` (CI fails when it is stale) together with `pnpm-lock.yaml`.
 4. Register the service in the platform: spec §1 table and the central repository submodule, §3
    port and compose service, §6 schema and role in `infra/postgres/bootstrap.sql`, §12 gateway
-   route, §17 method ids in `docs/references/methods.json`.
+   route of `/api/v2/<route prefix>` (Traefik `infra/traefik/dynamic/routes.yml`, Helm values and
+   `infra/scripts/routes-test.mjs`), §17 method ids in `docs/references/methods.json`.
 5. Detector services: add the service to contracts `SERVICE_NAMES`, its consumer
    `<name>-positions` to `CONSUMERS` and the alert types it raises to `ALERT_TYPES` (a contracts
    minor release), then replace `POSITIONS_CONSUMER` with the key `'<name>-positions'`. Until then
-   the local definition needs no type assertion (`service` is an open vocabulary since contracts
-   0.3.0).
+   the local definition (contracts `positionFeedConsumer`, which keeps the literal event types)
+   needs no type assertion (`service` is an open vocabulary since contracts 0.3.0).
 6. Replace the example (`src/modules/notes`, `src/domain/arrival.ts`) or the toy detector with the
    real features; update README sections marked `TODO`.
 
@@ -192,8 +196,11 @@ The generator prints these steps; they are the definition of done for a new serv
 - **Domain event**: add the type and schema to contracts (minor release), then
   `EventPublisher.publishEvent(type, data)`.
 - **Detector**: a folder `src/detectors/<id>/` with a `@RegisterDetector() @Injectable()` class
-  (`id`, `domain`, `methodIds`, `configSchema` for `<ID>_*`), listed in `DetectorsModule`
-  providers, its variables in `.env.example`, a `DetectorTestHarness` unit test.
+  (`id`, `domain`, `methodIds`, `configSchema` for `<ID>_*`; `onActivated` to drop local state on
+  a failover; check `context.isActive()` in zone/vessel hooks that raise or resolve), listed in
+  `DetectorsModule` providers, its variables in `.env.example`, a `DetectorTestHarness` unit test.
+  Resolutions are published as `alert.resolved.v1` after the alert cooldown; ticks run only on
+  the active instance, so several replicas with rolling updates are fine.
 - **Valkey**: `RedisModule.forRoot()` in `AppModule` (adds the `redis` readiness check), the
   integration setup with `startTestInfra({ redis: true })`.
 

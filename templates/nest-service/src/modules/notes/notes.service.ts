@@ -17,9 +17,9 @@ import {
   assertOrgAccess,
   type Principal,
 } from '@darmawanweb/ais-its-nest/auth';
+import { isUniqueViolation } from '@darmawanweb/ais-its-nest/db';
 import { Injectable } from '@nestjs/common';
 
-import { isUniqueViolation } from '../../db/errors.js';
 import {
   type Note,
   type NoteChanges,

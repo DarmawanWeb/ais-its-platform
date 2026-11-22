@@ -6,7 +6,7 @@ import { CONTRACTS_METHOD_CATALOG } from './method-catalog.js';
 import { MethodologyController } from './methodology.controller.js';
 import { MethodologyService } from './methodology.service.js';
 
-/** `GET /api/v2/__SERVICE_NAME__/methodology` (spec §17 traceability). */
+/** `GET /api/v2/__ROUTE_PREFIX__/methodology` (spec §17 traceability). */
 @Module({
   controllers: [MethodologyController],
   providers: [

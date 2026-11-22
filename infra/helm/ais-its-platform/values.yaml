@@ -22,6 +22,9 @@ global:
     LOG_PRETTY: "false"
     DATABASE_POOL_MAX: "10"
     DB_MIGRATE_ON_BOOT: "true"
+    # The external NATS (JetStream, >= 2.11) MUST allow max_payload >= 4MB like
+    # infra/nats/nats.conf: services log a warning at connect when it is lower and
+    # refuse to publish larger messages (zone snapshots reach ~1.5 MB).
     NATS_URL: nats://nats:4222
     REDIS_URL: redis://valkey:6379
     AUTH_JWKS_URL: http://auth:3001/.well-known/jwks.json
@@ -29,6 +32,10 @@ global:
     AUTH_AUDIENCE: ais-its-api
     AUTH_INTERNAL_URL: http://auth:3001
     CORS_ORIGINS: https://ais-its.example.com
+    # X-Forwarded-For is trusted only from TRUSTED_PROXIES; in production set it to
+    # the gateway (Traefik) Pods' address range only, e.g. "10.42.0.0/16" (spec §4).
+    # The default (loopback and private networks) logs a warning at boot.
+    # TRUSTED_PROXIES: 10.42.0.0/16
     PUBLIC_BASE_URL: https://ais-its.example.com
     OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
 
@@ -340,7 +347,7 @@ gateway:
       middlewares: [security-headers, compress]
     - name: fleet
       priority: 200
-      prefixes: [/api/v2/vessels, /api/v2/vessel-types, /api/v2/fuels, /api/v2/engines, /api/v2/fuel-formulas, /api/v2/ports, /api/v2/registry]
+      prefixes: [/api/v2/vessels, /api/v2/vessel-types, /api/v2/fuels, /api/v2/engines, /api/v2/fuel-formulas, /api/v2/ports, /api/v2/registry, /api/v2/fleet]
       backend: fleet
       middlewares: [security-headers, compress]
     - name: ais-ingestor-socket

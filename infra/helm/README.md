@@ -40,11 +40,25 @@ replica that emits them, while `alert.raised.v1` arrives through the shared dura
 `notification-alerts`; scale it out only once it fans out through a cross-instance adapter
 (e.g. `@socket.io/redis-adapter` on Valkey).
 
+Once the services run kit 0.3 / contracts 0.4 (`packages/ais-its-contracts/packages/nest/UPGRADING.md`)
+these rules relax: `safety` and `surveillance` keep one *active* instance but support hot standbys
+with `RollingUpdate` (the new active instance reloads the open alerts before its first position and
+a stopping Pod releases its pin at once), `ais-processor` releases its pin on shutdown as well, and
+`notification` fans alert pushes out to every replica over the core NATS subject
+`aisits.notification.realtime.v1`. Raise those replica counts and switch the strategy only after
+the upgraded images are deployed (notification first).
+
 ## Prerequisites
 
 - Kubernetes ≥ 1.27, Helm ≥ 3.12 (Helm 4 works too).
 - Traefik v3 installed with its CRDs (`traefik.io/v1alpha1`) and entrypoints `web` / `websecure`.
 - The database prepared once with [`../postgres/bootstrap.sql`](../postgres/bootstrap.sql).
+- NATS ≥ 2.11 with JetStream and **`max_payload` ≥ 4MB**, as [`../nats/nats.conf`](../nats/nats.conf)
+  sets for compose (the server default is 1MB). Services on kit ≥ 0.3 log a warning at connect when
+  the server allows less and refuse to publish larger messages (`EventTooLargeError`): zone
+  snapshots of large geofences reach about 1.5 MB. Exclusive consumers need 2.11 (pinned client).
+- `TRUSTED_PROXIES` in `global.env` set to the gateway Pods' address range only (spec §4); the
+  default trusts every private network and logs a warning at boot.
 - In production, the Secrets referenced by `existingSecret` (never put secrets in values files):
 
 | Secret | Keys |

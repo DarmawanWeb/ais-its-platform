@@ -1,3 +1,4 @@
+import { IsOptionalNotNull } from '@darmawanweb/ais-its-nest/http';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, type TransformFnParams } from 'class-transformer';
 import {
@@ -5,7 +6,6 @@ import {
   ArrayUnique,
   IsArray,
   IsInt,
-  IsOptional,
   IsString,
   Length,
   Matches,
@@ -23,7 +23,7 @@ export function trimString(params: TransformFnParams): unknown {
   return typeof input === 'string' ? input.trim() : input;
 }
 
-/** `POST /__SERVICE_NAME__/notes`. */
+/** `POST /__ROUTE_PREFIX__/notes`. */
 export class CreateNoteDto {
   @ApiProperty({
     description: 'MMSI of the vessel (9 digits)',
@@ -47,8 +47,10 @@ export class CreateNoteDto {
   @Length(1, 120)
   readonly title!: string;
 
+  // Optional but never null: the column is NOT NULL (`@IsOptional()` would let
+  // null through to the database); use @IsOptional() only where null clears a value.
   @ApiPropertyOptional({ maxLength: 4000, default: '' })
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsString()
   @MaxLength(4000)
   readonly body?: string;
@@ -60,7 +62,7 @@ export class CreateNoteDto {
     example: ['inspection'],
     description: `Lowercase slugs matching ${TAG_PATTERN.source}`,
   })
-  @IsOptional()
+  @IsOptionalNotNull()
   @IsArray()
   @ArrayMaxSize(10)
   @ArrayUnique()

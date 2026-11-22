@@ -87,7 +87,7 @@ export class MethodSummaryDto {
   }
 }
 
-/** `GET /__SERVICE_NAME__/methodology`. */
+/** `GET /__ROUTE_PREFIX__/methodology`. */
 export class MethodologyDto {
   @ApiProperty({ example: '__SERVICE_NAME__' })
   readonly service: string;

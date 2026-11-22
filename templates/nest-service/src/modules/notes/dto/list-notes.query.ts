@@ -2,6 +2,7 @@ import {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
 } from '@darmawanweb/ais-its-contracts/api';
+import { MAX_PAGE } from '@darmawanweb/ais-its-nest/http';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
@@ -17,13 +18,15 @@ import {
 
 import { TAG_PATTERN, trimString } from './create-note.dto.js';
 
-/** Query of `GET /__SERVICE_NAME__/notes` (page-based list, spec §5). */
+/** Query of `GET /__ROUTE_PREFIX__/notes` (page-based list, spec §5). */
 export class ListNotesQuery {
-  @ApiPropertyOptional({ minimum: 1, default: 1 })
+  // Bounded like the kit's PageQueryDto: an unbounded page overflows OFFSET.
+  @ApiPropertyOptional({ minimum: 1, maximum: MAX_PAGE, default: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(MAX_PAGE)
   readonly page: number = 1;
 
   @ApiPropertyOptional({

@@ -67,7 +67,7 @@ http:
     # --- fleet:3002 ---------------------------------------------------------
     fleet:
       entryPoints: [web]
-      rule: "PathPrefix(`/api/v2/vessels`) || PathPrefix(`/api/v2/vessel-types`) || PathPrefix(`/api/v2/fuels`) || PathPrefix(`/api/v2/engines`) || PathPrefix(`/api/v2/fuel-formulas`) || PathPrefix(`/api/v2/ports`) || PathPrefix(`/api/v2/registry`)"
+      rule: "PathPrefix(`/api/v2/vessels`) || PathPrefix(`/api/v2/vessel-types`) || PathPrefix(`/api/v2/fuels`) || PathPrefix(`/api/v2/engines`) || PathPrefix(`/api/v2/fuel-formulas`) || PathPrefix(`/api/v2/ports`) || PathPrefix(`/api/v2/registry`) || PathPrefix(`/api/v2/fleet`)"
       priority: 200
       middlewares: [security-headers, compress]
       service: fleet

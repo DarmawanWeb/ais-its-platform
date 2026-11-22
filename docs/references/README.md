@@ -6,7 +6,7 @@ This folder holds the machine-readable methodology catalog of AIS Maritime Intel
 | File | Content |
 |---|---|
 | `references.json` | Every source cited by a method: regulations, guidelines, standards, papers, books, reports, datasets, software and the legacy MVP code. |
-| `methods.json` | Every formula, empirical constant, threshold and rule of the platform (91 methods), with its equation, variables, constants, sources, v2 owner and legacy location. |
+| `methods.json` | Every formula, empirical constant, threshold and rule of the platform (109 methods; 149 references in `references.json`), with its equation, variables, constants, sources, v2 owner and legacy location. |
 
 Together with `docs/METHODOLOGY.md` (the human-readable "Metodologi & Referensi", Bahasa Indonesia
 with an English abstract) they are the **single source of truth** for:
@@ -37,7 +37,15 @@ positions in `references.json` (references are ordered by first citation in the 
 cited nowhere follow at the end). Method anchors are the method ids (`METHODOLOGY.md#cii.required`).
 The renderer used for version 1.0 is a one-off script that is not part of this repository yet (suggested
 home: `tools/methodology/`); until it is added, change the JSON first and then apply the same change to
-the document by hand, keeping the citation numbers in step with the array order.
+the document by hand, keeping the citation numbers in step with the array order. §20 of the document
+(the 18 methods and 9 references added with contracts 0.4.0) was rendered from the JSON with the same
+block layout.
+
+`pnpm --filter @darmawanweb/ais-its-contracts run references:verify` (in `packages/ais-its-contracts`)
+checks the catalog against the code: every `implemented` method's `implementedBy.module` file and symbol
+exist under `services/<service>/` (or the contracts package for `contracts`) and carry its
+`@method <id>` tag, every tag in the services names a catalogued method, a tagged method is not left
+`planned` / `not_implemented`, and every implemented method has an owner.
 
 ## `references.json`
 
@@ -71,16 +79,16 @@ An array of objects; keys in this order:
 | Key | Type | Meaning |
 |---|---|---|
 | `id` | string | Stable method id (same pattern), identical to the research inventory, e.g. `cii.attained_accumulation`, `collision.cpa_tcpa`. Used by `@method` tags, events, alerts and API responses. (The `cii.attained` in spec §17 is only an example.) |
-| `domain` | string | `ais`, `geo`, `safety`, `surveillance`, `emission`, `seemp` or `telemetry` (known values of the contracts vocabulary). The finer topic is the id prefix: `geo.`, `navstatus.`, `data.`, `ews.`, `collision.`, `fuel.`, `telemetry.`, `resistance.`, `weather.`, `emission.`, `cii.`, `seemp.`, `transhipment.`, `anomaly.`, `dark.`, `fishing.`. |
+| `domain` | string | `ais`, `geo`, `safety`, `surveillance`, `emission`, `seemp`, `telemetry`, `notification` or `security` (known values of the contracts vocabulary). The finer topic is the id prefix: `geo.`, `navstatus.`, `data.`, `ews.`, `collision.`, `fuel.`, `telemetry.`, `resistance.`, `weather.`, `emission.`, `cii.`, `seemp.`, `transhipment.`, `anomaly.`, `dark.`, `fishing.`. |
 | `name` | `{ id, en }` | Short name in Bahasa Indonesia and English. |
 | `summary` | `{ id, en }` | What is computed, as implemented (legacy parity). |
 | `formulaLatex` | string \| null | Equation in LaTeX for KaTeX (backslashes are escaped in JSON); `null` for data entries without an equation. |
 | `variables` | array | `{ symbol, name: {id,en}, description: {id,en}, unit, source }`: `symbol` in LaTeX, `unit` or `null` when dimensionless, `source` = where the value comes from (AIS field, fleet column, or another method id). `name` is what the contracts schema requires; `description` and `source` are documentation extensions (ignored by the contracts schema, used by `METHODOLOGY.md`). |
 | `constants` | array | `{ symbol, name: {id,en}, value, unit, referenceIds, needsCitation }`: `value` is a number or a text (tables, vectors, expressions); `referenceIds` are the sources of the value; `needsCitation: true` when the value has no verified external source. |
 | `referenceIds` | string[] | Sources of the method (ids of `references.json`). |
-| `implementedBy` | `{ service, module }` \| null | v2 owner: `contracts` (shared function already in `@darmawanweb/ais-its-contracts` 0.2.0), `ais-pipeline`, `fleet`, `telemetry`, `emission`, `geo`, `safety` or `surveillance`; `module` follows the repository convention (`src/domain/<file>.ts#<function>` for pure functions, `src/detectors/<detector>/…` for detectors, `src/shared/domain/…` in the two-process ais-pipeline, or a seed/table name for data). Paths are planned for services that are not built yet. `null` when the method is not carried into v2. |
+| `implementedBy` | `{ service, module }` \| null | v2 owner: `contracts` (shared function in `@darmawanweb/ais-its-contracts`), `ais-pipeline`, `fleet`, `telemetry`, `emission`, `geo`, `safety`, `surveillance`, `notification` or `auth`; `module` is `<path>[#<symbol>][ (<remark>)]` relative to the owner's root (`src/domain/<file>.ts#<function>` for pure functions, `src/detectors/<detector>/…` for detectors, `src/shared/domain/…` in the two-process ais-pipeline), checked by `references:verify`. `null` when the method is not carried into v2. |
 | `legacy` | string[] | `path:function` in the read-only MVP checkout (`be-legacy/…` = backend `ais-its-mvp-api`, `fe-legacy/…` = MVP web app; data files and Postman collections without a function). Empty for v2-only methods. |
-| `status` | string | `implemented` (code exists in contracts 0.2.0), `planned` (to be implemented by the owner service), `not_implemented` (intentionally not in v2, e.g. the hard-coded CII seed or display-only MVP rules). `not_implemented` is accepted by the contracts open vocabulary and shown by its id until a label is added. |
+| `status` | string | `implemented` (the owner runs it; the module carries the `@method` tag), `not_implemented` (intentionally not in v2, e.g. the hard-coded CII seed or display-only MVP rules; labelled since contracts 0.4.0). `planned` is still accepted but no method uses it since contracts 0.4.0 (all 82 former `planned` methods are implemented). |
 | `needsCitation` | boolean | `true` when the method or any of its values comes from the thesis (or is a v2 design default) without a verified external source. Rendered as "⚠️ Perlu sitasi" in the document and the web page. |
 | `notes` | `{ id, en }` \| null | Legacy deviations, open parity-vs-fix decisions, questions for the thesis author. |
 

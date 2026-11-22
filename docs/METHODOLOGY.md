@@ -77,101 +77,119 @@ Batas riset yang perlu diketahui pembaca:
 
 ### 1.4 Indeks metode
 
-Katalog: **91 metode** dan **140 referensi** (88 terverifikasi, 41 dikoreksi, 11 belum terverifikasi); 67 metode masih bertanda ⚠️ perlu sitasi; status: 4 diimplementasikan, 82 direncanakan, 5 tidak diimplementasikan di v2.
+Katalog: **109 metode** dan **149 referensi** (88 terverifikasi, 41 dikoreksi, 20 belum terverifikasi); 85 metode masih bertanda ⚠️ perlu sitasi; status: 104 diimplementasikan, 5 tidak diimplementasikan di v2.
 
 | § | Id | Nama | Pemilik v2 | Status | Sitasi |
 |---|---|---|---|---|---|
 | 3.1 | [`geo.haversine_distance`](#geo.haversine_distance) | Jarak lingkaran besar antara dua posisi AIS (haversine, R = 3438 nm) | `contracts` | diimplementasikan | ✓ |
-| 3.2 | [`geo.speed_from_positions`](#geo.speed_from_positions) | Kecepatan segmen dari dua posisi AIS (batas 30 kn) | `emission` | direncanakan | ⚠️ |
-| 3.3 | [`geo.rhumb_line_course`](#geo.rhumb_line_course) | Haluan kapal dari dua posisi (bearing loksodrom dengan koreksi kuadran) | `emission` | direncanakan | ✓ |
-| 3.4 | [`geo.coast_distance`](#geo.coast_distance) | Jarak posisi ke "garis pantai" (titik terdekat pada cincin poligon) | `ais-pipeline` | direncanakan | ✓ |
+| 3.2 | [`geo.speed_from_positions`](#geo.speed_from_positions) | Kecepatan segmen dari dua posisi AIS (batas 30 kn) | `emission` | diimplementasikan | ⚠️ |
+| 3.3 | [`geo.rhumb_line_course`](#geo.rhumb_line_course) | Haluan kapal dari dua posisi (bearing loksodrom dengan koreksi kuadran) | `emission` | diimplementasikan | ✓ |
+| 3.4 | [`geo.coast_distance`](#geo.coast_distance) | Jarak posisi ke "garis pantai" (titik terdekat pada cincin poligon) | `ais-pipeline` | diimplementasikan | ✓ |
 | 3.5 | [`geo.fe_marker_clustering`](#geo.fe_marker_clustering) | Clustering penanda dan filter posisi basi di frontend | — | tidak diimplementasikan di v2 | ✓ |
-| 4.1 | [`data.ais_ingest_rules`](#data.ais_ingest_rules) | Normalisasi pesan AIS, filter duplikat dan retensi | `ais-pipeline` | direncanakan | ⚠️ |
+| 4.1 | [`data.ais_ingest_rules`](#data.ais_ingest_rules) | Normalisasi pesan AIS, filter duplikat dan retensi | `ais-pipeline` | diimplementasikan | ⚠️ |
 | 4.2 | [`navstatus.ais_codes`](#navstatus.ais_codes) | Kode status navigasi AIS dan heading "tidak tersedia" | `contracts` | diimplementasikan | ✓ |
-| 4.3 | [`navstatus.prediction`](#navstatus.prediction) | Prediksi status navigasi (berlabuh jangkar vs berlayar) secara heuristik | `ais-pipeline` | direncanakan | ⚠️ |
-| 5.1 | [`ews.pipeline_distance_status`](#ews.pipeline_distance_status) | Status Early Warning System pipa (500 m / 1 750 m, hanya kapal berlabuh jangkar) | `safety` | direncanakan | ⚠️ |
+| 4.3 | [`navstatus.prediction`](#navstatus.prediction) | Prediksi status navigasi (berlabuh jangkar vs berlayar) secara heuristik | `ais-pipeline` | diimplementasikan | ⚠️ |
+| 5.1 | [`ews.pipeline_distance_status`](#ews.pipeline_distance_status) | Status Early Warning System pipa (500 m / 1 750 m, hanya kapal berlabuh jangkar) | `safety` | diimplementasikan | ⚠️ |
 | 5.2 | [`ews.fe_buffer_polygons`](#ews.fe_buffer_polygons) | Gambar buffer pipa 500 m / 1 750 m di frontend | — | tidak diimplementasikan di v2 | ✓ |
-| 6.1 | [`collision.cpa_tcpa`](#collision.cpa_tcpa) | Risiko tubrukan dari CPA/TCPA (gerak relatif dua kapal) | `safety` | direncanakan | ⚠️ |
-| 7.1.1 | [`fuel.method_selection`](#fuel.method_selection) | Prioritas metode estimasi bahan bakar (telemetri > rumus pertama > Holtrop) | `emission` | direncanakan | ⚠️ |
-| 7.1.2 | [`telemetry.fuel_reading_usage`](#telemetry.fuel_reading_usage) | Pemakaian bacaan bahan bakar telemetri pada segmen CII | `emission` | direncanakan | ⚠️ |
-| 7.1.3 | [`fuel.navstatus_multipliers`](#fuel.navstatus_multipliers) | Pengali bahan bakar ME/AE menurut status navigasi AIS | `emission` | direncanakan | ⚠️ |
-| 7.2.1 | [`fuel.first_formula`](#fuel.first_formula) | Rumus bahan bakar pertama (regresi aliran bahan bakar per kapal) | `emission` | direncanakan | ⚠️ |
-| 7.2.2 | [`fuel.me_regression_sample`](#fuel.me_regression_sample) | Contoh regresi bahan bakar mesin induk -0,0382 v^2 + 0,8658 v - 0,0197 | `fleet` | direncanakan | ⚠️ |
-| 7.2.3 | [`fuel.ae_regression`](#fuel.ae_regression) | Regresi bahan bakar mesin bantu 1,5103 exp(-0,064 v) | `emission` | direncanakan | ⚠️ |
-| 7.2.4 | [`fuel.density_conversion`](#fuel.density_conversion) | Konversi volume bahan bakar ke massa | `emission` | direncanakan | ⚠️ |
-| 7.3.1 | [`resistance.hull_volumes_and_lengths`](#resistance.hull_volumes_and_lengths) | Panjang, displasemen dan volume dalam rantai Holtrop/Kwon | `emission` | direncanakan | ⚠️ |
-| 7.3.2 | [`resistance.holtrop.reynolds_froude`](#resistance.holtrop.reynolds_froude) | Bilangan Froude dan Reynolds | `emission` | direncanakan | ⚠️ |
-| 7.3.3 | [`resistance.holtrop.friction_line`](#resistance.holtrop.friction_line) | Garis gesek ITTC-1957 | `emission` | direncanakan | ✓ |
-| 7.3.4 | [`resistance.holtrop.friction`](#resistance.holtrop.friction) | Hambatan gesek R_F (diimplementasikan dengan B/T, bukan luas permukaan basah) | `emission` | direncanakan | ⚠️ |
-| 7.3.5 | [`resistance.holtrop.form_factor`](#resistance.holtrop.form_factor) | Faktor bentuk lambung 1 + k1 | `emission` | direncanakan | ⚠️ |
-| 7.3.6 | [`resistance.holtrop.lcb_length_of_run`](#resistance.holtrop.lcb_length_of_run) | Asumsi LCB dan panjang run L_R | `emission` | direncanakan | ⚠️ |
-| 7.3.7 | [`resistance.holtrop.appendage`](#resistance.holtrop.appendage) | Luas dan hambatan tambahan (appendage) | `emission` | direncanakan | ⚠️ |
-| 7.3.8 | [`resistance.holtrop.wetted_surface`](#resistance.holtrop.wetted_surface) | Luas permukaan basah S (flag bulb dipakai sebagai luas) | `emission` | direncanakan | ✓ |
-| 7.3.9 | [`resistance.holtrop.wave_c1_c7_ie`](#resistance.holtrop.wave_c1_c7_ie) | Koefisien hambatan gelombang c7, iE dan c1 | `emission` | direncanakan | ✓ |
-| 7.3.10 | [`resistance.holtrop.wave_bulb_transom`](#resistance.holtrop.wave_bulb_transom) | Suku bulb dan transom (c2, c3, c5; R_B dan R_TR dihilangkan) | `emission` | direncanakan | ⚠️ |
-| 7.3.11 | [`resistance.holtrop.wave_m1_m2_lambda`](#resistance.holtrop.wave_m1_m2_lambda) | Suku eksponen hambatan gelombang c15, c16, m1, m2, lambda | `emission` | direncanakan | ✓ |
-| 7.3.12 | [`resistance.holtrop.wave`](#resistance.holtrop.wave) | Hambatan pembentukan gelombang R_W | `emission` | direncanakan | ✓ |
-| 7.3.13 | [`resistance.holtrop.correlation_allowance`](#resistance.holtrop.correlation_allowance) | Tunjangan korelasi model-kapal C_A dan R_A | `emission` | direncanakan | ✓ |
-| 7.3.14 | [`resistance.total_and_sea_margin`](#resistance.total_and_sea_margin) | Hambatan total dan sea margin 15 % | `emission` | direncanakan | ⚠️ |
-| 7.3.15 | [`resistance.power.effective_power`](#resistance.power.effective_power) | Daya efektif P_E | `emission` | direncanakan | ✓ |
-| 7.3.16 | [`resistance.power.propulsive_efficiency`](#resistance.power.propulsive_efficiency) | Fraksi arus ikut, deduksi gaya dorong dan efisiensi propulsif | `emission` | direncanakan | ⚠️ |
-| 7.3.17 | [`resistance.power.transmission_mcr`](#resistance.power.transmission_mcr) | Daya poros, daya rem dan MCR (0,98; 0,98; 0,85) | `emission` | direncanakan | ⚠️ |
-| 7.4.1 | [`weather.open_meteo_current`](#weather.open_meteo_current) | Angin terkini dari Open-Meteo pada posisi sebelumnya | `emission` | direncanakan | ✓ |
-| 7.4.2 | [`weather.beaufort_number`](#weather.beaufort_number) | Bilangan Beaufort dari kecepatan angin dalam knot (maksimum 8) | `emission` | direncanakan | ⚠️ |
-| 7.4.3 | [`weather.encounter_angle`](#weather.encounter_angle) | Sudut datang angin relatif terhadap haluan kapal | `emission` | direncanakan | ✓ |
-| 7.4.4 | [`weather.kwon_direction_coefficient`](#weather.kwon_direction_coefficient) | Koefisien reduksi arah cuaca Kwon C_beta | `emission` | direncanakan | ⚠️ |
-| 7.4.5 | [`weather.kwon_speed_coefficient`](#weather.kwon_speed_coefficient) | Koefisien reduksi kecepatan Kwon C_U (pita C_B) | `emission` | direncanakan | ⚠️ |
-| 7.4.6 | [`weather.kwon_form_coefficient`](#weather.kwon_form_coefficient) | Koefisien bentuk kapal Kwon C_Form (varian legacy) | `emission` | direncanakan | ⚠️ |
-| 7.4.7 | [`weather.speed_loss_correction`](#weather.speed_loss_correction) | Koreksi kehilangan kecepatan akibat cuaca ke kecepatan air tenang | `emission` | direncanakan | ⚠️ |
-| 7.5.1 | [`fuel.second_formula_me`](#fuel.second_formula_me) | Bahan bakar mesin induk pada jalur Holtrop (MCR x SFOC x waktu) | `emission` | direncanakan | ⚠️ |
-| 7.5.2 | [`fuel.second_formula_ae`](#fuel.second_formula_ae) | Bahan bakar mesin bantu pada jalur Holtrop (tidak dikali durasi) | `emission` | direncanakan | ⚠️ |
-| 8.1 | [`emission.co2_conversion`](#emission.co2_conversion) | CO2 dari massa bahan bakar (faktor konversi Cf) | `emission` | direncanakan | ✓ |
-| 8.2 | [`cii.attained_accumulation`](#cii.attained_accumulation) | CII attained (legacy: akumulasi berjalan; v2: per tahun kalender) | `emission` | direncanakan | ✓ |
-| 8.3 | [`cii.reference_line`](#cii.reference_line) | Garis referensi CII a x Capacity^-c | `emission` | direncanakan | ✓ |
-| 8.4 | [`cii.reduction_factor_z`](#cii.reduction_factor_z) | Faktor reduksi tahunan Z | `emission` | direncanakan | ✓ |
-| 8.5 | [`cii.required`](#cii.required) | CII yang disyaratkan (required CII) | `emission` | direncanakan | ✓ |
+| 6.1 | [`collision.cpa_tcpa`](#collision.cpa_tcpa) | Risiko tubrukan dari CPA/TCPA (gerak relatif dua kapal) | `safety` | diimplementasikan | ⚠️ |
+| 7.1.1 | [`fuel.method_selection`](#fuel.method_selection) | Prioritas metode estimasi bahan bakar (telemetri > rumus pertama > Holtrop) | `emission` | diimplementasikan | ⚠️ |
+| 7.1.2 | [`telemetry.fuel_reading_usage`](#telemetry.fuel_reading_usage) | Pemakaian bacaan bahan bakar telemetri pada segmen CII | `emission` | diimplementasikan | ⚠️ |
+| 7.1.3 | [`fuel.navstatus_multipliers`](#fuel.navstatus_multipliers) | Pengali bahan bakar ME/AE menurut status navigasi AIS | `emission` | diimplementasikan | ⚠️ |
+| 7.2.1 | [`fuel.first_formula`](#fuel.first_formula) | Rumus bahan bakar pertama (regresi aliran bahan bakar per kapal) | `emission` | diimplementasikan | ⚠️ |
+| 7.2.2 | [`fuel.me_regression_sample`](#fuel.me_regression_sample) | Contoh regresi bahan bakar mesin induk -0,0382 v^2 + 0,8658 v - 0,0197 | `fleet` | diimplementasikan | ⚠️ |
+| 7.2.3 | [`fuel.ae_regression`](#fuel.ae_regression) | Regresi bahan bakar mesin bantu 1,5103 exp(-0,064 v) | `emission` | diimplementasikan | ⚠️ |
+| 7.2.4 | [`fuel.density_conversion`](#fuel.density_conversion) | Konversi volume bahan bakar ke massa | `emission` | diimplementasikan | ⚠️ |
+| 7.3.1 | [`resistance.hull_volumes_and_lengths`](#resistance.hull_volumes_and_lengths) | Panjang, displasemen dan volume dalam rantai Holtrop/Kwon | `emission` | diimplementasikan | ⚠️ |
+| 7.3.2 | [`resistance.holtrop.reynolds_froude`](#resistance.holtrop.reynolds_froude) | Bilangan Froude dan Reynolds | `emission` | diimplementasikan | ⚠️ |
+| 7.3.3 | [`resistance.holtrop.friction_line`](#resistance.holtrop.friction_line) | Garis gesek ITTC-1957 | `emission` | diimplementasikan | ✓ |
+| 7.3.4 | [`resistance.holtrop.friction`](#resistance.holtrop.friction) | Hambatan gesek R_F (diimplementasikan dengan B/T, bukan luas permukaan basah) | `emission` | diimplementasikan | ⚠️ |
+| 7.3.5 | [`resistance.holtrop.form_factor`](#resistance.holtrop.form_factor) | Faktor bentuk lambung 1 + k1 | `emission` | diimplementasikan | ⚠️ |
+| 7.3.6 | [`resistance.holtrop.lcb_length_of_run`](#resistance.holtrop.lcb_length_of_run) | Asumsi LCB dan panjang run L_R | `emission` | diimplementasikan | ⚠️ |
+| 7.3.7 | [`resistance.holtrop.appendage`](#resistance.holtrop.appendage) | Luas dan hambatan tambahan (appendage) | `emission` | diimplementasikan | ⚠️ |
+| 7.3.8 | [`resistance.holtrop.wetted_surface`](#resistance.holtrop.wetted_surface) | Luas permukaan basah S (flag bulb dipakai sebagai luas) | `emission` | diimplementasikan | ✓ |
+| 7.3.9 | [`resistance.holtrop.wave_c1_c7_ie`](#resistance.holtrop.wave_c1_c7_ie) | Koefisien hambatan gelombang c7, iE dan c1 | `emission` | diimplementasikan | ✓ |
+| 7.3.10 | [`resistance.holtrop.wave_bulb_transom`](#resistance.holtrop.wave_bulb_transom) | Suku bulb dan transom (c2, c3, c5; R_B dan R_TR dihilangkan) | `emission` | diimplementasikan | ⚠️ |
+| 7.3.11 | [`resistance.holtrop.wave_m1_m2_lambda`](#resistance.holtrop.wave_m1_m2_lambda) | Suku eksponen hambatan gelombang c15, c16, m1, m2, lambda | `emission` | diimplementasikan | ✓ |
+| 7.3.12 | [`resistance.holtrop.wave`](#resistance.holtrop.wave) | Hambatan pembentukan gelombang R_W | `emission` | diimplementasikan | ✓ |
+| 7.3.13 | [`resistance.holtrop.correlation_allowance`](#resistance.holtrop.correlation_allowance) | Tunjangan korelasi model-kapal C_A dan R_A | `emission` | diimplementasikan | ✓ |
+| 7.3.14 | [`resistance.total_and_sea_margin`](#resistance.total_and_sea_margin) | Hambatan total dan sea margin 15 % | `emission` | diimplementasikan | ⚠️ |
+| 7.3.15 | [`resistance.power.effective_power`](#resistance.power.effective_power) | Daya efektif P_E | `emission` | diimplementasikan | ✓ |
+| 7.3.16 | [`resistance.power.propulsive_efficiency`](#resistance.power.propulsive_efficiency) | Fraksi arus ikut, deduksi gaya dorong dan efisiensi propulsif | `emission` | diimplementasikan | ⚠️ |
+| 7.3.17 | [`resistance.power.transmission_mcr`](#resistance.power.transmission_mcr) | Daya poros, daya rem dan MCR (0,98; 0,98; 0,85) | `emission` | diimplementasikan | ⚠️ |
+| 7.4.1 | [`weather.open_meteo_current`](#weather.open_meteo_current) | Angin terkini dari Open-Meteo pada posisi sebelumnya | `emission` | diimplementasikan | ✓ |
+| 7.4.2 | [`weather.beaufort_number`](#weather.beaufort_number) | Bilangan Beaufort dari kecepatan angin dalam knot (maksimum 8) | `emission` | diimplementasikan | ⚠️ |
+| 7.4.3 | [`weather.encounter_angle`](#weather.encounter_angle) | Sudut datang angin relatif terhadap haluan kapal | `emission` | diimplementasikan | ✓ |
+| 7.4.4 | [`weather.kwon_direction_coefficient`](#weather.kwon_direction_coefficient) | Koefisien reduksi arah cuaca Kwon C_beta | `emission` | diimplementasikan | ⚠️ |
+| 7.4.5 | [`weather.kwon_speed_coefficient`](#weather.kwon_speed_coefficient) | Koefisien reduksi kecepatan Kwon C_U (pita C_B) | `emission` | diimplementasikan | ⚠️ |
+| 7.4.6 | [`weather.kwon_form_coefficient`](#weather.kwon_form_coefficient) | Koefisien bentuk kapal Kwon C_Form (varian legacy) | `emission` | diimplementasikan | ⚠️ |
+| 7.4.7 | [`weather.speed_loss_correction`](#weather.speed_loss_correction) | Koreksi kehilangan kecepatan akibat cuaca ke kecepatan air tenang | `emission` | diimplementasikan | ⚠️ |
+| 7.5.1 | [`fuel.second_formula_me`](#fuel.second_formula_me) | Bahan bakar mesin induk pada jalur Holtrop (MCR x SFOC x waktu) | `emission` | diimplementasikan | ⚠️ |
+| 7.5.2 | [`fuel.second_formula_ae`](#fuel.second_formula_ae) | Bahan bakar mesin bantu pada jalur Holtrop (tidak dikali durasi) | `emission` | diimplementasikan | ⚠️ |
+| 8.1 | [`emission.co2_conversion`](#emission.co2_conversion) | CO2 dari massa bahan bakar (faktor konversi Cf) | `emission` | diimplementasikan | ✓ |
+| 8.2 | [`cii.attained_accumulation`](#cii.attained_accumulation) | CII attained (legacy: akumulasi berjalan; v2: per tahun kalender) | `emission` | diimplementasikan | ✓ |
+| 8.3 | [`cii.reference_line`](#cii.reference_line) | Garis referensi CII a x Capacity^-c | `emission` | diimplementasikan | ✓ |
+| 8.4 | [`cii.reduction_factor_z`](#cii.reduction_factor_z) | Faktor reduksi tahunan Z | `emission` | diimplementasikan | ✓ |
+| 8.5 | [`cii.required`](#cii.required) | CII yang disyaratkan (required CII) | `emission` | diimplementasikan | ✓ |
 | 8.6 | [`cii.rating_grade`](#cii.rating_grade) | Rating CII dan nilai A-E dengan vektor dd | `contracts` | diimplementasikan | ✓ |
 | 8.7 | [`cii.dd_vector_boundaries`](#cii.dd_vector_boundaries) | Batas nilai untuk grafik (d_i x required) | `contracts` | diimplementasikan | ✓ |
-| 8.8 | [`cii.annual_manual`](#cii.annual_manual) | Rekaman CII tahunan yang diisi manual | `emission` | direncanakan | ⚠️ |
+| 8.8 | [`cii.annual_manual`](#cii.annual_manual) | Rekaman CII tahunan yang diisi manual | `emission` | diimplementasikan | ⚠️ |
 | 8.9 | [`cii.default_seed`](#cii.default_seed) | Akumulator CII bawaan yang di-hard-code | — | tidak diimplementasikan di v2 | ✓ |
-| 9.1 | [`seemp.reduction_type1_operational_share`](#seemp.reduction_type1_operational_share) | Reduksi SEEMP tipe 1 (potensi x porsi tahun di laut) | `emission` | direncanakan | ⚠️ |
-| 9.2 | [`seemp.reduction_type2_fuel_switch`](#seemp.reduction_type2_fuel_switch) | Reduksi SEEMP tipe 2 (ganti bahan bakar lewat Cf) | `emission` | direncanakan | ⚠️ |
-| 9.3 | [`seemp.reduction_type3_auxiliary`](#seemp.reduction_type3_auxiliary) | Reduksi SEEMP tipe 3 (substitusi energi bantu) | `emission` | direncanakan | ⚠️ |
-| 9.4 | [`seemp.cost_by_power`](#seemp.cost_by_power) | Biaya investasi SEEMP dari daya terpasang | `emission` | direncanakan | ⚠️ |
-| 9.5 | [`seemp.cost_amortization`](#seemp.cost_amortization) | Biaya SEEMP per tahun (jumlah tahun sampai D/E) | `emission` | direncanakan | ⚠️ |
-| 9.6 | [`seemp.filter_sort_output`](#seemp.filter_sort_output) | Filter, peringkat dan keluaran rekomendasi SEEMP | `emission` | direncanakan | ⚠️ |
-| 9.7 | [`seemp.measure.air_lubrication`](#seemp.measure.air_lubrication) | Langkah 1: pelumasan rongga udara lambung | `emission` | direncanakan | ⚠️ |
-| 9.8 | [`seemp.measure.resistance_reduction_devices`](#seemp.measure.resistance_reduction_devices) | Langkah 2: perangkat pengurang hambatan | `emission` | direncanakan | ⚠️ |
-| 9.9 | [`seemp.measure.hull_coating`](#seemp.measure.hull_coating) | Langkah 3: perawatan pelapisan lambung | `emission` | direncanakan | ⚠️ |
-| 9.10 | [`seemp.measure.power_system_machinery`](#seemp.measure.power_system_machinery) | Langkah 4: pembangkitan listrik kecepatan variabel | `emission` | direncanakan | ⚠️ |
-| 9.11 | [`seemp.measure.propulsion_efficiency_devices`](#seemp.measure.propulsion_efficiency_devices) | Langkah 5: perangkat efisiensi propulsi | `emission` | direncanakan | ⚠️ |
-| 9.12 | [`seemp.measure.waste_heat_recovery`](#seemp.measure.waste_heat_recovery) | Langkah 6: pemanfaatan panas buang | `emission` | direncanakan | ⚠️ |
-| 9.13 | [`seemp.measure.lng`](#seemp.measure.lng) | Langkah 7: LNG untuk ME dan AE | `emission` | direncanakan | ⚠️ |
-| 9.14 | [`seemp.measure.biofuel`](#seemp.measure.biofuel) | Langkah 8: biofuel untuk ME dan AE | `emission` | direncanakan | ⚠️ |
-| 9.15 | [`seemp.measure.solar`](#seemp.measure.solar) | Langkah 9: panel surya untuk kebutuhan listrik | `emission` | direncanakan | ⚠️ |
-| 9.16 | [`seemp.measure.wind`](#seemp.measure.wind) | Langkah 10: tenaga angin untuk kebutuhan listrik | `emission` | direncanakan | ⚠️ |
-| 9.17 | [`seemp.measure.cold_ironing`](#seemp.measure.cold_ironing) | Langkah 11: cold ironing (listrik darat) | `emission` | direncanakan | ⚠️ |
-| 9.18 | [`seemp.measure.fuel_cells`](#seemp.measure.fuel_cells) | Langkah 12: sel bahan bakar untuk kebutuhan listrik | `emission` | direncanakan | ⚠️ |
-| 10.1 | [`transhipment.speed_priority`](#transhipment.speed_priority) | Prioritas selisih kecepatan transhipment | `surveillance` | direncanakan | ⚠️ |
-| 10.2 | [`transhipment.location_priority`](#transhipment.location_priority) | Prioritas kedekatan transhipment | `surveillance` | direncanakan | ⚠️ |
-| 10.3 | [`transhipment.heading_priority`](#transhipment.heading_priority) | Prioritas heading transhipment | `surveillance` | direncanakan | ⚠️ |
-| 10.4 | [`transhipment.candidate_queue`](#transhipment.candidate_queue) | Pemasangan kandidat dan antrean transhipment | `surveillance` | direncanakan | ⚠️ |
-| 10.5 | [`transhipment.route_interpolation`](#transhipment.route_interpolation) | Resampling lintasan dan interpolasi linear | `surveillance` | direncanakan | ⚠️ |
-| 10.6 | [`transhipment.sliding_window`](#transhipment.sliding_window) | Evaluasi jendela geser (jendela 30 menit, langkah 10 menit, cek 5 menit) | `surveillance` | direncanakan | ⚠️ |
-| 10.7 | [`transhipment.weighted_score`](#transhipment.weighted_score) | Pemetaan prioritas ke bobot | `surveillance` | direncanakan | ⚠️ |
-| 10.8 | [`transhipment.accuracy`](#transhipment.accuracy) | Skor "akurasi" transhipment dan ambangnya | `surveillance` | direncanakan | ⚠️ |
-| 10.9 | [`transhipment.priority_distribution`](#transhipment.priority_distribution) | Prioritas rata-rata dan distribusi rendah/sedang/tinggi | `surveillance` | direncanakan | ⚠️ |
+| 9.1 | [`seemp.reduction_type1_operational_share`](#seemp.reduction_type1_operational_share) | Reduksi SEEMP tipe 1 (potensi x porsi tahun di laut) | `emission` | diimplementasikan | ⚠️ |
+| 9.2 | [`seemp.reduction_type2_fuel_switch`](#seemp.reduction_type2_fuel_switch) | Reduksi SEEMP tipe 2 (ganti bahan bakar lewat Cf) | `emission` | diimplementasikan | ⚠️ |
+| 9.3 | [`seemp.reduction_type3_auxiliary`](#seemp.reduction_type3_auxiliary) | Reduksi SEEMP tipe 3 (substitusi energi bantu) | `emission` | diimplementasikan | ⚠️ |
+| 9.4 | [`seemp.cost_by_power`](#seemp.cost_by_power) | Biaya investasi SEEMP dari daya terpasang | `emission` | diimplementasikan | ⚠️ |
+| 9.5 | [`seemp.cost_amortization`](#seemp.cost_amortization) | Biaya SEEMP per tahun (jumlah tahun sampai D/E) | `emission` | diimplementasikan | ⚠️ |
+| 9.6 | [`seemp.filter_sort_output`](#seemp.filter_sort_output) | Filter, peringkat dan keluaran rekomendasi SEEMP | `emission` | diimplementasikan | ⚠️ |
+| 9.7 | [`seemp.measure.air_lubrication`](#seemp.measure.air_lubrication) | Langkah 1: pelumasan rongga udara lambung | `emission` | diimplementasikan | ⚠️ |
+| 9.8 | [`seemp.measure.resistance_reduction_devices`](#seemp.measure.resistance_reduction_devices) | Langkah 2: perangkat pengurang hambatan | `emission` | diimplementasikan | ⚠️ |
+| 9.9 | [`seemp.measure.hull_coating`](#seemp.measure.hull_coating) | Langkah 3: perawatan pelapisan lambung | `emission` | diimplementasikan | ⚠️ |
+| 9.10 | [`seemp.measure.power_system_machinery`](#seemp.measure.power_system_machinery) | Langkah 4: pembangkitan listrik kecepatan variabel | `emission` | diimplementasikan | ⚠️ |
+| 9.11 | [`seemp.measure.propulsion_efficiency_devices`](#seemp.measure.propulsion_efficiency_devices) | Langkah 5: perangkat efisiensi propulsi | `emission` | diimplementasikan | ⚠️ |
+| 9.12 | [`seemp.measure.waste_heat_recovery`](#seemp.measure.waste_heat_recovery) | Langkah 6: pemanfaatan panas buang | `emission` | diimplementasikan | ⚠️ |
+| 9.13 | [`seemp.measure.lng`](#seemp.measure.lng) | Langkah 7: LNG untuk ME dan AE | `emission` | diimplementasikan | ⚠️ |
+| 9.14 | [`seemp.measure.biofuel`](#seemp.measure.biofuel) | Langkah 8: biofuel untuk ME dan AE | `emission` | diimplementasikan | ⚠️ |
+| 9.15 | [`seemp.measure.solar`](#seemp.measure.solar) | Langkah 9: panel surya untuk kebutuhan listrik | `emission` | diimplementasikan | ⚠️ |
+| 9.16 | [`seemp.measure.wind`](#seemp.measure.wind) | Langkah 10: tenaga angin untuk kebutuhan listrik | `emission` | diimplementasikan | ⚠️ |
+| 9.17 | [`seemp.measure.cold_ironing`](#seemp.measure.cold_ironing) | Langkah 11: cold ironing (listrik darat) | `emission` | diimplementasikan | ⚠️ |
+| 9.18 | [`seemp.measure.fuel_cells`](#seemp.measure.fuel_cells) | Langkah 12: sel bahan bakar untuk kebutuhan listrik | `emission` | diimplementasikan | ⚠️ |
+| 10.1 | [`transhipment.speed_priority`](#transhipment.speed_priority) | Prioritas selisih kecepatan transhipment | `surveillance` | diimplementasikan | ⚠️ |
+| 10.2 | [`transhipment.location_priority`](#transhipment.location_priority) | Prioritas kedekatan transhipment | `surveillance` | diimplementasikan | ⚠️ |
+| 10.3 | [`transhipment.heading_priority`](#transhipment.heading_priority) | Prioritas heading transhipment | `surveillance` | diimplementasikan | ⚠️ |
+| 10.4 | [`transhipment.candidate_queue`](#transhipment.candidate_queue) | Pemasangan kandidat dan antrean transhipment | `surveillance` | diimplementasikan | ⚠️ |
+| 10.5 | [`transhipment.route_interpolation`](#transhipment.route_interpolation) | Resampling lintasan dan interpolasi linear | `surveillance` | diimplementasikan | ⚠️ |
+| 10.6 | [`transhipment.sliding_window`](#transhipment.sliding_window) | Evaluasi jendela geser (jendela 30 menit, langkah 10 menit, cek 5 menit) | `surveillance` | diimplementasikan | ⚠️ |
+| 10.7 | [`transhipment.weighted_score`](#transhipment.weighted_score) | Pemetaan prioritas ke bobot | `surveillance` | diimplementasikan | ⚠️ |
+| 10.8 | [`transhipment.accuracy`](#transhipment.accuracy) | Skor "akurasi" transhipment dan ambangnya | `surveillance` | diimplementasikan | ⚠️ |
+| 10.9 | [`transhipment.priority_distribution`](#transhipment.priority_distribution) | Prioritas rata-rata dan distribusi rendah/sedang/tinggi | `surveillance` | diimplementasikan | ⚠️ |
 | 10.10 | [`transhipment.fe_accuracy_display`](#transhipment.fe_accuracy_display) | Akurasi deteksi yang ditampilkan frontend (x 0,95) | — | tidak diimplementasikan di v2 | ⚠️ |
-| 11.1 | [`anomaly.navstatus_mismatch`](#anomaly.navstatus_mismatch) | Anomali status navigasi (dilaporkan vs prediksi) | `surveillance` | direncanakan | ⚠️ |
-| 12.1 | [`dark.ais_gap`](#dark.ais_gap) | Kapal gelap / celah AIS (khusus v2) | `surveillance` | direncanakan | ⚠️ |
-| 13.1 | [`geo.geofence_enter`](#geo.geofence_enter) | Deteksi masuk zona (geofence), khusus v2 | `surveillance` | direncanakan | ✓ |
-| 14.1 | [`fishing.loitering`](#fishing.loitering) | Pola loitering penangkapan ikan, khusus v2 | `surveillance` | direncanakan | ⚠️ |
-| 14.2 | [`fishing.apprehensions_2015_2017`](#fishing.apprehensions_2015_2017) | Dataset historis penangkapan kapal illegal fishing 2015-2017 (ilegal.json) | `surveillance` | direncanakan | ⚠️ |
+| 11.1 | [`anomaly.navstatus_mismatch`](#anomaly.navstatus_mismatch) | Anomali status navigasi (dilaporkan vs prediksi) | `surveillance` | diimplementasikan | ⚠️ |
+| 12.1 | [`dark.ais_gap`](#dark.ais_gap) | Kapal gelap / celah AIS (khusus v2) | `surveillance` | diimplementasikan | ⚠️ |
+| 13.1 | [`geo.geofence_enter`](#geo.geofence_enter) | Deteksi masuk zona (geofence), khusus v2 | `surveillance` | diimplementasikan | ✓ |
+| 14.1 | [`fishing.loitering`](#fishing.loitering) | Pola loitering penangkapan ikan, khusus v2 | `surveillance` | diimplementasikan | ⚠️ |
+| 14.2 | [`fishing.apprehensions_2015_2017`](#fishing.apprehensions_2015_2017) | Dataset historis penangkapan kapal illegal fishing 2015-2017 (ilegal.json) | `surveillance` | diimplementasikan | ⚠️ |
 | 14.3 | [`fishing.violation_log_2024`](#fishing.violation_log_2024) | Log inspeksi illegal fishing 2024, heatmap dan pencarian radius | — | tidak diimplementasikan di v2 | ⚠️ |
-| 15.1 | [`data.indonesia_coastline`](#data.indonesia_coastline) | indonesia.json ("garis pantai" = poligon Provinsi Jawa Timur) | `ais-pipeline` | direncanakan | ⚠️ |
-| 15.2 | [`data.pipeline_route`](#data.pipeline_route) | pipeline.json / pipe.json (titik KP pipa bawah laut) | `geo` | direncanakan | ⚠️ |
-| 15.3 | [`data.batam_area`](#data.batam_area) | batam.json (poligon Provinsi Kepulauan Riau, tidak dipakai) | `geo` | direncanakan | ⚠️ |
-| 15.4 | [`data.sample_vessel_reference`](#data.sample_vessel_reference) | Kapal contoh Postman dan data referensinya (vektor golden) | `fleet` | direncanakan | ⚠️ |
+| 15.1 | [`data.indonesia_coastline`](#data.indonesia_coastline) | indonesia.json ("garis pantai" = poligon Provinsi Jawa Timur) | `ais-pipeline` | diimplementasikan | ⚠️ |
+| 15.2 | [`data.pipeline_route`](#data.pipeline_route) | pipeline.json / pipe.json (titik KP pipa bawah laut) | `geo` | diimplementasikan | ⚠️ |
+| 15.3 | [`data.batam_area`](#data.batam_area) | batam.json (poligon Provinsi Kepulauan Riau, tidak dipakai) | `geo` | diimplementasikan | ⚠️ |
+| 15.4 | [`data.sample_vessel_reference`](#data.sample_vessel_reference) | Kapal contoh Postman dan data referensinya (vektor golden) | `fleet` | diimplementasikan | ⚠️ |
+| 20.1 | [`data.ais_position_time`](#data.ais_position_time) | Waktu posisi AIS (pembacaan time stamp ITU) dan jendela plausibilitas | `ais-pipeline` | diimplementasikan | ⚠️ |
+| 20.2 | [`telemetry.reading_validation`](#telemetry.reading_validation) | Aturan plausibilitas bacaan bahan bakar | `telemetry` | diimplementasikan | ⚠️ |
+| 20.3 | [`geo.map_simplification`](#geo.map_simplification) | Penyederhanaan geometri lapisan peta zona | `geo` | diimplementasikan | ⚠️ |
+| 20.4 | [`geo.track_simplification`](#geo.track_simplification) | Penyederhanaan lintasan untuk tampilan (Ramer-Douglas-Peucker) | `ais-pipeline` | diimplementasikan | ⚠️ |
+| 20.5 | [`geo.zone_buffer_extent`](#geo.zone_buffer_extent) | Jari-jari buffer konservatif dalam derajat | `geo` | diimplementasikan | ⚠️ |
+| 20.6 | [`geo.zone_geometry_rules`](#geo.zone_geometry_rules) | Aturan input geometri zona | `geo` | diimplementasikan | ⚠️ |
+| 20.7 | [`cii.year_end_projection`](#cii.year_end_projection) | Proyeksi CII akhir tahun (linear) | `emission` | diimplementasikan | ⚠️ |
+| 20.8 | [`emission.dcs_summary`](#emission.dcs_summary) | Ringkasan tahunan gaya IMO DCS | `emission` | diimplementasikan | ⚠️ |
+| 20.9 | [`emission.segment_window`](#emission.segment_window) | Jendela segmen dan penanda celah | `emission` | diimplementasikan | ⚠️ |
+| 20.10 | [`seemp.simulation_combination`](#seemp.simulation_combination) | Kombinasi langkah SEEMP (simulasi bagaimana-jika) | `emission` | diimplementasikan | ⚠️ |
+| 20.11 | [`notify.alert_dedup_merge`](#notify.alert_dedup_merge) | Penggabungan kejadian alert per kunci dedup | `notification` | diimplementasikan | ⚠️ |
+| 20.12 | [`notify.alert_lifecycle`](#notify.alert_lifecycle) | Siklus hidup alert inbox | `notification` | diimplementasikan | ⚠️ |
+| 20.13 | [`notify.alert_rule_matching`](#notify.alert_rule_matching) | Pencocokan aturan alert | `notification` | diimplementasikan | ⚠️ |
+| 20.14 | [`notify.delivery_retry_backoff`](#notify.delivery_retry_backoff) | Backoff eksponensial pengiriman notifikasi | `notification` | diimplementasikan | ⚠️ |
+| 20.15 | [`notify.realtime_batching`](#notify.realtime_batching) | Batching realtime (item terbaru per kapal) | `notification` | diimplementasikan | ⚠️ |
+| 20.16 | [`notify.realtime_viewport_rooms`](#notify.realtime_viewport_rooms) | Room viewport realtime (tile zoom 6) | `notification` | diimplementasikan | ⚠️ |
+| 20.17 | [`notify.rule_quiet_period`](#notify.rule_quiet_period) | Periode tenang per aturan | `notification` | diimplementasikan | ⚠️ |
+| 20.18 | [`notify.webhook_signature`](#notify.webhook_signature) | Tanda tangan webhook (HMAC-SHA256) | `notification` | diimplementasikan | ⚠️ |
 
 ## 2. Dasar hukum dan regulasi (ringkasan)
 
@@ -304,7 +322,7 @@ $$
 | $V_{max}$ | Batas kecepatan masuk akal | 30 | kn | ⚠️ perlu sitasi |
 | $k_{kn}$ | Faktor knot ke m/s (pembulatan legacy) | 0.5144 | (m/s)/kn | [[1]](#ref-nist-sp811-nautical-mile) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/segment.ts#calculateSpeed`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/segment.ts#calculateSpeed`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/speed-calculation.ts:calculateSpeed`
 - **Referensi:** [[1]](#ref-nist-sp811-nautical-mile), [[41]](#ref-legacy-mvp-backend)
 
@@ -329,7 +347,7 @@ $$
 | $\varphi_2,\ \lambda_2$ | positions[1] | rad | AIS lat/lon |
 | $C$ | Haluan untuk perhitungan cuaca | deg | dihitung |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/course.ts#calculateShipCourse`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/course.ts#calculateShipCourse`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/course-calculation.ts:calculateShipCourse`; `be-legacy/src/utils/cii/second-formula/index.ts:perCalculateSecondFormulaFuel`
 - **Referensi:** [[37]](#ref-veness-movable-type-latlong), [[38]](#ref-williams-aviation-formulary)
 
@@ -358,7 +376,7 @@ $$
 |---|---|---|---|---|
 | $R_{turf}$ | Jari-jari bumi turf | 6371008.8 | m | [[40]](#ref-turf-helpers-earthradius), [[39]](#ref-moritz-2000-grs80) |
 
-- **Pemilik v2:** layanan `ais-pipeline` (ais-its-pipeline) — `src/shared/domain/coastline.ts#coastDistanceM`; status: *direncanakan*.
+- **Pemilik v2:** layanan `ais-pipeline` (ais-its-pipeline) — `src/shared/domain/coastline.ts#CoastlineGeometry.distanceM`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/calculate-ews.ts:findNearestCoastDistance`; `be-legacy/src/services/ais.service.ts:createOrUpdateAis`
 - **Referensi:** [[42]](#ref-turfjs-7-2), [[40]](#ref-turf-helpers-earthradius), [[39]](#ref-moritz-2000-grs80), [[43]](#ref-flatbush)
 
@@ -427,7 +445,7 @@ $$
 | $d_{dup}$ | Ambang duplikat | 0.1 | m | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $T_{ret}$ | Retensi posisi di dokumen kapal | 24 | h | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `ais-pipeline` (ais-its-pipeline) — `src/shared/domain/normalize.ts#normalizeAisMessage`; status: *direncanakan*.
+- **Pemilik v2:** layanan `ais-pipeline` (ais-its-pipeline) — `src/shared/domain/normalize.ts#normalizeAisMessage`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/services/ais.service.ts:createOrUpdateAis`; `be-legacy/src/services/ais.service.ts:filterPositionsWithinOneDay`; `be-legacy/src/repositories/ais.repository.ts:getLastByMmsi`; `be-legacy/src/repositories/ais.repository.ts:streamRecent`; `be-legacy/src/config/ws.ts`; `be-legacy/src/config/ws-batam.ts`
 - **Referensi:** [[45]](#ref-itu-r-m1371-5), [[47]](#ref-gpsd-aivdm-protocol), [[49]](#ref-platform-spec-v1-1), [[41]](#ref-legacy-mvp-backend)
 
@@ -495,7 +513,7 @@ $$
 | $d_{min}$ | Ambang jarak dari pantai | 210 | m | ⚠️ perlu sitasi |
 | $HDG_{na}$ | Heading tidak tersedia | 511 | deg | [[45]](#ref-itu-r-m1371-5) |
 
-- **Pemilik v2:** layanan `ais-pipeline` (ais-its-pipeline) — `src/shared/domain/navstatus.ts#calculatePredictedNavStatus`; status: *direncanakan*.
+- **Pemilik v2:** layanan `ais-pipeline` (ais-its-pipeline) — `src/shared/domain/navstatus.ts#calculatePredictedNavStatus`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/services/predict-navstatus.service.ts:calculatePredictedNavStatus`; `be-legacy/src/services/ais.service.ts:createOrUpdateAis`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend), [[48]](#ref-harati-mokhtari-2007-ais-reliability), [[50]](#ref-pallotta-2013-tread)
 
@@ -542,7 +560,7 @@ $$
 | $d_{danger}$ | Jarak bahaya (zona terlarang) | 500 | m | [[31]](#ref-pp-27-2021-kelautan-perikanan), [[32]](#ref-permen-esdm-32-2021), [[53]](#ref-uu-1-1973-landas-kontinen), [[55]](#ref-ditjen-migas-pipeline-anchoring-1750m) |
 | $d_{warning}$ | Jarak peringatan (500 + 1 250 m zona terbatas) | 1750 | m | [[31]](#ref-pp-27-2021-kelautan-perikanan), [[32]](#ref-permen-esdm-32-2021), [[55]](#ref-ditjen-migas-pipeline-anchoring-1750m) |
 
-- **Pemilik v2:** layanan `safety` (ais-its-safety-service) — `src/detectors/ews/ews.detector.ts`; status: *direncanakan*.
+- **Pemilik v2:** layanan `safety` (ais-its-safety-service) — `src/detectors/ews/ews.detector.ts#EwsDetector`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/calculate-ews.ts:checkShipStatus`; `be-legacy/src/services/ais.service.ts:createOrUpdateAis`; `be-legacy/src/models/Ais.ts`; `fe-legacy/src/pages/ews/components/ews-card.tsx:allAlerts`; `fe-legacy/src/pages/anomaly/components/navstatus-anomaly-card.tsx:getEwsStatusInfo`
 - **Referensi:** [[31]](#ref-pp-27-2021-kelautan-perikanan), [[32]](#ref-permen-esdm-32-2021), [[55]](#ref-ditjen-migas-pipeline-anchoring-1750m), [[53]](#ref-uu-1-1973-landas-kontinen), [[51]](#ref-pp-17-1974-migas-lepas-pantai), [[54]](#ref-pp-5-2010-kenavigasian), [[30]](#ref-unclos-1982), [[42]](#ref-turfjs-7-2), [[58]](#ref-dnv-rp-f107), [[41]](#ref-legacy-mvp-backend)
 
@@ -621,7 +639,7 @@ $$
 | $CPA_{low},\ TCPA_{low}$ | Pita low (tanpa alert) | CPA < 1 nm and TCPA < 20 min | — | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
 | $k_{arcmin}$ | Mil laut per derajat (1 nm = 1 menit busur) | 60 | nm/deg | [[38]](#ref-williams-aviation-formulary) |
 
-- **Pemilik v2:** layanan `safety` (ais-its-safety-service) — `src/domain/cpa.ts#computeCpaTcpa`; status: *direncanakan*.
+- **Pemilik v2:** layanan `safety` (ais-its-safety-service) — `src/domain/cpa.ts#computeCpaTcpa`; status: *diimplementasikan*.
 - **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
 - **Referensi:** [[62]](#ref-lenart-2015-collision-threat), [[25]](#ref-imo-colreg-1972), [[63]](#ref-imo-msc-192-79), [[64]](#ref-imo-a823-19), [[61]](#ref-bole-wall-norris-2014-radar-arpa), [[66]](#ref-wawruch-2018-ais-arpa-cpa), [[65]](#ref-zhang-2015-near-miss-ais), [[49]](#ref-platform-spec-v1-1)
 
@@ -665,7 +683,7 @@ $$
 | $W_{v2}$ | Jendela aktif v2 (bawaan) | 10 | min | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
 | `validMMSIs` | Daftar MMSI yang dihitung saat ingest (legacy) | [''] | — | [[41]](#ref-legacy-mvp-backend) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/method.ts#selectFuelMethod`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/method.ts#selectFuelMethod`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/services/cii/cii.service.ts:calculateCII`; `be-legacy/src/services/cii/cii.service.ts:getCIIByMMSI`; `be-legacy/src/repositories/ships/fuel-data.repository.ts:isActive`; `be-legacy/src/services/ais.service.ts:createOrUpdateAis`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend), [[49]](#ref-platform-spec-v1-1)
 
@@ -688,7 +706,7 @@ $$
 |---|---|---|---|
 | $\mathit{fuelME},\ \mathit{fuelAE}$ | Nilai Decimal128 dari POST /ships/fuel-data (legacy) atau fuel_readings (v2) | t (assumed) | telemetry |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/telemetry.ts#segmentFuelFromReadings`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/telemetry.ts#segmentFuelFromReadings`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/services/cii/cii.service.ts:calculateCII`; `be-legacy/src/repositories/ships/fuel-data.repository.ts:getLatestByMMSI`; `be-legacy/src/models/ships/Telemetry.ts`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend), [[49]](#ref-platform-spec-v1-1)
 
@@ -722,7 +740,7 @@ $$
 | `k(14)` | AIS-SART (14) atau kode tidak dikenal: ME, AE | 0, 0 | — | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $k(\text{other})$ | Kode 0-15 lainnya: ME, AE | 1, 1 | — | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/navstatus-multipliers.ts#getFuelByNavStatus`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/navstatus-multipliers.ts#getFuelByNavStatus`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/fuel-calculation.ts:fuelMultipliers`; `be-legacy/src/utils/cii/fuel-calculation.ts:getFuelByNavStatus`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend), [[67]](#ref-imo-fourth-ghg-study-2020), [[68]](#ref-imo-glomeep-port-emissions-toolkit-2018), [[27]](#ref-imo-a1106-29)
 
@@ -761,7 +779,7 @@ $$
 | $q_{min}$ | Aliran minimum | 0.5 | L/min (implied) | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $10^{3}$ | Kilogram per ton | 1000 | kg/t | definisi / konversi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/first-formula.ts#calculateFirstFormulaFuel`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/first-formula.ts#calculateFirstFormulaFuel`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/fuel-calculation.ts:evaluateFormula`; `be-legacy/src/utils/cii/fuel-calculation.ts:calculateFirstFormulaFuel`; `be-legacy/src/utils/cii/fuel-calculation.ts:calculateTotalFuelTon`; `be-legacy/docs/postman/3.7 Ships - First Fuel Formula.postman_collection.json`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend), [[49]](#ref-platform-spec-v1-1)
 
@@ -792,7 +810,7 @@ $$
 | $a_1$ | Koefisien linear | 0.8658 | (L/min)/kn | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $a_0$ | Konstanta | -0.0197 | L/min | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `fleet` (ais-its-fleet-service) — `seeds/demo.ts (fuel_formulas row of the demo vessel)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `fleet` (ais-its-fleet-service) — `src/seeds/samples.seed.ts#FUEL_FORMULA_SEEDS (fuel_formulas seed of the case-study vessel)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/docs/postman/3.7 Ships - First Fuel Formula.postman_collection.json`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend)
 
@@ -822,7 +840,7 @@ $$
 | $a$ | Koefisien | 1.5103 | L/min | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $b$ | Eksponen | -0.064 | 1/kn | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/second-formula.ts#auxiliaryFlowLMin`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/second-formula.ts#auxiliaryFlowLMin`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/fuel-calculation.ts:calculateSecondFormulaFuel`; `be-legacy/docs/postman/3.7 Ships - First Fuel Formula.postman_collection.json`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend), [[67]](#ref-imo-fourth-ghg-study-2020)
 
@@ -853,7 +871,7 @@ $$
 | $10^{3}$ | Kilogram per ton | 1000 | kg/t | definisi / konversi |
 | $\rho_{sample}$ | Densitas sampel Diesel/Gas Oil | 0.86 | kg/L | [[69]](#ref-iso-8217-2024) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/units.ts#litresToTonnes`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/units.ts#litresToTonnes`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/fuel-calculation.ts:calculateTotalFuelTon`; `be-legacy/src/utils/cii/fuel-calculation.ts:calculateSecondFormulaFuel`; `be-legacy/src/models/ships/Fuel.ts`
 - **Referensi:** [[69]](#ref-iso-8217-2024), [[41]](#ref-legacy-mvp-backend)
 
@@ -894,7 +912,7 @@ $$
 |---|---|---|---|---|
 | $\rho_{sw}$ | Densitas air laut | 1.025 | t/m3 | [[76]](#ref-solas-ii-1-reg-2-20-deadweight) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/hull.ts#hullParticulars`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/hull.ts#displacementVolume (with lengthDisplacement and displacementTonnes)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/size-calculation.ts`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateOnePlusK1`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateRw`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateM1`
 - **Referensi:** [[76]](#ref-solas-ii-1-reg-2-20-deadweight), [[70]](#ref-holtrop-mennen-1982), [[41]](#ref-legacy-mvp-backend)
 
@@ -925,7 +943,7 @@ $$
 | $g$ | Percepatan gravitasi (dibulatkan) | 9.81 | m/s2 | definisi / konversi |
 | $\nu$ | Viskositas kinematik air laut (sekitar 15 derajat C) | 1.188e-6 | m2/s | [[75]](#ref-ittc-7-5-02-01-03-water-properties) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/numbers.ts#froudeNumber`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/numbers.ts#froudeNumber`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/coefisien-reduction-calculation.ts:calculateFN`; `be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateNewFn`; `be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateRenouldNumber`
 - **Referensi:** [[75]](#ref-ittc-7-5-02-01-03-water-properties), [[70]](#ref-holtrop-mennen-1982)
 
@@ -954,7 +972,7 @@ $$
 |---|---|---|---|---|
 | `0.075, 2` | Konstanta garis korelasi | 0.075, 2 | — | [[73]](#ref-ittc-7-5-02-02-01-resistance-tests) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/friction.ts#frictionCoefficient`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/friction.ts#frictionCoefficient`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateFrictionResistance`
 - **Referensi:** [[73]](#ref-ittc-7-5-02-02-01-resistance-tests), [[74]](#ref-hadler-1958-ittc57), [[70]](#ref-holtrop-mennen-1982)
 
@@ -983,7 +1001,7 @@ $$
 |---|---|---|---|---|
 | $\rho$ | Densitas air laut pada R_F (legacy) | 1024 | kg/m3 | [[76]](#ref-solas-ii-1-reg-2-20-deadweight) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/friction.ts#frictionResistance`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/friction.ts#frictionResistance`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateFrictionResistance`
 - **Referensi:** [[70]](#ref-holtrop-mennen-1982), [[76]](#ref-solas-ii-1-reg-2-20-deadweight), [[41]](#ref-legacy-mvp-backend)
 
@@ -1016,7 +1034,7 @@ $$
 | `0.93, 0.487118, 0.011` | Konstanta regresi | 0.93, 0.487118, 0.011 | — | [[71]](#ref-holtrop-1984) |
 | `exponents` | Eksponen | 1.06806, 0.46106, 0.121563, 0.36486, -0.604247 | — | [[71]](#ref-holtrop-1984) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/form-factor.ts#onePlusK1`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/form-factor.ts#onePlusK1`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateOnePlusK1`
 - **Referensi:** [[71]](#ref-holtrop-1984), [[70]](#ref-holtrop-mennen-1982), [[80]](#ref-aveva-holtrop-documentation)
 
@@ -1047,7 +1065,7 @@ $$
 | $f_{lcb}$ | Fraksi lcb (persen dari L_m) | 0.25 | % of L_m | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | `0.06, 4` | Konstanta Holtrop | 0.06, 4 | — | [[70]](#ref-holtrop-mennen-1982) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/form-factor.ts#lengthOfRun`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/form-factor.ts#lengthOfRun`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateLCB`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateLr`
 - **Referensi:** [[70]](#ref-holtrop-mennen-1982)
 
@@ -1078,7 +1096,7 @@ $$
 | $1+k_2$ | Faktor bentuk appendage | 4.3 | — | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $\rho$ | Densitas air laut (legacy) | 1024 | kg/m3 | [[76]](#ref-solas-ii-1-reg-2-20-deadweight) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/appendage.ts#appendageResistance`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/appendage.ts#appendageResistance`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateSaap`; `be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateFrictionResistance`
 - **Referensi:** [[70]](#ref-holtrop-mennen-1982), [[81]](#ref-gl-rules-hull-sec14-rudder-area), [[82]](#ref-iacs-csr-bc-ch10-rudder), [[83]](#ref-bki-rules-hull-vol2-sec14), [[80]](#ref-aveva-holtrop-documentation)
 
@@ -1108,7 +1126,7 @@ $$
 |---|---|---|---|---|
 | `regression` | Konstanta regresi | 0.453, 0.4425, 0.2862, 0.003467, 0.3696, 2.38 | — | [[70]](#ref-holtrop-mennen-1982) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/wetted-surface.ts#wettedSurface`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/wetted-surface.ts#wettedSurface`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateS`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateRa`; `be-legacy/src/utils/seemp/first-formula.ts:calculateHullCoating`
 - **Referensi:** [[70]](#ref-holtrop-mennen-1982)
 
@@ -1137,7 +1155,7 @@ $$
 | $c_1$ | Konstanta c1 | 2223105, 3.78613, 1.07961, -1.37565 | — | [[70]](#ref-holtrop-mennen-1982) |
 | $i_E$ | Konstanta iE | 89, 0.80856, 0.30484, 0.0225, 0.6367, 0.34574, 0.16302 | — | [[70]](#ref-holtrop-mennen-1982) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/wave.ts#c1`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/wave.ts#c1`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateIE`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateC1`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateC7`
 - **Referensi:** [[70]](#ref-holtrop-mennen-1982)
 
@@ -1166,7 +1184,7 @@ $$
 | `-1.89` | Eksponen c2 | -1.89 | — | [[70]](#ref-holtrop-mennen-1982) |
 | $A_T$ | Luas transom (asumsi) | 0 | m2 | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/wave.ts#bulbTransomTerms`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/wave.ts#bulbTransomTerms`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateC2`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateC5`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateTotalResistance`
 - **Referensi:** [[70]](#ref-holtrop-mennen-1982)
 
@@ -1196,7 +1214,7 @@ $$
 |---|---|---|---|---|
 | `c15, c16, m1, lambda` | Konstanta regresi | -1.69385, 2.36, 512, 1727, 8.07981, 13.8673, 6.984388, 1.73014, 0.7067, 0.0140407, 1.75254, 4.79323, 1.446, 0.03, 0.36, -0.1 | — | [[70]](#ref-holtrop-mennen-1982) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/wave.ts#exponentTerms`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/wave.ts#exponentTerms`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateC15`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateC16`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateM1`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateM2`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateLamda`
 - **Referensi:** [[70]](#ref-holtrop-mennen-1982), [[71]](#ref-holtrop-1984)
 
@@ -1226,7 +1244,7 @@ $$
 | $g$ | Percepatan gravitasi | 9.81 | m/s2 | definisi / konversi |
 | $d$ | Eksponen Froude | -0.9 | — | [[70]](#ref-holtrop-mennen-1982) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/wave.ts#waveResistance`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/wave.ts#waveResistance`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateRw`
 - **Referensi:** [[70]](#ref-holtrop-mennen-1982), [[71]](#ref-holtrop-1984), [[76]](#ref-solas-ii-1-reg-2-20-deadweight)
 
@@ -1254,7 +1272,7 @@ $$
 | $C_A$ | Konstanta C_A | 0.006, 100, -0.16, 0.00205, 0.003, 7.5, 0.04 | — | [[70]](#ref-holtrop-mennen-1982) |
 | $\rho$ | Densitas air laut | 1025 | kg/m3 | [[76]](#ref-solas-ii-1-reg-2-20-deadweight) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/correlation.ts#correlationAllowance`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/correlation.ts#correlationAllowance`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateC4`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateCa`; `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateRa`
 - **Referensi:** [[70]](#ref-holtrop-mennen-1982), [[76]](#ref-solas-ii-1-reg-2-20-deadweight)
 
@@ -1281,7 +1299,7 @@ $$
 |---|---|---|---|---|
 | $k_{SM}$ | Sea margin | 1.15 | — | [[79]](#ref-man-es-propulsion-margins) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/total.ts#totalResistance`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/total.ts#totalResistance`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateTotalResistance`
 - **Referensi:** [[70]](#ref-holtrop-mennen-1982), [[79]](#ref-man-es-propulsion-margins), [[77]](#ref-man-es-basic-principles-ship-propulsion)
 
@@ -1304,7 +1322,7 @@ $$
 |---|---|---|---|
 | $V_{new}$ | Kecepatan terkoreksi cuaca | m/s | [`weather.speed_loss_correction`](#weather.speed_loss_correction) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/power.ts#effectivePower`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/power.ts#effectivePower`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/power-calculation.ts:calculateEHP`
 - **Referensi:** [[77]](#ref-man-es-basic-principles-ship-propulsion), [[78]](#ref-ittc-7-5-02-03-01-4-ppm-1978)
 
@@ -1334,7 +1352,7 @@ $$
 | $\eta_R$ | Efisiensi rotatif relatif (dugaan) | 0.96 | — | ⚠️ perlu sitasi |
 | $\eta_O$ | Efisiensi baling-baling air terbuka (dugaan) | 0.42 | — | ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/power.ts#deliveredPower`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/power.ts#deliveredPower`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/power-calculation.ts:calculateW`; `be-legacy/src/utils/cii/second-formula/power-calculation.ts:calculateDHP`
 - **Referensi:** [[84]](#ref-taylor-wake-thrust-formulas), [[85]](#ref-harvald-1983), [[77]](#ref-man-es-basic-principles-ship-propulsion), [[78]](#ref-ittc-7-5-02-03-01-4-ppm-1978)
 
@@ -1365,7 +1383,7 @@ $$
 | $\eta_G$ | Efisiensi gearbox/transmisi | 0.98 | — | ⚠️ perlu sitasi |
 | $f_{MCR}$ | Rating layanan (85 % MCR) | 0.85 | — | [[79]](#ref-man-es-propulsion-margins) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/power.ts#mcrPower`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/holtrop/power.ts#mcrPower`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/power-calculation.ts:calculateSHP`; `be-legacy/src/utils/cii/second-formula/power-calculation.ts:calculateBHPMCR`
 - **Referensi:** [[79]](#ref-man-es-propulsion-margins), [[85]](#ref-harvald-1983)
 
@@ -1404,7 +1422,7 @@ $$
 |---|---|---|---|---|
 | `API` | Endpoint dan parameter | api.open-meteo.com/v1/forecast?latitude&longitude&wind_speed_unit=kn&current_weather=true | — | [[86]](#ref-open-meteo-forecast-api) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/modules/weather/open-meteo.client.ts#getCurrentWind`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/modules/weather/open-meteo.client.ts#OpenMeteoClient.getCurrentWind`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/weather.ts:getWeatherByLocation`; `be-legacy/src/utils/cii/second-formula/index.ts:perCalculateSecondFormulaFuel`
 - **Referensi:** [[86]](#ref-open-meteo-forecast-api), [[97]](#ref-open-meteo-forecast-api-docs), [[98]](#ref-open-meteo-server-source), [[87]](#ref-open-meteo-licence), [[99]](#ref-open-meteo-terms), [[100]](#ref-zippenfenig-2023-open-meteo), [[101]](#ref-open-meteo-historical-and-marine-api), [[102]](#ref-cc-by-4-0-legalcode)
 
@@ -1432,7 +1450,7 @@ $$
 | $U_{0..7}$ | Batas atas BN0..BN7 | 0.6, 3, 6.4, 10.6, 15.5, 21, 26.9, 33.4 | kn | [[103]](#ref-wmo-558-beaufort-scale) ⚠️ perlu sitasi |
 | $BN_{max}$ | BN maksimum | 8 | — | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/beaufort.ts#beaufortNumber`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/beaufort.ts#beaufortNumber`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/course-calculation.ts:calculateBeafortNumber`
 - **Referensi:** [[103]](#ref-wmo-558-beaufort-scale), [[88]](#ref-kwon-2008), [[96]](#ref-imo-mepc1-circ796)
 
@@ -1456,7 +1474,7 @@ $$
 | $C$ | Haluan kapal (terbalik, lihat geo.rhumb_line_course) | deg | [`geo.rhumb_line_course`](#geo.rhumb_line_course) |
 | $\theta_{wind}$ | Arah angin (dari) | deg | [`weather.open_meteo_current`](#weather.open_meteo_current) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/encounter-angle.ts#calculateEncounterAngle`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/encounter-angle.ts#calculateEncounterAngle`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/course-calculation.ts:calculateEncountedAngle`; `be-legacy/src/utils/cii/second-formula/course-calculation.ts:calculateWindCourse`
 - **Referensi:** [[88]](#ref-kwon-2008), [[91]](#ref-jmse-2025-kwon-weather-routing)
 
@@ -1487,7 +1505,7 @@ $$
 | $2C_\beta^{beam}$ | Laut samping (60-150) | 0.9 - 0.06 (BN - 6)^2 | — | [[88]](#ref-kwon-2008) ⚠️ perlu sitasi |
 | $2C_\beta^{follow}$ | Laut buritan (150-180) | 0.4 - 0.03 (BN - 8)^2 | — | [[88]](#ref-kwon-2008) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/kwon.ts#directionCoefficient`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/kwon.ts#directionCoefficient`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/coefisien-reduction-calculation.ts:calculateWindCourseRedCoef`
 - **Referensi:** [[88]](#ref-kwon-2008), [[91]](#ref-jmse-2025-kwon-weather-routing), [[89]](#ref-townsin-kwon-1983), [[90]](#ref-kwon-1981-phd-thesis), [[92]](#ref-springer-2021-kwon-arbitrary-heading)
 
@@ -1517,7 +1535,7 @@ $$
 |---|---|---|---|---|
 | `polynomials` | Koefisien polinomial per pita C_B | as in the equation | — | [[88]](#ref-kwon-2008) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/kwon.ts#speedCoefficient`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/kwon.ts#speedCoefficient`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/coefisien-reduction-calculation.ts:calculateSpeedReductionCoef`
 - **Referensi:** [[88]](#ref-kwon-2008), [[92]](#ref-springer-2021-kwon-arbitrary-heading), [[93]](#ref-lu-et-al-2015-ocean-eng)
 
@@ -1549,7 +1567,7 @@ $$
 | `6.5` | Eksponen BN | 6.5 | — | [[89]](#ref-townsin-kwon-1983), [[91]](#ref-jmse-2025-kwon-weather-routing) |
 | `0.7` | Faktor linear (ballast/kontainer) | 0.7 | — | [[89]](#ref-townsin-kwon-1983), [[91]](#ref-jmse-2025-kwon-weather-routing) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/kwon.ts#formCoefficient`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/kwon.ts#formCoefficient`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/coefisien-reduction-calculation.ts:calculateShipShapeCoef`
 - **Referensi:** [[89]](#ref-townsin-kwon-1983), [[91]](#ref-jmse-2025-kwon-weather-routing), [[88]](#ref-kwon-2008)
 
@@ -1580,7 +1598,7 @@ $$
 | `0.01` | Faktor persen | 0.01 | — | definisi / konversi |
 | $k_{kn}$ | Knot ke m/s (legacy) | 0.5144 | (m/s)/kn | [[1]](#ref-nist-sp811-nautical-mile) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/kwon.ts#calmWaterSpeed`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/weather/kwon.ts#calmWaterSpeed`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/second-formula/coefisien-reduction-calculation.ts:calculateCoefisienReduction`; `be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateNewSpeed`; `be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateNewTime`
 - **Referensi:** [[88]](#ref-kwon-2008), [[91]](#ref-jmse-2025-kwon-weather-routing), [[96]](#ref-imo-mepc1-circ796), [[95]](#ref-iso-15016-2025), [[101]](#ref-open-meteo-historical-and-marine-api)
 
@@ -1617,7 +1635,7 @@ $$
 |---|---|---|---|---|
 | $10^{6}$ | Gram per ton | 1000000 | g/t | definisi / konversi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/second-formula.ts#calculateSecondFormulaFuel`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/second-formula.ts#calculateSecondFormulaFuel`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/fuel-calculation.ts:calculateSecondFormulaFuel`; `be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateNewTime`
 - **Referensi:** [[67]](#ref-imo-fourth-ghg-study-2020), [[79]](#ref-man-es-propulsion-margins), [[41]](#ref-legacy-mvp-backend)
 
@@ -1648,7 +1666,7 @@ $$
 | $a$ | Koefisien regresi AE | 1.5103 | L/min | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $b$ | Eksponen regresi AE | -0.064 | 1/kn | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/second-formula.ts#calculateSecondFormulaFuel`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/fuel/second-formula.ts#calculateSecondFormulaFuel`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/fuel-calculation.ts:calculateSecondFormulaFuel`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend)
 
@@ -1693,7 +1711,7 @@ $$
 | $C_{F,EtOH}$ | Etanol | 1.913 | t CO2/t | [[8]](#ref-imo-mepc-364-79) |
 | $C_{F,bio}$ | Biofuel (SEEMP legacy) | 2.45 | t CO2/t | [[11]](#ref-imo-mepc-1-circ-905) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii.ts#co2FromFuel`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii.ts#co2FromFuel`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/cii-calculation.ts:calculateCII`; `be-legacy/src/models/ships/Fuel.ts`; `be-legacy/docs/postman/3.3 Ships - Fuel.postman_collection.json`
 - **Referensi:** [[8]](#ref-imo-mepc-364-79), [[6]](#ref-imo-mepc-352-78), [[9]](#ref-imo-mepc-308-73), [[10]](#ref-imo-mepc-410-84), [[11]](#ref-imo-mepc-1-circ-905)
 
@@ -1722,7 +1740,7 @@ $$
 |---|---|---|---|---|
 | $10^{6}$ | Gram per ton | 1000000 | g/t | [[6]](#ref-imo-mepc-352-78) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii.ts#attainedCii`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii.ts#attainedCii`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/cii-calculation.ts:calculateCII`; `be-legacy/src/services/cii/cii.service.ts:calculateCII`; `be-legacy/src/repositories/cii/dailycii.repository.ts:update`; `be-legacy/src/repositories/cii/dailycii.repository.ts:getLatestByMmsi`
 - **Referensi:** [[6]](#ref-imo-mepc-352-78), [[7]](#ref-imo-mepc-412-84), [[2]](#ref-imo-mepc-328-76), [[3]](#ref-imo-mepc-278-70), [[20]](#ref-imo-mepc-413-84), [[18]](#ref-imo-mepc-355-78)
 
@@ -1752,7 +1770,7 @@ $$
 | $a,c_{ro\text{-}pax}^{2022}$ | Ro-ro penumpang, MEPC.353(78) | 2023, 0.460 | — | [[12]](#ref-imo-mepc-353-78) |
 | $\mathrm{Cap}_{fixed}$ | Kapasitas tetap (bulk >= 279 000 DWT; LNG < 65 000 DWT; vehicle carrier >= 57 700 GT) | 279000, 65000, 57700 | DWT / GT | [[12]](#ref-imo-mepc-353-78) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii.ts#referenceCii`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii.ts#referenceCii`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/cii-calculation.ts:calculateCIIRequired`; `be-legacy/src/models/ships/Type.ts`; `be-legacy/docs/postman/3.4 Ships - Type.postman_collection.json`
 - **Referensi:** [[12]](#ref-imo-mepc-353-78), [[13]](#ref-imo-mepc-337-76), [[23]](#ref-classnk-cii-outline)
 
@@ -1781,7 +1799,7 @@ $$
 | $Z_{2027..2030}$ | Z 2027-2030 | 13.625, 16.25, 18.875, 21.5 | % | [[15]](#ref-imo-mepc-400-83), [[24]](#ref-lr-class-news-13-25) |
 | $y_{max}$ | Tahun tertinggi bawaan (legacy) | 2030 | year | [[41]](#ref-legacy-mvp-backend) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii.ts#reductionFactor`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii.ts#reductionFactorOf`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/repositories/cii/zvalue.repository.ts:getValueByYear`; `be-legacy/src/repositories/cii/zvalue.repository.ts:getHighestYear`; `be-legacy/docs/postman/5.1 CII - ZValue.postman_collection.json`
 - **Referensi:** [[14]](#ref-imo-mepc-338-76), [[15]](#ref-imo-mepc-400-83), [[24]](#ref-lr-class-news-13-25)
 
@@ -1802,7 +1820,7 @@ $$
 |---|---|---|---|
 | `Z(y)` | Faktor reduksi | % | [`cii.reduction_factor_z`](#cii.reduction_factor_z) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii.ts#requiredCii`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii.ts#requiredCii`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/cii/cii-calculation.ts:calculateCIIRequired`
 - **Referensi:** [[2]](#ref-imo-mepc-328-76), [[14]](#ref-imo-mepc-338-76), [[15]](#ref-imo-mepc-400-83), [[12]](#ref-imo-mepc-353-78), [[23]](#ref-classnk-cii-outline), [[22]](#ref-imo-eexi-cii-faq)
 
@@ -1880,7 +1898,7 @@ $$
 |---|---|---|---|---|
 | `2024 sample` | Sampel 2024 MMSI 525005223 | attained 60.409, required 65.382, rating 0.9239, grade C, 20,300.59 nm, ME 366.83 t, AE 737.33 t | — | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `cii_annual_manual table (fallback when no segment data exists for a year)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/modules/cii/cii-figures.ts#figuresFromManual (cii_annual_manual table, used when a year has no segment data)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/services/cii/annualcii.service.ts`; `be-legacy/src/repositories/cii/annualcii.repository.ts`; `be-legacy/docs/postman/5.3 CII - Annual CII.postman_collection.json`
 - **Referensi:** [[3]](#ref-imo-mepc-278-70), [[4]](#ref-imo-mepc-385-81), [[5]](#ref-imo-mepc-1-circ-913), [[104]](#ref-imo-mepc-407-84), [[41]](#ref-legacy-mvp-backend)
 
@@ -1941,7 +1959,7 @@ $$
 | $p$ | Potensi langkah | % | konstanta per langkah |
 | $v$ | Data umum kapal (sampel 41,667 = 5/12) | % | fleet vessels.annual_voyage_percentage |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/reduction.ts#reductionType1`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/reduction.ts#reductionType1`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/utils.ts:calculateFirstCiiAndGrade`; `be-legacy/src/services/seemp.service.ts:calculateSemp`
 - **Referensi:** [[105]](#ref-bouman-2017), [[107]](#ref-imo-mepc-1-circ-896), [[16]](#ref-imo-mepc-354-78), [[41]](#ref-legacy-mvp-backend)
 
@@ -1971,7 +1989,7 @@ $$
 | $C_{F,LNG}$ | Cf LNG | 2.75 | t CO2/t | [[8]](#ref-imo-mepc-364-79) |
 | $C_{F,bio}$ | Cf biofuel | 2.45 | t CO2/t | [[11]](#ref-imo-mepc-1-circ-905) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/reduction.ts#reductionType2`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/reduction.ts#reductionType2`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/utils.ts:calculateSecondCiiAndGrade`; `be-legacy/src/utils/seemp/second-formula.ts`
 - **Referensi:** [[8]](#ref-imo-mepc-364-79), [[11]](#ref-imo-mepc-1-circ-905), [[6]](#ref-imo-mepc-352-78), [[41]](#ref-legacy-mvp-backend)
 
@@ -2001,7 +2019,7 @@ $$
 |---|---|---|---|---|
 | $f_{keep}$ | Porsi yang dipertahankan pada cold ironing | 0.8 | — | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/reduction.ts#reductionType3`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/reduction.ts#reductionType3`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/utils.ts:calculateThirdCiiAndGrade`; `be-legacy/src/utils/seemp/third-formula.ts`
 - **Referensi:** [[107]](#ref-imo-mepc-1-circ-896), [[110]](#ref-iec-ieee-80005-1-2019), [[105]](#ref-bouman-2017), [[41]](#ref-legacy-mvp-backend)
 
@@ -2025,7 +2043,7 @@ $$
 | $k$ | Biaya satuan | USD/kW | konstanta per langkah |
 | $P,\ n$ | Daya dan jumlah mesin | kW, - | fleet vessel_engines |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/cost.ts#costByPower`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/cost.ts#costByPower`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/utils.ts:calculateCostbyPower`; `be-legacy/src/utils/seemp/utils.ts:formatCost`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend), [[108]](#ref-imo-glomeep-technologies-portal)
 
@@ -2055,7 +2073,7 @@ $$
 |---|---|---|---|---|
 | $y_{max}^{default}$ | Akhir horizon bawaan | 2030 | year | [[41]](#ref-legacy-mvp-backend) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/cost.ts#costPerYear`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/cost.ts#costPerYear`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/cost-calc.ts:calculatedYear`; `be-legacy/src/utils/seemp/cost-calc.ts:calculateCostPerYear`
 - **Referensi:** [[14]](#ref-imo-mepc-338-76), [[15]](#ref-imo-mepc-400-83), [[41]](#ref-legacy-mvp-backend)
 
@@ -2080,7 +2098,7 @@ $$
 |---|---|---|---|---|
 | $G_{ok}$ | Nilai yang diterima | A, B, C | — | [[2]](#ref-imo-mepc-328-76) |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/modules/seemp/seemp.service.ts#recommendations`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/recommendations.ts#recommendMeasures`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/services/seemp.service.ts:calculateSemp`; `be-legacy/src/services/seemp.service.ts:calculateSEEMPbyMMSI`
 - **Referensi:** [[2]](#ref-imo-mepc-328-76), [[19]](#ref-imo-mepc-395-82), [[21]](#ref-imo-mepc-346-78), [[41]](#ref-legacy-mvp-backend)
 
@@ -2106,7 +2124,7 @@ $$
 | $p$ | Potensi | 8 | % | [[105]](#ref-bouman-2017) ⚠️ perlu sitasi |
 | $C_{cap}$ | Pita CAPEX menurut LOA (m) | 430000 / 850000 / 1280000 | USD | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: air_lubrication)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: air_lubrication)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/first-formula.ts:calculateAirLubrication`
 - **Referensi:** [[105]](#ref-bouman-2017), [[106]](#ref-itf-2018-decarbonising-maritime-transport), [[108]](#ref-imo-glomeep-technologies-portal), [[107]](#ref-imo-mepc-1-circ-896), [[41]](#ref-legacy-mvp-backend)
 
@@ -2132,7 +2150,7 @@ $$
 | $p$ | Potensi | 9 | % | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $C_{cap}$ | Rentang CAPEX | 300000-700000 | USD | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: resistance_reduction_devices)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: resistance_reduction_devices)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/first-formula.ts:calculateResistanceReduceDevice`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend)
 
@@ -2158,7 +2176,7 @@ $$
 | $p$ | Potensi | 10 | % | [[105]](#ref-bouman-2017) ⚠️ perlu sitasi |
 | $k$ | Biaya satuan | 100 | USD/m2 | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: hull_coating)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: hull_coating)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/first-formula.ts:calculateHullCoating`
 - **Referensi:** [[105]](#ref-bouman-2017), [[41]](#ref-legacy-mvp-backend)
 
@@ -2184,7 +2202,7 @@ $$
 | $p$ | Potensi | 10 | % | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $k$ | Biaya satuan | 500 | USD/kW | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: power_system_machinery)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: power_system_machinery)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/first-formula.ts:calculatePowerSystemMachinery`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend)
 
@@ -2210,7 +2228,7 @@ $$
 | $p$ | Potensi | 13 | % | [[105]](#ref-bouman-2017), [[106]](#ref-itf-2018-decarbonising-maritime-transport) ⚠️ perlu sitasi |
 | $C_{cap}$ | Rentang CAPEX | 100000-800000 | USD | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: propulsion_efficiency_devices)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: propulsion_efficiency_devices)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/first-formula.ts:calculatePropEffDevice`
 - **Referensi:** [[105]](#ref-bouman-2017), [[106]](#ref-itf-2018-decarbonising-maritime-transport), [[41]](#ref-legacy-mvp-backend)
 
@@ -2236,7 +2254,7 @@ $$
 | $p$ | Potensi | 10 | % | [[105]](#ref-bouman-2017) ⚠️ perlu sitasi |
 | $k$ | Biaya satuan | 100 | USD/kW | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: waste_heat_recovery)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: waste_heat_recovery)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/first-formula.ts:calculateWasteHeatRecovery`
 - **Referensi:** [[105]](#ref-bouman-2017), [[106]](#ref-itf-2018-decarbonising-maritime-transport), [[107]](#ref-imo-mepc-1-circ-896), [[41]](#ref-legacy-mvp-backend)
 
@@ -2262,7 +2280,7 @@ $$
 | $C_{F,LNG}$ | Cf LNG | 2.75 | t CO2/t | [[8]](#ref-imo-mepc-364-79) |
 | $k$ | Biaya satuan | 1580 | USD/kW | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: lng)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: lng)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/second-formula.ts:calculateLNGFuel`
 - **Referensi:** [[8]](#ref-imo-mepc-364-79), [[106]](#ref-itf-2018-decarbonising-maritime-transport), [[105]](#ref-bouman-2017), [[41]](#ref-legacy-mvp-backend)
 
@@ -2288,7 +2306,7 @@ $$
 | $C_{F,bio}$ | Cf biofuel | 2.45 | t CO2/t | [[11]](#ref-imo-mepc-1-circ-905) ⚠️ perlu sitasi |
 | $k$ | Biaya satuan | 20 | USD/kW | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: biofuel)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: biofuel)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/second-formula.ts:calculateBioFuel`
 - **Referensi:** [[11]](#ref-imo-mepc-1-circ-905), [[8]](#ref-imo-mepc-364-79), [[41]](#ref-legacy-mvp-backend)
 
@@ -2314,7 +2332,7 @@ $$
 | $p$ | Pengurangan bahan bakar AE | 0.12 | — | [[105]](#ref-bouman-2017) ⚠️ perlu sitasi |
 | $k$ | Biaya satuan | 3000 | USD/kW | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: solar)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: solar)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/third-formula.ts:calculateSolarPower`
 - **Referensi:** [[105]](#ref-bouman-2017), [[106]](#ref-itf-2018-decarbonising-maritime-transport), [[107]](#ref-imo-mepc-1-circ-896), [[41]](#ref-legacy-mvp-backend)
 
@@ -2340,7 +2358,7 @@ $$
 | $p$ | Pengurangan bahan bakar AE | 0.15 | — | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $k$ | Biaya satuan | 4000 | USD/kW | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: wind)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: wind)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/third-formula.ts:calculateWindPower`
 - **Referensi:** [[105]](#ref-bouman-2017), [[107]](#ref-imo-mepc-1-circ-896), [[41]](#ref-legacy-mvp-backend)
 
@@ -2367,7 +2385,7 @@ $$
 | $k$ | Biaya satuan | 0.5 | USD/kW | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $C_{fix}$ | Biaya tetap | 800150 | USD | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: cold_ironing)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: cold_ironing)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/third-formula.ts:calculateColdIroning`
 - **Referensi:** [[110]](#ref-iec-ieee-80005-1-2019), [[105]](#ref-bouman-2017), [[41]](#ref-legacy-mvp-backend)
 
@@ -2393,7 +2411,7 @@ $$
 | $p$ | Pengurangan bahan bakar AE | 0.2 | — | [[105]](#ref-bouman-2017) ⚠️ perlu sitasi |
 | $k$ | Biaya satuan | 1780 | USD/kW | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts (seemp_measures seed: fuel_cells)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: fuel_cells)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/seemp/third-formula.ts:calculateFuelCells`
 - **Referensi:** [[105]](#ref-bouman-2017), [[41]](#ref-legacy-mvp-backend)
 
@@ -2431,7 +2449,7 @@ $$
 |---|---|---|---|---|
 | $\Delta v_{lim}$ | Batas selisih kecepatan | 0.5, 2, 10 | kn | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/transhipment/priority.ts#checkSpeed`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/domain/transhipment/priority.ts#speedPriority`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/illegal-transhipment.ts:checkSpeed`
 - **Referensi:** [[111]](#ref-miller-2018-transshipment), [[41]](#ref-legacy-mvp-backend)
 
@@ -2460,7 +2478,7 @@ $$
 |---|---|---|---|---|
 | $d_{lim}$ | Batas jarak | 27, 34, 600 | m | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/transhipment/priority.ts#checkLocation`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/domain/transhipment/priority.ts#locationPriority`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/illegal-transhipment.ts:checkLocation`
 - **Referensi:** [[111]](#ref-miller-2018-transshipment), [[36]](#ref-sinnott-1984-haversine), [[41]](#ref-legacy-mvp-backend)
 
@@ -2489,7 +2507,7 @@ $$
 |---|---|---|---|---|
 | $\Delta h_{lim}$ | Batas selisih heading | 6, 174, 186 | deg | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/transhipment/priority.ts#checkHeading`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/domain/transhipment/priority.ts#headingPriority`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/illegal-transhipment.ts:checkHeading`
 - **Referensi:** [[45]](#ref-itu-r-m1371-5), [[41]](#ref-legacy-mvp-backend)
 
@@ -2521,7 +2539,7 @@ $$
 | $t_{route}$ | Jendela rute | 60 | min | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $n_{route}$ | Titik rute maksimum | 60 | points | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/transhipment/candidate-queue.ts (vessel_state, transhipment_pairs)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/domain/transhipment/pairs.ts#candidateObservations (queue: transhipment_pairs)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/services/illegal-transhipment/illegal-transhipment.service.ts:detectIllegalTranshipment`; `be-legacy/src/utils/illegal-transhipment.ts:checkIlegalTranshipmentPossibility`; `be-legacy/src/repositories/illegal-transhipment/it-queue.repository.ts:getAllSorted`; `be-legacy/src/workers/illegal-transhipment-child-worker.ts:processOne`; `be-legacy/src/services/illegal-transhipment/illegal-transhipment-det.service.ts:processQueue`
 - **Referensi:** [[111]](#ref-miller-2018-transshipment), [[113]](#ref-boerder-2018-transshipment-hotspots), [[112]](#ref-gfw-apis-events), [[35]](#ref-permen-kp-57-2014-transhipment-ban), [[49]](#ref-platform-spec-v1-1), [[41]](#ref-legacy-mvp-backend)
 
@@ -2551,7 +2569,7 @@ $$
 | $n_{max}$ | Sampel maksimum | 30 | points | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $\Delta t_s$ | Interval sampel | 3 | min | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/transhipment/track.ts#getPositionAtTime`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/domain/transhipment/track.ts#fixAtTime`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/illegal-transhipment.ts:interpolatePositions`; `be-legacy/src/utils/illegal-transhipment.ts:getPositionAtTime`; `be-legacy/src/utils/illegal-transhipment.ts:sampleRoute`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend)
 
@@ -2578,7 +2596,7 @@ $$
 | $\Delta_W$ | Langkah jendela | 10 | min | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $\Delta_c$ | Interval cek | 5 | min | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/transhipment/analysis.ts#detectIllegalTranshipment`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/domain/transhipment/analysis.ts#detectTranshipment`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/illegal-transhipment.ts:detectIllegalTranshipment`
 - **Referensi:** [[111]](#ref-miller-2018-transshipment), [[41]](#ref-legacy-mvp-backend)
 
@@ -2603,7 +2621,7 @@ $$
 |---|---|---|---|---|
 | $w_{max}$ | Bobot maksimum | 10 | — | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/transhipment/analysis.ts#calculateWeightedScore`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/domain/transhipment/analysis.ts#weightedScore`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/illegal-transhipment.ts:calculateWeightedScore`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend)
 
@@ -2634,7 +2652,7 @@ $$
 | `0.7, 0.3` | Bobot | 0.7, 0.3 | — | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 | $A_{min}$ | Ambang | 70 | % | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/transhipment/analysis.ts#transhipmentScore`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/domain/transhipment/analysis.ts#transhipmentScore`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/illegal-transhipment.ts:detectIllegalTranshipment`
 - **Referensi:** [[111]](#ref-miller-2018-transshipment), [[112]](#ref-gfw-apis-events), [[41]](#ref-legacy-mvp-backend)
 
@@ -2659,7 +2677,7 @@ $$
 |---|---|---|---|---|
 | $P_{cat}$ | Batas kategori | 18, 6 | — | [[41]](#ref-legacy-mvp-backend) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/transhipment/analysis.ts#priorityDistribution`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/domain/transhipment/analysis.ts#priorityCategory (mean and distribution in detectTranshipment)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/src/utils/illegal-transhipment.ts:getPriorityCategory`; `be-legacy/src/utils/illegal-transhipment.ts:detectIllegalTranshipment`; `be-legacy/src/workers/illegal-transhipment-child-worker.ts:processOne`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend)
 
@@ -2721,7 +2739,7 @@ $$
 |---|---|---|---|---|
 | $k$ | Persistensi v2 (ANOMALY_MIN_POSITIONS) | 3 | positions | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/anomaly/anomaly.detector.ts`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/anomaly/anomaly.detector.ts#AnomalyDetector`; status: *diimplementasikan*.
 - **Lokasi legacy:** `fe-legacy/src/pages/anomaly/components/navstatus-anomaly-card.tsx:anomalies`; `be-legacy/src/repositories/ais.repository.ts:streamRecent`
 - **Referensi:** [[27]](#ref-imo-a1106-29), [[48]](#ref-harati-mokhtari-2007-ais-reliability), [[50]](#ref-pallotta-2013-tread), [[44]](#ref-legacy-mvp-frontend), [[49]](#ref-platform-spec-v1-1)
 
@@ -2758,7 +2776,7 @@ $$
 | $SOG_{min}$ | SOG terakhir minimum | 1 | kn | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
 | $d_{port}$ | Jarak dari pelabuhan/labuh | 5 | km | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/dark/dark.detector.ts`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/dark/dark.detector.ts#DarkDetector`; status: *diimplementasikan*.
 - **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
 - **Referensi:** [[114]](#ref-welch-2022-unseen-fishing), [[112]](#ref-gfw-apis-events), [[27]](#ref-imo-a1106-29), [[26]](#ref-imo-solas-v-19-ais), [[28]](#ref-permenhub-pm-7-2019-ais), [[29]](#ref-permenhub-pm-18-2022-ais), [[49]](#ref-platform-spec-v1-1)
 
@@ -2787,7 +2805,7 @@ $$
 | $p_{t-1},\ p_t$ | Posisi sebelumnya dan sekarang | deg | AIS lat/lon |
 | $z$ | Geometri zona (dengan buffer b opsional) | — | geo service zones |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/geofence/geofence.detector.ts`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/geofence/geofence.detector.ts#GeofenceDetector`; status: *diimplementasikan*.
 - **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
 - **Referensi:** [[49]](#ref-platform-spec-v1-1)
 
@@ -2824,7 +2842,7 @@ $$
 | $T_{min}$ | Durasi minimum | 30 | min | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
 | $\dot C_{min}$ | Laju perubahan haluan minimum | undefined (to be specified) | deg/min | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/fishing/fishing.detector.ts`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/detectors/fishing/fishing.detector.ts#FishingDetector`; status: *diimplementasikan*.
 - **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
 - **Referensi:** [[116]](#ref-de-souza-2016-fishing-patterns), [[115]](#ref-natale-2015-fishing-effort), [[117]](#ref-kroodsma-2018-global-footprint), [[111]](#ref-miller-2018-transshipment), [[112]](#ref-gfw-apis-events), [[49]](#ref-platform-spec-v1-1)
 
@@ -2847,7 +2865,7 @@ $$
 |---|---|---|---|---|
 | $n_{rec}$ | Jumlah rekaman (2015/2016/2017) | 403 (108 / 163 / 132) | records | [[44]](#ref-legacy-mvp-frontend) |
 
-- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `fishing_violations import (legacy apps/web/src/data/ilegal.json)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `surveillance` (ais-its-surveillance-service) — `src/modules/fishing-violations/fishing-violations.seed.ts#seedFishingViolations (fishing_violations, from the legacy apps/web/src/data/ilegal.json)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `fe-legacy/src/data/ilegal.json`; `fe-legacy/src/components/common/old-map.tsx`
 - **Referensi:** [[118]](#ref-kkp-djpsdkp-lkj-2017), [[119]](#ref-kontan-kkp-163-kapal-2016), [[33]](#ref-uu-45-2009-perikanan), [[44]](#ref-legacy-mvp-frontend)
 
@@ -2933,7 +2951,7 @@ $$
 |---|---|---|---|---|
 | $n_v$ | Jumlah verteks | 616 | points | [[41]](#ref-legacy-mvp-backend) |
 
-- **Pemilik v2:** layanan `ais-pipeline` (ais-its-pipeline) — `data/coastline.geojson (loaded once, flatbush index)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `ais-pipeline` (ais-its-pipeline) — `src/shared/domain/coastline.ts#CoastlineGeometry.fromGeoJson (data/coastline.geojson, loaded once, flatbush index)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/data/indonesia.json`; `be-legacy/src/utils/calculate-ews.ts:findNearestCoastDistance`
 - **Referensi:** [[120]](#ref-mapshaper), [[121]](#ref-kode-wilayah-kemendagri-compilation), [[122]](#ref-kepmendagri-300-2-2-2138-2025), [[123]](#ref-natural-earth-admin1-10m), [[125]](#ref-osm-copyright-page), [[126]](#ref-odbl-1-0), [[41]](#ref-legacy-mvp-backend)
 
@@ -2959,7 +2977,7 @@ $$
 | $n_{BE}$ | Titik backend | 61 | points | [[41]](#ref-legacy-mvp-backend) |
 | $n_{FE}$ | Titik frontend | 31 | points | [[44]](#ref-legacy-mvp-frontend) |
 
-- **Pemilik v2:** layanan `geo` (ais-its-geo-service) — `seed zone kind pipeline (from legacy data/pipeline.json, buffer 1750 m)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `geo` (ais-its-geo-service) — `src/modules/seed/legacy-datasets.ts#pipelineSeedZone (zone kind pipeline from the legacy data/pipeline.json, buffer PIPELINE_CORRIDOR_BUFFER_M = 1750 m)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/data/pipeline.json`; `fe-legacy/src/data/pipe.json`; `be-legacy/src/utils/calculate-ews.ts:checkShipStatus`; `fe-legacy/src/components/common/map.tsx:sortedData`
 - **Referensi:** [[41]](#ref-legacy-mvp-backend), [[44]](#ref-legacy-mvp-frontend)
 
@@ -2982,7 +3000,7 @@ $$
 |---|---|---|---|---|
 | $n_v$ | Jumlah verteks | 795 | points | [[41]](#ref-legacy-mvp-backend) |
 
-- **Pemilik v2:** layanan `geo` (ais-its-geo-service) — `seed zone kind transhipment_area (from legacy data/batam.json)`; status: *direncanakan*.
+- **Pemilik v2:** layanan `geo` (ais-its-geo-service) — `src/modules/seed/legacy-datasets.ts#batamSeedZone (zone kind transhipment_area from the legacy data/batam.json)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/data/batam.json`; `be-legacy/src/config/ws-batam.ts`
 - **Referensi:** [[120]](#ref-mapshaper), [[121]](#ref-kode-wilayah-kemendagri-compilation), [[123]](#ref-natural-earth-admin1-10m), [[41]](#ref-legacy-mvp-backend)
 
@@ -3007,7 +3025,7 @@ $$
 | $R_T^{replica}$ | R_T replika, tenang, 12 kn | 18.96 | kN | [[41]](#ref-legacy-mvp-backend) |
 | $P_{MCR}^{replica}$ | P_MCR replika, tenang, 12 kn | 394 | kW | [[41]](#ref-legacy-mvp-backend) |
 
-- **Pemilik v2:** layanan `fleet` (ais-its-fleet-service) — `seed:demo (demo vessel) + golden parity tests`; status: *direncanakan*.
+- **Pemilik v2:** layanan `fleet` (ais-its-fleet-service) — `src/seeds/samples.seed.ts#ENGINE_SEEDS (with FUEL_FORMULA_SEEDS and PORT_SEEDS; the vessel particulars are golden test vectors)`; status: *diimplementasikan*.
 - **Lokasi legacy:** `be-legacy/docs/postman/*.postman_collection.json`
 - **Referensi:** [[13]](#ref-imo-mepc-337-76), [[17]](#ref-imo-mepc-339-76), [[8]](#ref-imo-mepc-364-79), [[12]](#ref-imo-mepc-353-78), [[41]](#ref-legacy-mvp-backend)
 
@@ -3161,6 +3179,15 @@ Catatan tiap entri ditulis dalam bahasa Inggris seperti di katalog.
 - <a id="ref-leaflet-heat"></a>**[138]** Agafonkin, V. (2015). *Leaflet.heat 0.2.0 (legacy heatmap plugin)*. [Perangkat lunak] npm leaflet.heat@0.2.0 (no licence field). <https://github.com/Leaflet/Leaflet.heat>. Diakses 2026-11-20. Lisensi/hak cipta: BSD-2-Clause (repository LICENSE text; not declared in package.json). Verifikasi: **terverifikasi**. Id katalog: `leaflet-heat`. Catatan: The npm package declares no licence; third-party notices must record the repository BSD 2-clause licence manually.
 - <a id="ref-react-leaflet"></a>**[139]** Le Cam, P. and contributors (2024). *React Leaflet 5.0.0 - Hippocratic License 2.1*. [Perangkat lunak] npm react-leaflet@5.0.0. <https://github.com/PaulLeCam/react-leaflet>. Diakses 2026-11-20. Lisensi/hak cipta: Hippocratic-2.1 (not OSI-approved). Verifikasi: **terverifikasi**. Id katalog: `react-leaflet`. Catatan: Legacy dependency under the Hippocratic License 2.1 (human-rights conditions, arbitration clause, notice obligations). Moving to MapLibre + deck.gl removes it from the v2 redistribution chain; keeping it would need legal review.
 - <a id="ref-spdx-license-list"></a>**[140]** SPDX Legal Team (Linux Foundation) (2026). *SPDX License List data (json/licenses.json)*. [Dataset] spdx/license-list-data@main (release 2026-11-18). <https://github.com/spdx/license-list-data>. Diakses 2026-11-20. Verifikasi: **terverifikasi**. Id katalog: `spdx-license-list`. Catatan: Licence identifiers and OSI status for third-party notices: MIT, BSD-2-Clause, BSD-3-Clause, ISC, Apache-2.0, MPL-2.0 and AGPL-3.0-or-later are OSI-approved; CC-BY-4.0, ODbL-1.0 (content/data licences) and Hippocratic-2.1 are not.
+- <a id="ref-ietf-rfc-7946"></a>**[141]** H. Butler, M. Daly, A. Doyle, S. Gillies, S. Hagen, T. Schaub (IETF) (2016). *The GeoJSON Format*. [Standar] RFC 7946 (Proposed Standard), August 2016; sections 3.1.1 (positions), 3.1.9 (antimeridian cutting), 4 (WGS 84 coordinate reference system). <https://www.rfc-editor.org/rfc/rfc7946>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `ietf-rfc-7946`. Catatan: Cited by geo for the zone geometry input rules: positions are WGS 84 longitude/latitude in decimal degrees, and a geometry crossing the antimeridian should be cut in two (section 3.1.9). Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
+- <a id="ref-douglas-peucker-1973"></a>**[142]** David H. Douglas, Thomas K. Peucker (1973). *Algorithms for the reduction of the number of points required to represent a digitized line or its caricature*. [Artikel ilmiah] The Canadian Cartographer (now Cartographica) 10(2): 112-122; doi:10.3138/FM57-6770-U75U-7727. <https://doi.org/10.3138/FM57-6770-U75U-7727>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `douglas-peucker-1973`. Catatan: Line simplification (Douglas-Peucker) used for the display of vessel tracks (ais-pipeline) and of the zone map layer (geo, PostGIS ST_SimplifyPreserveTopology). Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
+- <a id="ref-ramer-1972"></a>**[143]** Urs Ramer (1972). *An iterative procedure for the polygonal approximation of plane curves*. [Artikel ilmiah] Computer Graphics and Image Processing 1(3): 244-256; doi:10.1016/S0146-664X(72)80017-0. <https://doi.org/10.1016/S0146-664X(72)80017-0>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `ramer-1972`. Catatan: The same polygonal approximation, published independently; cited with Douglas and Peucker by the track simplification of ais-pipeline. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
+- <a id="ref-ietf-rfc-2104"></a>**[144]** H. Krawczyk, M. Bellare, R. Canetti (IETF) (1997). *HMAC: Keyed-Hashing for Message Authentication*. [Standar] RFC 2104 (Informational), February 1997. <https://www.rfc-editor.org/rfc/rfc2104>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `ietf-rfc-2104`. Catatan: HMAC construction of the webhook signature of the notification service (HMAC-SHA256). Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
+- <a id="ref-nist-fips-180-4"></a>**[145]** National Institute of Standards and Technology (NIST) (2015). *Secure Hash Standard (SHS)*. [Standar] FIPS PUB 180-4, August 2015 (SHA-256). <https://csrc.nist.gov/pubs/fips/180-4/upd1/final>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `nist-fips-180-4`. Catatan: SHA-256, the hash function of the webhook signature (HMAC-SHA256). Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
+- <a id="ref-osm-slippy-map-tilenames"></a>**[146]** OpenStreetMap Wiki contributors (None). *Slippy map tilenames*. [Situs web] None. <https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `osm-slippy-map-tilenames`. Catatan: Tile numbering x/y at zoom z of the Web Mercator tile pyramid, used through the contracts tile math for the realtime viewport rooms. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
+- <a id="ref-ietf-rfc-9110"></a>**[147]** R. Fielding, M. Nottingham, J. Reschke (IETF) (2022). *HTTP Semantics*. [Standar] RFC 9110 (Internet Standard, STD 97), June 2022; section 10.2.3 Retry-After. <https://www.rfc-editor.org/rfc/rfc9110>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `ietf-rfc-9110`. Catatan: Retry-After of a webhook target, honoured by the delivery backoff of the notification service when it is longer than the backoff. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
+- <a id="ref-telegram-bot-api"></a>**[148]** Telegram (None). *Telegram Bot API (ResponseParameters.retry_after)*. [Situs web] None. <https://core.telegram.org/bots/api#responseparameters>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `telegram-bot-api`. Catatan: retry_after of a rate-limited Telegram Bot API call, honoured by the delivery backoff of the notification service when it is longer than the backoff. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
+- <a id="ref-ietf-rfc-4180"></a>**[149]** Y. Shafranovich (IETF) (2005). *Common Format and MIME Type for Comma-Separated Values (CSV) Files*. [Standar] RFC 4180 (Informational), October 2005. <https://www.rfc-editor.org/rfc/rfc4180>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `ietf-rfc-4180`. Catatan: CSV format (CRLF line ends, quoting) of the DCS-style annual summary export of the emission service. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
 
 ## 17. Celah sitasi terbuka untuk penulis tesis
 
@@ -3326,3 +3353,475 @@ B/L_R pada faktor bentuk 1984 (`resistance.holtrop.form_factor`); lcb dalam mete
 selisih COG−HDG tanpa wrap 360 (`navstatus.prediction`); waktu posisi `t_msg − utc`
 (`data.ais_ingest_rules`); urutan file pipa (`data.pipeline_route`); serta model SEEMP (Cf dengan massa
 tetap, porsi cold ironing, `cii[0]` tertua).
+
+## 20. Metode tambahan katalog 2026-11-22 (contracts 0.4.0)
+
+Aturan yang sudah berjalan di layanan v2 dan diberi `@method` di kode tetapi belum ada di katalog sampai
+contracts 0.4.0 (§17 spesifikasi: setiap aturan harus dapat ditelusuri). Semua masih bertanda ⚠️ perlu sitasi:
+sumber yang dikutip belum dibuka pada putaran ini (tanpa akses internet) dan harus diperiksa penulis tesis.
+
+<a id="data.ais_position_time"></a>
+#### 20.1 `data.ais_position_time` — Waktu posisi AIS (pembacaan time stamp ITU) dan jendela plausibilitas
+
+*AIS position time (ITU time stamp reading) and plausibility window*
+
+**Deskripsi.** Dengan AIS_UTC_MODE=itu, field utc penyedia dibaca sebagai time stamp ITU-R M.1371 (detik UTC 0-59 saat laporan dibuat): waktu posisi adalah detik utuh terakhir yang detik UTC-nya sama dengan utc, tidak lebih lambat dari timestamp pesan ditambah toleransi jam 5 s; 60-63 (tidak tersedia, input manual, dead reckoning, sistem posisi tidak berfungsi) atau nilai lain mempertahankan timestamp pesan. Pada kedua mode waktu posisi harus antara 24 jam sebelum dan 5 menit sesudah penerimaan (STALE_TIMESTAMP / FUTURE_TIMESTAMP), tidak pernah sebelum 1970. utcSecondLag = (detik(timestamp) - utc) mod 60 menunjukkan pembacaan mana yang dipakai penyedia.
+
+$$
+t_{pos}=\max\left\{t\le t_{msg}+\tau:\ t\in\mathbb{Z}\,\mathrm{s},\ t\bmod 60=utc\right\}\ (utc<60),\qquad t_{rx}-\Delta_{age}\le t_{pos}\le t_{rx}+\Delta_{skew}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $utc$ | Field utc penyedia (time stamp ITU, detik 0-63) | s | AIS data.utc |
+| $t_{msg}$ | Timestamp pesan dari penyedia | — | AIS timestamp |
+| $t_{rx}$ | Waktu penerimaan oleh ingestor | — | ingestor clock |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $utc \ge 60$ | Nilai khusus time stamp: 60 tidak tersedia, 61 input manual, 62 dead reckoning, 63 sistem posisi tidak berfungsi | 60-63 | s | [[45]](#ref-itu-r-m1371-5) |
+| $\tau$ | Toleransi jam penerima di belakang jam GNSS (ITU_TIME_STAMP_TOLERANCE_MS) | 5 | s | ⚠️ perlu sitasi |
+| $\Delta_{skew}$ | Selisih maksimum ke masa depan (MAX_FUTURE_SKEW_MS) | 5 | min | ⚠️ perlu sitasi |
+| $\Delta_{age}$ | Umur maksimum posisi saat diterima (INGEST_MAX_POSITION_AGE_S) | 24 | h | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `ais-pipeline` (ais-its-pipeline) — `src/shared/domain/normalize.ts#ituPositionTime (window in positionTimeOf, diagnostic utcSecondLag)`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[45]](#ref-itu-r-m1371-5), [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Diusulkan oleh ais-pipeline untuk memisahkan aturan waktu posisi v2 dari data.ais_ingest_rules, yang mempertahankan pembacaan legacy t_msg - utc (AIS_UTC_MODE=legacy, bawaan demi paritas). Toleransi, selisih dan batas umur adalah nilai desain.
+
+<a id="telemetry.reading_validation"></a>
+#### 20.2 `telemetry.reading_validation` — Aturan plausibilitas bacaan bahan bakar
+
+*Fuel reading plausibility rules*
+
+**Deskripsi.** Bacaan bahan bakar diterima bila jumlahnya berhingga, tidak negatif dan paling besar nilai maksimum yang dikonfigurasi (500 t mesin induk, 100 t mesin bantu), waktunya paling jauh 5 menit di depan jam server dan paling tua 5 tahun, serta awal periode opsional terletak sebelum waktunya dengan periode paling lama 24 jam; satu batch memuat paling banyak 1000 bacaan dan tidak boleh memuat dua bacaan berbeda untuk (mmsi, waktu) yang sama.
+
+$$
+0\le FC_{ME}\le FC_{ME,max},\quad 0\le FC_{AE}\le FC_{AE,max},\quad t-t_{now}\le\Delta_{skew},\quad t_{now}-t\le\Delta_{age},\quad 0<t-t_{start}\le\Delta_{period}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $FC_{ME}, FC_{AE}$ | Bahan bakar mesin induk dan mesin bantu dari bacaan | t | telemetry reading |
+| $t, t_{start}$ | Waktu bacaan dan awal periode opsional | — | telemetry reading |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $FC_{ME,max}$ | Bahan bakar mesin induk maksimum per bacaan | 500 | t | ⚠️ perlu sitasi |
+| $FC_{AE,max}$ | Bahan bakar mesin bantu maksimum per bacaan | 100 | t | ⚠️ perlu sitasi |
+| $\Delta_{skew}$ | Selisih jam maksimum ke masa depan | 5 | min | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
+| $\Delta_{age}$ | Umur maksimum bacaan (periode retensi) | 5 | year | ⚠️ perlu sitasi |
+| $\Delta_{period}$ | Periode maksimum sebuah bacaan | 24 | h | ⚠️ perlu sitasi |
+| $N_{batch}$ | Jumlah bacaan maksimum per batch | 1000 | — | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `telemetry` (ais-its-telemetry-service) — `src/domain/fuel-reading.ts#readingViolations (batch rules in batchViolations and repeatViolations)`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Selisih jam 5 menit dan batas batch 1000 berasal dari spesifikasi §13.4; nilai maksimum bahan bakar, periode 24 jam dan umur 5 tahun adalah nilai desain v2 tanpa sumber eksternal.
+
+<a id="geo.map_simplification"></a>
+#### 20.3 `geo.map_simplification` — Penyederhanaan geometri lapisan peta zona
+
+*Zone map layer geometry simplification*
+
+**Deskripsi.** Untuk GET /api/v2/zones/geojson, geometri disederhanakan untuk zoom yang diminta dengan Douglas-Peucker yang mempertahankan topologi pada toleransi setengah piksel tile 512 px, epsilon = 0,5 x 360 / (512 x 2^z) derajat (0 tanpa zoom atau bila di bawah pembulatan 6 desimal), lalu dibulatkan ke 6 desimal; satu respons memuat paling banyak maxFeatures fitur dan maxVertices verteks (awalan terpanjang dari zona dalam kedua anggaran, ditandai bila dipotong).
+
+$$
+\varepsilon(z)=\frac{p\cdot360^{\circ}}{T\cdot2^{z}},\qquad \varepsilon=0\ \text{if}\ \varepsilon<10^{-6}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $z$ | Zoom peta yang diminta (0-24) | — | query zoom |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $p$ | Toleransi dalam piksel (MAP_SIMPLIFICATION_PX) | 0.5 | px | ⚠️ perlu sitasi |
+| $T$ | Ukuran tile (MAP_TILE_SIZE_PX) | 512 | px | ⚠️ perlu sitasi |
+| $d$ | Desimal koordinat (MAP_GEOMETRY_DIGITS) | 6 | — | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `geo` (ais-its-geo-service) — `src/domain/zone-map.ts#simplificationToleranceDeg (budgets in exceededBudget and planFetchChunks)`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[142]](#ref-douglas-peucker-1973), [[141]](#ref-ietf-rfc-7946), [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Aturan tampilan kartografis, bukan metode analitik; diusulkan oleh layanan geo. Geometri tersimpan tidak pernah disederhanakan.
+
+<a id="geo.track_simplification"></a>
+#### 20.4 `geo.track_simplification` — Penyederhanaan lintasan untuk tampilan (Ramer-Douglas-Peucker)
+
+*Track simplification for display (Ramer-Douglas-Peucker)*
+
+**Deskripsi.** Lintasan kapal disederhanakan untuk tampilan (parameter simplify dari endpoint lintasan): posisi pertama dan terakhir dipertahankan, demikian pula setiap posisi yang lebih jauh dari toleransi terhadap tali busur rentangnya (Ramer-Douglas-Peucker iteratif); jarak dihitung planar dalam proyeksi ekuirektangular lokal (x = dlambda cos phi0, y = dphi, phi0 = lintang rata-rata, bujur dibuka melintasi antimeridian). Posisi yang dipertahankan dikembalikan tanpa perubahan dalam urutan waktu.
+
+$$
+x=m\,\Delta\lambda\cos\varphi_0,\quad y=m\,\varphi,\quad m=\frac{\pi R}{180},\qquad \text{keep }p_k\iff d_\perp\left(p_k,\overline{p_ip_j}\right)=\max_{i<l<j}d_\perp\left(p_l,\overline{p_ip_j}\right)>\varepsilon
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $\varepsilon$ | Toleransi jarak tegak lurus (parameter permintaan) | m | query simplify |
+| $\varphi_0$ | Lintang rata-rata lintasan | deg | AIS lat |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $R$ | Jari-jari bumi rata-rata (proyeksi lokal) | 6.37101e+06 | m | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `ais-pipeline` (ais-its-pipeline) — `src/shared/domain/simplify.ts#simplifyTrack`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[142]](#ref-douglas-peucker-1973), [[143]](#ref-ramer-1972)
+
+**Catatan.** Hanya untuk tampilan: analitik memakai posisi mentah. Toleransi <= 0 mempertahankan setiap posisi.
+
+<a id="geo.zone_buffer_extent"></a>
+#### 20.5 `geo.zone_buffer_extent` — Jari-jari buffer konservatif dalam derajat
+
+*Conservative buffer radius in degrees*
+
+**Deskripsi.** Buffer zona dalam meter diubah menjadi jari-jari konservatif dalam derajat untuk filter kotak pembatas: r = 1,01 x max(b / 110 574,2696, b / (111 319,4908 x cos phi)), dengan phi lintang paling dekat kutub yang dicapai zona ber-buffer (|lintang|maks + b / 110 574,2696); dalam 1 derajat dari kutub (phi >= 89) setiap bujur cocok (r = 360). Zona paling jauh sekitar 1 % di luar buffernya dapat cocok; tidak ada zona yang buffernya mencapai kotak yang terlewat.
+
+$$
+r=\min\left(360^{\circ},\ k\max\left(\frac{b}{m_\varphi},\ \frac{b}{m_\lambda\cos\varphi}\right)\right),\quad \varphi=\min\left(90^{\circ},\ |\phi|_{max}+\frac{b}{m_\varphi}\right),\quad r=360^{\circ}\ \text{if}\ \varphi\ge 89^{\circ}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $b$ | Buffer zona (buffer_m) | m | geo zones |
+| $|\phi|_{max}$ | Lintang absolut terbesar dari geometri | deg | zone geometry |
+| $r$ | Jari-jari buffer dalam derajat | deg | result |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $m_\varphi$ | Panjang satu derajat meridian, batas bawah (WGS 84 di ekuator: M(0) x pi/180 = 110 574,276 m) | 110574 | m | [[59]](#ref-nima-tr8350-2-wgs84) |
+| $m_\lambda$ | Panjang satu derajat paralel di ekuator, a x pi/180 | 111319 | m | [[59]](#ref-nima-tr8350-2-wgs84) |
+| $k$ | Margin untuk pendekatan sferis | 1.01 | — | ⚠️ perlu sitasi |
+| $\varphi_{pole}$ | Lintang di atas mana setiap bujur cocok | 89 | deg | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `geo` (ais-its-geo-service) — `src/modules/zones/zones.repository.ts#bufferedBBoxCondition (SQL zone_buffer_degrees of migrations/0002_map_extent_quota_tiles.sql)`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[59]](#ref-nima-tr8350-2-wgs84), [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** m_lambda = a x pi/180 dan M(0) = a(1 - e^2) dihitung dari a = 6 378 137 m dan 1/f = 298,257223563 (terverifikasi di referensi WGS 84); 110 574,2696 m adalah pembulatan ke bawah (konservatif) dari 110 574,276 m. Margin 1 % dan batas kutub 89 derajat adalah nilai desain v2.
+
+<a id="geo.zone_geometry_rules"></a>
+#### 20.6 `geo.zone_geometry_rules` — Aturan input geometri zona
+
+*Zone geometry input rules*
+
+**Deskripsi.** Geometri zona diterima bila GeoJSON valid dengan posisi bujur/lintang WGS 84 dalam [-180, 180] x [-90, 90]; jenis geometri diizinkan untuk jenis zona; paling banyak 50 000 verteks; zona titik memerlukan buffer_m > 0; geometri yang melintasi antimeridian ditolak (klien harus memotongnya, RFC 7946 §3.1.9); validitas topologi diperiksa dengan PostGIS ST_IsValidDetail; tidak ada perbaikan diam-diam.
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $N_{max}$ | Jumlah verteks maksimum (ZONE_MAX_VERTICES) | 50000 | — | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
+| $\Delta\lambda_{edge,max}$ | Rentang bujur sisi di atas mana sisi dianggap melintasi antimeridian (MAX_EDGE_LONGITUDE_SPAN_DEG) | 180 | deg | [[141]](#ref-ietf-rfc-7946) ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `geo` (ais-its-geo-service) — `src/domain/zone-geometry.ts#assertZoneGeometryRules (parsing in parseZoneGeometry, antimeridian rule in assertNoAntimeridianCrossing, ST_IsValidDetail in the zones repository)`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[141]](#ref-ietf-rfc-7946), [[59]](#ref-nima-tr8350-2-wgs84), [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Aturan validasi input platform, bukan metode analitik; diusulkan oleh layanan geo (spesifikasi §13.6).
+
+<a id="cii.year_end_projection"></a>
+#### 20.7 `cii.year_end_projection` — Proyeksi CII akhir tahun (linear)
+
+*Year-end CII projection (linear)*
+
+**Deskripsi.** Total sejak awal tahun (jarak, bahan bakar, CO2) dari tahun berjalan diproyeksikan linear ke 31 Desember, X_tahun = X_YTD / f dengan f fraksi tahun kalender yang telah lewat pada segmen terakhir, lalu CII tercapai proyeksi = CO2_tahun x 10^6 / (Kapasitas x D_tahun) dinilai. CO2 dan jarak berskala sama, sehingga CII tercapai, rating dan grade proyeksi sama dengan nilai sejak awal tahun; tren CII kumulatif harian sengaja tidak diekstrapolasi.
+
+$$
+X_{year}=\frac{X_{YTD}}{f},\quad f=\frac{t_{last}-t_{1\,Jan}}{t_{1\,Jan+1}-t_{1\,Jan}}\in(0,1],\qquad CII_{year}=\frac{CO2_{year}\cdot10^{6}}{Cap\cdot D_{year}}=CII_{YTD}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $X_{YTD}$ | Total sejak awal tahun: jarak, bahan bakar, CO2 | nm, t | [`cii.attained_accumulation`](#cii.attained_accumulation) |
+| $f$ | Fraksi tahun kalender yang telah lewat pada segmen terakhir | — | segment times |
+| $Cap$ | Kapasitas CII (DWT atau GT) | t | fleet |
+| $D_{year}$ | Jarak proyeksi setahun | nm | projection |
+
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/cii-projection.ts#projectYearEnd (with projectTotals and elapsedYearFraction)`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[6]](#ref-imo-mepc-352-78), [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Alat bantu tampilan v2, bukan angka regulasi: CII IMO dinilai atas satu tahun kalender penuh (G1, G4). Linear pada total menurut desain; profil operasi musiman tidak dimodelkan.
+
+<a id="emission.dcs_summary"></a>
+#### 20.8 `emission.dcs_summary` — Ringkasan tahunan gaya IMO DCS
+
+*IMO DCS-style annual summary*
+
+**Deskripsi.** Ringkasan tahunan sebuah kapal per jenis bahan bakar: bahan bakar mesin induk dan mesin bantu (t), CO2 = bahan bakar x C_F (t), jarak (nm) dan jam berlayar (segmen >= 1 kn), dari segmen terhitung tahun itu atau, bila tidak ada, dari catatan tahunan manual (bahan bakar dengan jenis bahan bakar kapal saat ini, jam tidak diketahui). Diekspor sebagai CSV (RFC 4180). Bukan laporan DCS statutori.
+
+$$
+FC_j=\sum_s\left(FC_{ME,s,j}+FC_{AE,s,j}\right),\quad CO2=\sum_j FC_j\,C_{F,j},\quad D=\sum_s d_s,\quad T_{uw}=\sum_{s:\,v_s\ge v_{uw}}\Delta t_s
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $FC_j$ | Bahan bakar jenis j dalam setahun | t | fuel methods |
+| $C_{F,j}$ | Faktor konversi CO2 bahan bakar j | t CO2/t | [`emission.co2_conversion`](#emission.co2_conversion) |
+| $d_s$ | Jarak segmen | nm | [`geo.haversine_distance`](#geo.haversine_distance) |
+| $v_s$ | Kecepatan segmen | kn | [`geo.speed_from_positions`](#geo.speed_from_positions) |
+| $\Delta t_s$ | Durasi segmen | h | segment times |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $v_{uw}$ | Kecepatan minimum yang dihitung sebagai berlayar (UNDER_WAY_MIN_SPEED_KN) | 1 | kn | [[67]](#ref-imo-fourth-ghg-study-2020) ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/modules/dcs/dcs.service.ts#DcsService.summary (CSV in src/domain/dcs.ts#dcsCsv)`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[3]](#ref-imo-mepc-278-70), [[67]](#ref-imo-fourth-ghg-study-2020), [[149]](#ref-ietf-rfc-4180)
+
+**Catatan.** Angka bergaya DCS untuk operator (MEPC.278(70) menjumlahkan bahan bakar per jenis, jarak dan jam berlayar per tahun kalender); format laporan statutori (Appendix IX MARPOL Annex VI, granularitas MEPC.385(81)) tidak dihasilkan. Ambang berlayar 1 kn mengikuti klasifikasi kecepatan AIS Fourth IMO GHG Study (belum diverifikasi ulang).
+
+<a id="emission.segment_window"></a>
+#### 20.9 `emission.segment_window` — Jendela segmen dan penanda celah
+
+*Segment window and gap flag*
+
+**Deskripsi.** Peristiwa posisi membentuk segmen dengan posisi sebelumnya dari kapal yang sama: tanpa posisi sebelumnya, atau bila t_kini - t_sebelum <= 0 (tidak berurutan atau duplikat), tidak ada segmen; celah lebih panjang dari SEGMENT_MAX_GAP_MIN (bawaan 360 menit) disimpan sebagai gap dengan bahan bakar nol dan dikeluarkan dari jumlah CII; selain itu menjadi segmen.
+
+$$
+\Delta t=t_i-t_{i-1},\qquad \text{segment}\iff 0<\Delta t\le\Delta t_{max},\qquad \text{gap}\iff\Delta t>\Delta t_{max}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $\Delta t$ | Selang waktu antara posisi sebelumnya dan posisi kini | min | AIS position times |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $\Delta t_{max}$ | Celah maksimum sebuah segmen (SEGMENT_MAX_GAP_MIN, dapat dikonfigurasi) | 360 | min | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/segment.ts#classifySegmentWindow`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Aturan v2 tanpa padanan legacy (MVP menghitung segmen untuk setiap pasangan posisi). Nilai bawaan 360 menit adalah nilai desain spesifikasi §13.5.
+
+<a id="seemp.simulation_combination"></a>
+#### 20.10 `seemp.simulation_combination` — Kombinasi langkah SEEMP (simulasi bagaimana-jika)
+
+*SEEMP measure combination (what-if simulation)*
+
+**Deskripsi.** Langkah SEEMP terpilih digabung secara berurutan dan multiplikatif, dan untuk satu langkah sama dengan rumus legacy: sisi bahan bakar dahulu (penggantian bahan bakar mengganti C_F, paling banyak satu per simulasi; setiap langkah energi bantu mengalikan sisa bahan bakar AE), lalu CII tercapai dihitung ulang dari sisi bahan bakar bila ada langkah tipe 2/3, lalu setiap langkah operasional/teknis (tipe 1) menguranginya: CII <- CII - (CII x p/100) x v/100. Biaya per tahun langkah terpilih dijumlahkan.
+
+$$
+CII_0=\frac{\left(FC_{ME}+FC_{AE}^{\prime}\right)C_F^{\prime}}{D\cdot Cap}\cdot10^{6},\qquad CII_{after}=CII_0\prod_{k\in T_1}\left(1-\frac{p_k\,v_k}{10^{4}}\right),\qquad C_{year}=\sum_k C_{year,k}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $FC_{AE}^{\prime}$ | Bahan bakar AE setelah langkah energi bantu | t | [`seemp.reduction_type3_auxiliary`](#seemp.reduction_type3_auxiliary) |
+| $C_F^{\prime}$ | Faktor konversi setelah penggantian bahan bakar | t CO2/t | [`seemp.reduction_type2_fuel_switch`](#seemp.reduction_type2_fuel_switch) |
+| $p_k, v_k$ | Bagian operasional dan nilai reduksi langkah tipe 1 | % | [`seemp.reduction_type1_operational_share`](#seemp.reduction_type1_operational_share) |
+| $C_{year,k}$ | Biaya per tahun langkah k | USD/year | [`seemp.cost_amortization`](#seemp.cost_amortization) |
+
+- **Pemilik v2:** layanan `emission` (ais-its-emission-service) — `src/domain/seemp/simulation.ts#simulateMeasures`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Hanya v2; untuk satu langkah sama dengan seemp.reduction_type1_operational_share, seemp.reduction_type2_fuel_switch dan seemp.reduction_type3_auxiliary. Interaksi antarlangkah tidak dimodelkan selain hasil kali berurutan; lebih dari satu penggantian bahan bakar ditolak (IncompatibleMeasuresError).
+
+<a id="notify.alert_dedup_merge"></a>
+#### 20.11 `notify.alert_dedup_merge` — Penggabungan kejadian alert per kunci dedup
+
+*Merge of alert occurrences per dedup key*
+
+**Deskripsi.** Kejadian baru sebuah alert digabung ke alert inbox yang belum diselesaikan (open atau acknowledged) dengan dedupKey yang sama: occurrences + 1, lastOccurredAt = waktu kejadian terbaru (occurredAt kejadian pertama tidak pernah berubah), severity = maks(tersimpan, baru) (info < warning < critical); judul, pesan, posisi, kapal terkait, zona, method id dan detail mengikuti kejadian terbaru (kejadian lebih lama yang datang terlambat dihitung dan hanya dapat menaikkan severity); alert acknowledged yang severity-nya naik dibuka kembali. Alert resolved tidak pernah digabung: kejadian berikutnya membuka alert inbox baru.
+
+$$
+n\leftarrow n+1,\quad t_{last}\leftarrow\max\left(t_{last},t_{occ}\right),\quad s\leftarrow\max\left(s,s_{occ}\right),\quad \text{reopen}\iff \text{acknowledged}\wedge s_{occ}>s
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $n$ | Jumlah kejadian | — | alerts.occurrences |
+| $s, s_{occ}$ | Severity tersimpan dan severity kejadian | — | alert.raised.v1 severity |
+
+- **Pemilik v2:** layanan `notification` (ais-its-notification-service) — `src/domain/alert-inbox.ts#mergeOccurrence`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Aturan desain v2 (spesifikasi §13.9: alert dengan dedup_key sama selama terbuka digabung); "selama terbuka" diterapkan sebagai "selama belum diselesaikan" agar acknowledge tidak memecah satu insiden. alert.resolved.v1 (contracts 0.4.0) menyelesaikan alert yang belum diselesaikan untuk dedupKey-nya kecuali alert itu telah menggabung kejadian setelah resolvedAt.
+
+<a id="notify.alert_lifecycle"></a>
+#### 20.12 `notify.alert_lifecycle` — Siklus hidup alert inbox
+
+*Inbox alert lifecycle*
+
+**Deskripsi.** open -> acknowledged -> resolved dan open -> resolved (POST /alerts/:id/ack dan /resolve, serta alert.resolved.v1 dari detektor); kedua aksi idempoten (acknowledge pada alert acknowledged atau resolve pada alert resolved tidak mengubah apa pun); alert resolved tidak dapat di-acknowledge; siapa dan kapan dicatat.
+
+- **Pemilik v2:** layanan `notification` (ais-its-notification-service) — `src/domain/alert-inbox.ts#transitionAlert`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Aturan desain v2 (spesifikasi §13.9).
+
+<a id="notify.alert_rule_matching"></a>
+#### 20.13 `notify.alert_rule_matching` — Pencocokan aturan alert
+
+*Alert rule matching*
+
+**Deskripsi.** Sebuah aturan cocok dengan alert bila semua syarat terpenuhi (AND; daftar kosong tidak membatasi): aturan aktif; cakupan org hanya cocok dengan alert yang kapal atau kapal terkaitnya milik organisasi aturan (cakupan all cocok dengan kapal mana pun); jenis, domain, severity >= minSeverity (info < warning < critical), MMSI (kapal atau kapal terkait) dan zona termasuk dalam daftar aturan.
+
+$$
+\text{match}(r,a)=e_r\wedge O_r(a)\wedge a.type\in^{*}T_r\wedge a.domain\in^{*}D_r\wedge a.severity\ge s_{min}\wedge\{a.mmsi,a.related\}\cap^{*}M_r\wedge a.zone\in^{*}Z_r
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $\in^{*}$ | Keanggotaan yang selalu benar untuk daftar kosong | — | alert_rules |
+
+- **Pemilik v2:** layanan `notification` (ais-its-notification-service) — `src/domain/alert-rules.ts#ruleMatchesAlert`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Aturan desain v2 (spesifikasi §13.9 dan §8.5).
+
+<a id="notify.delivery_retry_backoff"></a>
+#### 20.14 `notify.delivery_retry_backoff` — Backoff eksponensial pengiriman notifikasi
+
+*Exponential backoff of notification deliveries*
+
+**Deskripsi.** Setelah percobaan gagal ke-n (mulai 1) dari sebuah pengiriman (e-mail, Telegram, webhook), percobaan berikutnya jatuh tempo setelah b x 2^(n-1) ms dibatasi maks, atau setelah jeda yang diminta pihak jauh bila lebih lama (retry_after Telegram, Retry-After HTTP); kegagalan permanen atau percobaan terakhir yang diizinkan menandai pengiriman gagal.
+
+$$
+\Delta t_n=\min\left(b\cdot2^{\,n-1},\ \Delta t_{max}\right),\qquad \Delta t=\max\left(\Delta t_n,\ \Delta t_{remote}\right),\qquad \text{failed}\iff \text{permanent}\vee n\ge N_{max}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $n$ | Nomor percobaan yang gagal | — | deliveries.attempts |
+| $\Delta t_{remote}$ | Jeda yang diminta pihak jauh | ms | retry_after / Retry-After |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $b$ | Jeda dasar (DELIVERY_RETRY_BASE_MS) | 30000 | ms | ⚠️ perlu sitasi |
+| $\Delta t_{max}$ | Jeda maksimum (DELIVERY_RETRY_MAX_MS) | 3600000 | ms | ⚠️ perlu sitasi |
+| $N_{max}$ | Jumlah percobaan maksimum (DELIVERY_MAX_ATTEMPTS) | 6 | — | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `notification` (ais-its-notification-service) — `src/domain/delivery-retry.ts#planRetry (backoff in retryDelayMs)`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1), [[147]](#ref-ietf-rfc-9110), [[148]](#ref-telegram-bot-api)
+
+**Catatan.** Spesifikasi §13.9 meminta pengiriman "dengan retry"; nilai bawaan adalah nilai desain v2.
+
+<a id="notify.realtime_batching"></a>
+#### 20.15 `notify.realtime_batching` — Batching realtime (item terbaru per kapal)
+
+*Realtime batching (latest item per vessel)*
+
+**Deskripsi.** Posisi dan status keselamatan dikumpulkan per room tile zoom 6 dan untuk tile:all; setiap 1 s (tile) dan 5 s (tile:all) jendela ditutup dan setiap batch hanya membawa item terbaru per kapal (waktu terbaru; untuk waktu sama, yang terakhir ditambahkan). Room tanpa anggota dilewati.
+
+$$
+B_{room,w}=\left\{\arg\max_{i\in W_{room,w}:\ mmsi_i=m}t_i\ :\ m\right\}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $W_{room,w}$ | Item room dalam jendela w | — | ais.position.recorded.v1, safety.vessel_state.updated.v1 |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $w_{tile}$ | Jendela room tile | 1 | s | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
+| $w_{all}$ | Jendela room tile:all | 5 | s | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `notification` (ais-its-notification-service) — `src/domain/realtime/realtime-batcher.ts#RealtimeBatcher (latest item per vessel in LatestPerVesselBatch)`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Aturan desain v2 (spesifikasi §9: positions / safety:states, jendela 1 s dan 5 s).
+
+<a id="notify.realtime_viewport_rooms"></a>
+#### 20.16 `notify.realtime_viewport_rooms` — Room viewport realtime (tile zoom 6)
+
+*Realtime viewport rooms (zoom 6 tiles)*
+
+**Deskripsi.** Viewport peta [minLon, minLat, maxLon, maxLat] bergabung ke room tile slippy-map Web Mercator pada zoom 6 yang menutupinya, atau tile:all bila lebih dari 64 tile diperlukan; room viewport sebelumnya yang tidak tercakup ditinggalkan, room yang sudah diikuti dipertahankan. Kotak terbalik atau yang melintasi antimeridian ditolak.
+
+$$
+x=\left\lfloor 2^{z}\,\frac{\lambda+180^{\circ}}{360^{\circ}}\right\rfloor,\quad y=\left\lfloor 2^{z}\,\frac{1-\ln\left(\tan\varphi+\sec\varphi\right)/\pi}{2}\right\rfloor,\qquad N>N_{max}\Rightarrow \texttt{tile:all}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $N$ | Jumlah tile yang menutupi viewport | — | viewport:set |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $z$ | Zoom tile room (REALTIME_TILE_ZOOM) | 6 | — | [[49]](#ref-platform-spec-v1-1) ⚠️ perlu sitasi |
+| $N_{max}$ | Jumlah tile maksimum sebelum tile:all (REALTIME_MAX_TILES) | 64 | — | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `notification` (ais-its-notification-service) — `src/domain/realtime/viewport.ts#planViewport`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[146]](#ref-osm-slippy-map-tilenames), [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Aturan desain v2 (spesifikasi §9, viewport:set); matematika tile dari contracts ./realtime.
+
+<a id="notify.rule_quiet_period"></a>
+#### 20.17 `notify.rule_quiet_period` — Periode tenang per aturan
+
+*Per-rule quiet period*
+
+**Deskripsi.** Setelah sebuah aturan menotifikasi sebuah alert, kejadian berikutnya dari alert yang sama (dedupKey sama selama belum diselesaikan) tidak dinotifikasi lagi lewat aturan itu selama quietMinutes, kecuali severity naik di atas severity yang terakhir dinotifikasi (eskalasi selalu dinotifikasi). Alert lain tidak pernah ditahan; quietMinutes = 0 menonaktifkannya.
+
+$$
+\text{suppress}\iff q>0\wedge s\le s_{last}\wedge t-t_{last}<q
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $q$ | Periode tenang aturan (quiet_minutes) | min | alert_rules |
+| $t_{last}, s_{last}$ | Waktu dan severity notifikasi terakhir aturan untuk alert ini | — | deliveries |
+
+- **Pemilik v2:** layanan `notification` (ais-its-notification-service) — `src/domain/alert-rules.ts#isWithinQuietPeriod`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Aturan desain v2 (spesifikasi §13.9: periode tenang per aturan).
+
+<a id="notify.webhook_signature"></a>
+#### 20.18 `notify.webhook_signature` — Tanda tangan webhook (HMAC-SHA256)
+
+*Webhook signature (HMAC-SHA256)*
+
+**Deskripsi.** Setiap permintaan webhook membawa X-AIS-ITS-Timestamp (detik Unix) dan X-AIS-ITS-Signature = "sha256=" + hex(HMAC-SHA256(rahasia, timestamp + "." + body mentah)); menandatangani timestamp memungkinkan penerima menolak permintaan yang diputar ulang.
+
+$$
+sig=\texttt{sha256=}\,\mathrm{hex}\left(\mathrm{HMAC}_{SHA\text{-}256}\left(K,\ ts\,\Vert\,\texttt{.}\,\Vert\,body\right)\right)
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $K$ | Rahasia penandatanganan bersama (WEBHOOK_SIGNING_SECRET) | — | configuration |
+| $ts$ | Timestamp yang dikirim (detik Unix) | s | X-AIS-ITS-Timestamp |
+
+- **Pemilik v2:** layanan `notification` (ais-its-notification-service) — `src/domain/webhook-signature.ts#signWebhookPayload`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[144]](#ref-ietf-rfc-2104), [[145]](#ref-nist-fips-180-4), [[49]](#ref-platform-spec-v1-1)
+
+**Catatan.** Mekanisme keamanan, bukan metode analitik; dicatat agar format tanda tangan dapat ditelusuri (spesifikasi §13.9). Penerima membandingkan dalam waktu konstan dan membatasi umur timestamp (verifyWebhookSignature).

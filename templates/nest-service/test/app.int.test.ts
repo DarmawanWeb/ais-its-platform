@@ -1,11 +1,16 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { PG_POOL } from '@darmawanweb/ais-its-nest/db';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { SERVICE } from '../src/service.js';
+import { MIGRATIONS_DIR, SERVICE } from '../src/service.js';
 import { startTestService, type TestService } from './support/test-service.js';
 
-const METHODOLOGY_URL = `/api/v2/${SERVICE.name}/methodology`;
+const METHODOLOGY_URL = `/api/v2/${SERVICE.routePrefix}/methodology`;
 
 describe(`${SERVICE.packageName} platform behaviour`, () => {
   let service: TestService;
@@ -42,6 +47,30 @@ describe(`${SERVICE.packageName} platform behaviour`, () => {
       'SELECT name FROM schema_migrations ORDER BY version',
     );
     expect(rows.map((row) => row.name)).toContain('init');
+  });
+
+  it('finds its migrations when started from another working directory', async () => {
+    expect(MIGRATIONS_DIR).toBe(
+      fileURLToPath(new URL('../migrations', import.meta.url)),
+    );
+    const cwd = process.cwd();
+    // e.g. a process manager starting dist/main.js from elsewhere: no
+    // ./migrations there, so the boot fails unless MIGRATIONS_DIR is used.
+    const elsewhere = mkdtempSync(join(tmpdir(), 'cwd-'));
+    process.chdir(elsewhere);
+    let other: TestService | undefined;
+    try {
+      other = await startTestService();
+      const ready = await other.app.inject({
+        method: 'GET',
+        url: '/health/ready',
+      });
+      expect(ready.statusCode).toBe(200);
+    } finally {
+      process.chdir(cwd);
+      rmSync(elsewhere, { recursive: true, force: true });
+      await other?.app.close();
+    }
   });
 
   it('denies anonymous requests with 401 problem details', async () => {

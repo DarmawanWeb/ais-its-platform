@@ -99,8 +99,8 @@
     "status": "implemented",
     "needsCitation": false,
     "notes": {
-      "id": "Sudah ada di @darmawanweb/ais-its-contracts 0.2.0 dengan urutan operasi floating point yang sama dengan legacy; dipakai emission (jarak segmen), ais-pipeline (filter duplikat) dan surveillance (jarak pasangan). R = 3438 nm adalah pembulatan 10800/pi = 3437,75 nm; referensi yang dipakai tesis untuk angka ini tidak diketahui. Legacy memakai empat bola berbeda (3438 nm; 6 371 008,8 m di turf; 6371 km dan 6 378 137 m di frontend). Jari-jari rata-rata IUGG (3440,07 nm) akan menambah jarak +0,06 % (CII attained -0,06 %); v2 tetap memakai 3438 nm demi paritas. Antimeridian tidak ditangani.",
-      "en": "Already in @darmawanweb/ais-its-contracts 0.2.0 with the same floating-point order as legacy; used by emission (segment distance), ais-pipeline (duplicate filter) and surveillance (pair distance). R = 3438 nm rounds 10800/pi = 3437.75 nm; which reference the thesis used for it is unknown. The legacy uses four spheres (3438 nm; 6,371,008.8 m in turf; 6371 km and 6,378,137 m in the frontend). The IUGG mean radius (3440.07 nm) would add +0.06 % distance (-0.06 % attained CII); v2 keeps 3438 nm for parity. No antimeridian handling."
+      "id": "Sudah ada di @darmawanweb/ais-its-contracts 0.2.0 dengan urutan operasi floating point yang sama dengan legacy; dipakai emission (jarak segmen), ais-pipeline (filter duplikat) dan surveillance (jarak pasangan). R = 3438 nm adalah pembulatan 10800/pi = 3437,75 nm; referensi yang dipakai tesis untuk angka ini tidak diketahui. Legacy memakai empat bola berbeda (3438 nm; 6 371 008,8 m di turf; 6371 km dan 6 378 137 m di frontend). Jari-jari rata-rata IUGG (3440,07 nm) akan menambah jarak +0,06 % (CII attained -0,06 %); v2 tetap memakai 3438 nm demi paritas. Antimeridian tidak ditangani. Kode v2: emission src/domain/segment.ts#calculateSpeed, ais-pipeline src/shared/domain/movement.ts#classifyMovement (melalui legacyHaversineDistance).",
+      "en": "Already in @darmawanweb/ais-its-contracts 0.2.0 with the same floating-point order as legacy; used by emission (segment distance), ais-pipeline (duplicate filter) and surveillance (pair distance). R = 3438 nm rounds 10800/pi = 3437.75 nm; which reference the thesis used for it is unknown. The legacy uses four spheres (3438 nm; 6,371,008.8 m in turf; 6371 km and 6,378,137 m in the frontend). The IUGG mean radius (3440.07 nm) would add +0.06 % distance (-0.06 % attained CII); v2 keeps 3438 nm for parity. No antimeridian handling. v2 code: emission src/domain/segment.ts#calculateSpeed, ais-pipeline src/shared/domain/movement.ts#classifyMovement (through legacyHaversineDistance)."
     }
   },
   {
@@ -217,7 +217,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/speed-calculation.ts:calculateSpeed"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Batas 30 kn spesifik tesis. Lonjakan GPS yang terkena batas tetap menambah jarak CII penuh, dan timestamp ganda (dt = 0) menambah jarak dengan kecepatan 0: keduanya perlu diputuskan (paritas vs perbaikan). 0,5144 adalah pembulatan 1852/3600 = 0,514444 (-0,009 %), dipertahankan demi paritas (KNOTS_TO_MS di contracts). Alternatif: memakai SOG AIS sebagai pembanding.",
@@ -290,7 +290,7 @@
       "be-legacy/src/utils/cii/second-formula/course-calculation.ts:calculateShipCourse",
       "be-legacy/src/utils/cii/second-formula/index.ts:perCalculateSecondFormulaFuel"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Penyimpangan legacy: titik awal adalah posisi terbaru sehingga haluan menunjuk dari posisi terbaru ke posisi sebelumnya (berlawanan dengan arah gerak); ke timur dengan dphi = 0 menghasilkan 270 derajat. Akibatnya angin haluan dan angin buritan tertukar pada koreksi Kwon. v2 menjaga paritas sampai diputuskan; alternatif: COG atau HDG AIS. Bearing loksodrom dipadukan dengan jarak lingkaran besar dapat diterima untuk segmen AIS pendek.",
@@ -374,13 +374,13 @@
     ],
     "implementedBy": {
       "service": "ais-pipeline",
-      "module": "src/shared/domain/coastline.ts#coastDistanceM"
+      "module": "src/shared/domain/coastline.ts#CoastlineGeometry.distanceM"
     },
     "legacy": [
       "be-legacy/src/utils/calculate-ews.ts:findNearestCoastDistance",
       "be-legacy/src/services/ais.service.ts:createOrUpdateAis"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Legacy membaca data/indonesia.json dari disk pada setiap pesan; v2 memuat geometri sekali dan mengindeksnya (flatbush). Lubang poligon diabaikan dan posisi di darat mendapat jarak ke batas (bukan 0). Geometrinya hanya batas Provinsi Jawa Timur (data.indonesia_coastline), sehingga kapal di luar Jawa Timur selalu memenuhi syarat > 210 m. Jarak PostGIS (sferoid) akan sedikit berbeda dari turf 7.2.0: uji paritas perlu toleransi.",
@@ -584,11 +584,11 @@
       "be-legacy/src/config/ws.ts",
       "be-legacy/src/config/ws-batam.ts"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
-      "id": "Aturan implementasi MVP tanpa sumber eksternal. Makna field 'utc' penyedia belum dikonfirmasi: bila itu time stamp ITU-R M.1371 (detik UTC posisi), t_msg - utc bukan waktu posisi yang benar (rekonstruksi yang masuk akal: t terakhir <= t_msg dengan detik UTC = utc, hanya bila utc < 60). v2 mempertahankan rumus legacy demi paritas, menolak lat/lon di luar rentang (91/181 = tidak tersedia) dan MMSI bukan 9 digit, serta membandingkan duplikat dengan posisi TERAKHIR (spesifikasi 15.1). Posisi out-of-order yang lebih baru dari pesan masuk terhapus oleh filter 24 jam legacy.",
-      "en": "MVP implementation rules without external source. The meaning of the provider 'utc' field is unconfirmed: if it is the ITU-R M.1371 time stamp (UTC second of the fix), t_msg - utc is not a valid position time (plausible reconstruction: latest t <= t_msg whose UTC second equals utc, only when utc < 60). v2 keeps the legacy formula for parity, rejects lat/lon out of range (91/181 = not available) and MMSIs that are not 9 digits, and compares duplicates with the LATEST fix (spec 15.1). Out-of-order fixes newer than the incoming message are deleted by the legacy 24 h filter."
+      "id": "Aturan implementasi MVP tanpa sumber eksternal. Makna field 'utc' penyedia belum dikonfirmasi: bila itu time stamp ITU-R M.1371 (detik UTC posisi), t_msg - utc bukan waktu posisi yang benar (rekonstruksi yang masuk akal: t terakhir <= t_msg dengan detik UTC = utc, hanya bila utc < 60). v2 mempertahankan rumus legacy demi paritas, menolak lat/lon di luar rentang (91/181 = tidak tersedia) dan MMSI bukan 9 digit, serta membandingkan duplikat dengan posisi TERAKHIR (spesifikasi 15.1). Posisi out-of-order yang lebih baru dari pesan masuk terhapus oleh filter 24 jam legacy. Kode v2: waktu posisi di src/shared/domain/normalize.ts#positionTimeOf, filter duplikat 0,1 m di src/shared/domain/movement.ts#classifyMovement, aturan posisi terbaru dan pesan tidak berurutan di src/apps/processor/pipeline/resolve-batch.ts#resolveBatch.",
+      "en": "MVP implementation rules without external source. The meaning of the provider 'utc' field is unconfirmed: if it is the ITU-R M.1371 time stamp (UTC second of the fix), t_msg - utc is not a valid position time (plausible reconstruction: latest t <= t_msg whose UTC second equals utc, only when utc < 60). v2 keeps the legacy formula for parity, rejects lat/lon out of range (91/181 = not available) and MMSIs that are not 9 digits, and compares duplicates with the LATEST fix (spec 15.1). Out-of-order fixes newer than the incoming message are deleted by the legacy 24 h filter. v2 code: position time in src/shared/domain/normalize.ts#positionTimeOf, 0.1 m duplicate filter in src/shared/domain/movement.ts#classifyMovement, latest-position and out-of-order rules in src/apps/processor/pipeline/resolve-batch.ts#resolveBatch."
     }
   },
   {
@@ -729,8 +729,8 @@
     "status": "implemented",
     "needsCitation": false,
     "notes": {
-      "id": "Label 0-15 dan nilai \"tidak tersedia\" sudah ada di contracts (NAV_STATUS_LABELS, HEADING_NOT_AVAILABLE, SOG_NOT_AVAILABLE, COG_NOT_AVAILABLE). Hanya kode 0, 1, 5, 9 (dicadangkan) dan 14 yang terkonfirmasi lewat pencarian; label lain dan nilai \"tidak tersedia\" perlu dicek terhadap tabel M.1371-5/-6. Frontend legacy memakai dua set label (kartu anomali menyebut 9/10 \"High Speed Craft\"/\"Wing in Ground\", padahal ITU mencadangkannya); v2 memakai label contracts. Unit AIS kelas B tidak mengirim status navigasi.",
-      "en": "Labels 0-15 and the 'not available' values are already in contracts (NAV_STATUS_LABELS, HEADING_NOT_AVAILABLE, SOG_NOT_AVAILABLE, COG_NOT_AVAILABLE). Only codes 0, 1, 5, 9 (reserved) and 14 were confirmed by search; the other labels and 'not available' values must be checked against the M.1371-5/-6 tables. The legacy frontend has two label sets (the anomaly card calls 9/10 'High Speed Craft'/'Wing in Ground' although ITU reserves them); v2 uses the contracts labels. Class B units transmit no navigational status."
+      "id": "Label 0-15 dan nilai \"tidak tersedia\" sudah ada di contracts (NAV_STATUS_LABELS, HEADING_NOT_AVAILABLE, SOG_NOT_AVAILABLE, COG_NOT_AVAILABLE). Hanya kode 0, 1, 5, 9 (dicadangkan) dan 14 yang terkonfirmasi lewat pencarian; label lain dan nilai \"tidak tersedia\" perlu dicek terhadap tabel M.1371-5/-6. Frontend legacy memakai dua set label (kartu anomali menyebut 9/10 \"High Speed Craft\"/\"Wing in Ground\", padahal ITU mencadangkannya); v2 memakai label contracts. Unit AIS kelas B tidak mengirim status navigasi. v2: juga diterapkan oleh ais-pipeline di src/shared/domain/normalize.ts#normalizeAisMessage (rentang kode dan nilai \"tidak tersedia\").",
+      "en": "Labels 0-15 and the 'not available' values are already in contracts (NAV_STATUS_LABELS, HEADING_NOT_AVAILABLE, SOG_NOT_AVAILABLE, COG_NOT_AVAILABLE). Only codes 0, 1, 5, 9 (reserved) and 14 were confirmed by search; the other labels and 'not available' values must be checked against the M.1371-5/-6 tables. The legacy frontend has two label sets (the anomaly card calls 9/10 'High Speed Craft'/'Wing in Ground' although ITU reserves them); v2 uses the contracts labels. Class B units transmit no navigational status. v2: also applied by ais-pipeline in src/shared/domain/normalize.ts#normalizeAisMessage (code range and \"not available\" values)."
     }
   },
   {
@@ -860,7 +860,7 @@
       "be-legacy/src/services/predict-navstatus.service.ts:calculatePredictedNavStatus",
       "be-legacy/src/services/ais.service.ts:createOrUpdateAis"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Heuristik spesifik tesis: tidak ada sumber eksternal untuk 0,4 kn, 10 derajat dan 210 m. Pertanyaan terbuka: selisih COG-HDG tanpa wrap 360 (359 vs 1 = 358) dan HDG 511 posisi sebelumnya ikut dirata-rata; mengapa selisih kecil COG-HDG menjadi bukti berlabuh (kapal berlabuh berputar, COG pada ~0 kn adalah derau); kapal tertambat dekat dermaga (< 210 m) diprediksi 0. Harus divalidasi (presisi/recall) terhadap data AIS berlabel sebelum dipakai sebagai masukan EWS dan anomali. Cabang \"tanpa posisi sebelumnya\" tidak tercapai karena kapal baru memakai pesannya sendiri.",
@@ -980,7 +980,7 @@
     ],
     "implementedBy": {
       "service": "safety",
-      "module": "src/detectors/ews/ews.detector.ts"
+      "module": "src/detectors/ews/ews.detector.ts#EwsDetector"
     },
     "legacy": [
       "be-legacy/src/utils/calculate-ews.ts:checkShipStatus",
@@ -989,11 +989,11 @@
       "fe-legacy/src/pages/ews/components/ews-card.tsx:allAlerts",
       "fe-legacy/src/pages/anomaly/components/navstatus-anomaly-card.tsx:getEwsStatusInfo"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
-      "id": "Pola 500 m zona terlarang + 1 250 m zona terbatas (= 1 750 m dari titik terluar) tertulis di PP 27/2021 Pasal 31(3) untuk bangunan dan instalasi di laut; Permen ESDM 32/2021 melarang kapal pihak ketiga membuang atau membongkar sauh di daerah terbatas, dan Ditjen Migas menyatakan kapal tidak boleh berlabuh jangkar dalam 1 750 m dari pipa, sesuai dengan aturan \"hanya kapal berlabuh\". Pasal yang dipakai tesis belum diketahui, dan aturan ini bergantung pada prediksi navstatus yang belum divalidasi. Klasifikasi murni sudah ada di contracts (src/domain/ews.ts#classifyEwsStatus); v2 memakai zona pipa dari layanan geo, bukan file. Kode 2/3 berbeda antara frontend (2 \"Normal\") dan backend (3 aman). Kapal yang menyeret jangkar (SOG >= 0,4 kn) atau melaporkan navstatus 1 tidak dinilai.",
-      "en": "The 500 m prohibited + 1,250 m restricted zone pattern (= 1,750 m from the outermost point) is written in PP 27/2021 Pasal 31(3) for structures and installations at sea; Permen ESDM 32/2021 bans third-party ships from dropping or weighing anchor in the restricted area, and Ditjen Migas states ships may not anchor within 1,750 m of a pipeline, which matches the 'anchored vessels only' rule. The article the thesis relies on is unknown, and the rule depends on the unvalidated navstatus prediction. The pure classification is already in contracts (src/domain/ews.ts#classifyEwsStatus); v2 takes pipeline zones from the geo service instead of a file. Codes 2/3 differ between frontend (2 'Normal') and backend (3 safe). Vessels dragging anchor (SOG >= 0.4 kn) or reporting navstatus 1 are not rated."
+      "id": "Pola 500 m zona terlarang + 1 250 m zona terbatas (= 1 750 m dari titik terluar) tertulis di PP 27/2021 Pasal 31(3) untuk bangunan dan instalasi di laut; Permen ESDM 32/2021 melarang kapal pihak ketiga membuang atau membongkar sauh di daerah terbatas, dan Ditjen Migas menyatakan kapal tidak boleh berlabuh jangkar dalam 1 750 m dari pipa, sesuai dengan aturan \"hanya kapal berlabuh\". Pasal yang dipakai tesis belum diketahui, dan aturan ini bergantung pada prediksi navstatus yang belum divalidasi. Klasifikasi murni sudah ada di contracts (src/domain/ews.ts#classifyEwsStatus); v2 memakai zona pipa dari layanan geo, bukan file. Kode 2/3 berbeda antara frontend (2 \"Normal\") dan backend (3 aman). Kapal yang menyeret jangkar (SOG >= 0,4 kn) atau melaporkan navstatus 1 tidak dinilai. Kode v2: aturannya src/domain/ews.ts#assessEws (keberlakuan zona di pipelineAppliesTo), diterapkan oleh detektor ews.",
+      "en": "The 500 m prohibited + 1,250 m restricted zone pattern (= 1,750 m from the outermost point) is written in PP 27/2021 Pasal 31(3) for structures and installations at sea; Permen ESDM 32/2021 bans third-party ships from dropping or weighing anchor in the restricted area, and Ditjen Migas states ships may not anchor within 1,750 m of a pipeline, which matches the 'anchored vessels only' rule. The article the thesis relies on is unknown, and the rule depends on the unvalidated navstatus prediction. The pure classification is already in contracts (src/domain/ews.ts#classifyEwsStatus); v2 takes pipeline zones from the geo service instead of a file. Codes 2/3 differ between frontend (2 'Normal') and backend (3 safe). Vessels dragging anchor (SOG >= 0.4 kn) or reporting navstatus 1 are not rated. v2 code: the rule is src/domain/ews.ts#assessEws (zone applicability in pipelineAppliesTo), applied by the ews detector."
     }
   },
   {
@@ -1270,11 +1270,11 @@
       "module": "src/domain/cpa.ts#computeCpaTcpa"
     },
     "legacy": [],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
-      "id": "Metode baru v2 (tidak ada di MVP), detektor collision di layanan safety. Rumus CPA/TCPA dari posisi dan kecepatan relatif adalah formulasi klasik plotting radar/ARPA, diturunkan lengkap oleh Lenart (2015) untuk data ARPA atau AIS; IMO MSC.192(79) (dan A.823(19) sebelumnya) mensyaratkan tampilan CPA/TCPA dan alarm dengan batas yang diatur pengguna; COLREG Rule 7 dan 8 memberi konteks risiko tubrukan dan \"jarak aman\" tanpa angka. Pengecualian: salah satu kapal diprediksi berlabuh jangkar atau melaporkan tertambat/berlabuh/kandas, SOG < 0,5 kn, TCPA < 0 (menjauh), MMSI sama. Semua ambang (pita risiko, 6 nm, 2 menit, 0,5 kn, histeresis) adalah default desain v2 yang dapat dikonfigurasi dan PERLU VALIDASI DOMAIN (misalnya terhadap data near-miss AIS). Asumsi: SOG/COG konstan, proyeksi bidang lokal (memadai untuk beberapa nm), posisi antena AIS bukan pusat kapal, ukuran kapal tidak diperhitungkan; akurasi CPA dari AIS terbatas (Wawruch 2018). Alert: high = critical, medium = warning, dedupKey collision:<minMmsi>:<maxMmsi>.",
-      "en": "New v2 method (not in the MVP): the collision detector of the safety service. CPA/TCPA from relative position and velocity is the classic radar/ARPA plotting formulation, fully derived by Lenart (2015) for ARPA or AIS data; IMO MSC.192(79) (and earlier A.823(19)) require CPA/TCPA display and an alarm with user-set limits; COLREG Rules 7 and 8 give the risk-of-collision and 'safe distance' context without numbers. Exclusions: either vessel predicted at anchor or reporting moored/at anchor/aground, SOG < 0.5 kn, TCPA < 0 (diverging), same MMSI. All thresholds (risk bands, 6 nm, 2 min, 0.5 kn, hysteresis) are configurable v2 design defaults that NEED DOMAIN VALIDATION (e.g. against AIS near-miss data). Assumptions: constant SOG/COG, local plane projection (adequate for a few nm), AIS antenna position rather than ship centre, ship size ignored; AIS-derived CPA accuracy is limited (Wawruch 2018). Alerts: high = critical, medium = warning, dedupKey collision:<minMmsi>:<maxMmsi>."
+      "id": "Metode baru v2 (tidak ada di MVP), detektor collision di layanan safety. Rumus CPA/TCPA dari posisi dan kecepatan relatif adalah formulasi klasik plotting radar/ARPA, diturunkan lengkap oleh Lenart (2015) untuk data ARPA atau AIS; IMO MSC.192(79) (dan A.823(19) sebelumnya) mensyaratkan tampilan CPA/TCPA dan alarm dengan batas yang diatur pengguna; COLREG Rule 7 dan 8 memberi konteks risiko tubrukan dan \"jarak aman\" tanpa angka. Pengecualian: salah satu kapal diprediksi berlabuh jangkar atau melaporkan tertambat/berlabuh/kandas, SOG < 0,5 kn, TCPA < 0 (menjauh), MMSI sama. Semua ambang (pita risiko, 6 nm, 2 menit, 0,5 kn, histeresis) adalah default desain v2 yang dapat dikonfigurasi dan PERLU VALIDASI DOMAIN (misalnya terhadap data near-miss AIS). Asumsi: SOG/COG konstan, proyeksi bidang lokal (memadai untuk beberapa nm), posisi antena AIS bukan pusat kapal, ukuran kapal tidak diperhitungkan; akurasi CPA dari AIS terbatas (Wawruch 2018). Alert: high = critical, medium = warning, dedupKey collision:<minMmsi>:<maxMmsi>. Kode v2: diterapkan oleh src/detectors/collision/collision.detector.ts#CollisionDetector; kelas risiko dan histeresis ada di src/domain/collision-risk.ts#assessCollisionRisk.",
+      "en": "New v2 method (not in the MVP): the collision detector of the safety service. CPA/TCPA from relative position and velocity is the classic radar/ARPA plotting formulation, fully derived by Lenart (2015) for ARPA or AIS data; IMO MSC.192(79) (and earlier A.823(19)) require CPA/TCPA display and an alarm with user-set limits; COLREG Rules 7 and 8 give the risk-of-collision and 'safe distance' context without numbers. Exclusions: either vessel predicted at anchor or reporting moored/at anchor/aground, SOG < 0.5 kn, TCPA < 0 (diverging), same MMSI. All thresholds (risk bands, 6 nm, 2 min, 0.5 kn, hysteresis) are configurable v2 design defaults that NEED DOMAIN VALIDATION (e.g. against AIS near-miss data). Assumptions: constant SOG/COG, local plane projection (adequate for a few nm), AIS antenna position rather than ship centre, ship size ignored; AIS-derived CPA accuracy is limited (Wawruch 2018). Alerts: high = critical, medium = warning, dedupKey collision:<minMmsi>:<maxMmsi>. v2 code: applied by src/detectors/collision/collision.detector.ts#CollisionDetector; the risk classes and hysteresis are in src/domain/collision-risk.ts#assessCollisionRisk."
     }
   },
   {
@@ -1372,11 +1372,11 @@
       "be-legacy/src/repositories/ships/fuel-data.repository.ts:isActive",
       "be-legacy/src/services/ais.service.ts:createOrUpdateAis"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
-      "id": "Hierarki ketersediaan data (terukur > regresi kapal > model fisika) spesifik tesis. Pembagi /10 000 (bukan 60 000) adalah bug satuan yang diperbaiki di v2 (spesifikasi 15.5). Rumus pertama dipilih bila firstFuelFormula !== undefined, sehingga referensi null juga memilih jalur ini lalu error. Saat ingest legacy hanya menghitung CII untuk validMMSIs = [''] (tidak pernah); v2 menghitung untuk setiap kapal dengan data armada (15.2) dan mencatat metode per segmen (segments.method).",
-      "en": "The data-availability hierarchy (measured > vessel regression > physics model) is thesis-specific. The /10,000 divisor (instead of 60,000) is a unit bug fixed in v2 (spec 15.5). The first formula is chosen when firstFuelFormula !== undefined, so a null reference also takes this path and then throws. On ingest the legacy computes CII only for validMMSIs = [''] (never); v2 computes it for every vessel with fleet data (15.2) and records the method per segment (segments.method)."
+      "id": "Hierarki ketersediaan data (terukur > regresi kapal > model fisika) spesifik tesis. Pembagi /10 000 (bukan 60 000) adalah bug satuan yang diperbaiki di v2 (spesifikasi 15.5). Rumus pertama dipilih bila firstFuelFormula !== undefined, sehingga referensi null juga memilih jalur ini lalu error. Saat ingest legacy hanya menghitung CII untuk validMMSIs = [''] (tidak pernah); v2 menghitung untuk setiap kapal dengan data armada (15.2) dan mencatat metode per segmen (segments.method). v2: layanan telemetry menerapkan aturan aktivitas yang sama di src/domain/telemetry-status.ts#isTelemetryActive.",
+      "en": "The data-availability hierarchy (measured > vessel regression > physics model) is thesis-specific. The /10,000 divisor (instead of 60,000) is a unit bug fixed in v2 (spec 15.5). The first formula is chosen when firstFuelFormula !== undefined, so a null reference also takes this path and then throws. On ingest the legacy computes CII only for validMMSIs = [''] (never); v2 computes it for every vessel with fleet data (15.2) and records the method per segment (segments.method). v2: the telemetry service applies the same activity rule in src/domain/telemetry-status.ts#isTelemetryActive."
     }
   },
   {
@@ -1420,11 +1420,11 @@
       "be-legacy/src/repositories/ships/fuel-data.repository.ts:getLatestByMMSI",
       "be-legacy/src/models/ships/Telemetry.ts"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
-      "id": "Implementasi MVP tanpa sumber eksternal. Belum diketahui apa arti satu bacaan (ton per interval atau penghitung kumulatif) dan apakah fuelLogs[0] (log tertua dokumen itu) memang dimaksud: perlu spesifikasi perangkat. v2: layanan telemetry menyimpan bacaan (fuel_readings) dan menentukan status aktif; emission menjumlahkan bacaan dalam jendela segmen.",
-      "en": "MVP implementation without external source. Unknown: what one reading represents (tonnes per interval or a cumulative counter) and whether fuelLogs[0] (the oldest log of that document) is intended: needs the device specification. v2: the telemetry service stores readings (fuel_readings) and decides the active state; emission sums the readings inside the segment window."
+      "id": "Implementasi MVP tanpa sumber eksternal. Belum diketahui apa arti satu bacaan (ton per interval atau penghitung kumulatif) dan apakah fuelLogs[0] (log tertua dokumen itu) memang dimaksud: perlu spesifikasi perangkat. v2: layanan telemetry menyimpan bacaan (fuel_readings) dan menentukan status aktif; emission menjumlahkan bacaan dalam jendela segmen. v2: layanan telemetry menjumlahkan bacaan di src/domain/fuel-aggregation.ts#totalFuelTon.",
+      "en": "MVP implementation without external source. Unknown: what one reading represents (tonnes per interval or a cumulative counter) and whether fuelLogs[0] (the oldest log of that document) is intended: needs the device specification. v2: the telemetry service stores readings (fuel_readings) and decides the active state; emission sums the readings inside the segment window. v2: the telemetry service totals the readings in src/domain/fuel-aggregation.ts#totalFuelTon."
     }
   },
   {
@@ -1548,7 +1548,7 @@
       "be-legacy/src/utils/cii/fuel-calculation.ts:fuelMultipliers",
       "be-legacy/src/utils/cii/fuel-calculation.ts:getFuelByNavStatus"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Asumsi mode operasi spesifik tesis; tidak ada sumber terverifikasi untuk angka-angka ini. Fourth IMO GHG Study dan GloMEEP Port Emissions Toolkit hanya mendukung secara konseptual bahwa ME mati saat berlabuh/tertambat dengan beban AE per fase, bukan nilai 0,5/1. Status yang dilaporkan sering basi (A.1106(29)); kode 14 atau tidak dikenal diam-diam membuat bahan bakar segmen nol. Pertanyaan: dasar AE 0,5 saat berlabuh vs 1 saat tertambat dan ME 0,5 untuk kode 3/4/7; apakah status prediksi atau mode berbasis kecepatan lebih tepat.",
@@ -1674,11 +1674,11 @@
       "be-legacy/src/utils/cii/fuel-calculation.ts:calculateTotalFuelTon",
       "be-legacy/docs/postman/3.7 Ships - First Fuel Formula.postman_collection.json"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
-      "id": "Regresi per kapal spesifik tesis (sampel Dharma Ferry VIII); satuan L/min hanya tersirat dari konversi. Perlu dokumentasi satuan, data fitting dan rentang kecepatan valid tiap regresi, serta dasar batas bawah 0,5 (berlaku juga pada 0 kn). Legacy mengevaluasi string dengan new Function/with; NaN tidak dibatasi. v2 memakai evaluator ekspresi aman (spesifikasi 15.4: angka, speedKnot, + - * / ** ^ ( ), fungsi Math) dan mengartikan ^ sebagai pangkat (di JavaScript legacy ^ adalah XOR): uji golden harus memeriksa bahwa rumus yang ada tidak memakai ^.",
-      "en": "Thesis-specific per-vessel regressions (sample Dharma Ferry VIII); the L/min unit is only implied by the conversion. Document unit, fitting data and valid speed range of each regression and the basis of the 0.5 floor (also applied at 0 kn). The legacy evaluates the strings with new Function/with; NaN is not clamped. v2 uses a safe expression evaluator (spec 15.4: numbers, speedKnot, + - * / ** ^ ( ), Math functions) and reads ^ as power (in legacy JavaScript ^ is XOR): golden tests must check that existing formulas do not use ^."
+      "id": "Regresi per kapal spesifik tesis (sampel Dharma Ferry VIII); satuan L/min hanya tersirat dari konversi. Perlu dokumentasi satuan, data fitting dan rentang kecepatan valid tiap regresi, serta dasar batas bawah 0,5 (berlaku juga pada 0 kn). Legacy mengevaluasi string dengan new Function/with; NaN tidak dibatasi. v2 memakai evaluator ekspresi aman (spesifikasi 15.4: angka, speedKnot, + - * / ** ^ ( ), fungsi Math) dan mengartikan ^ sebagai pangkat (di JavaScript legacy ^ adalah XOR): uji golden harus memeriksa bahwa rumus yang ada tidak memakai ^. v2: bahasa rumus (tata bahasa, batas, semantik JavaScript) dibagikan sebagai parseFuelFormula, evaluateFuelFormula dan validateFuelFormula di @darmawanweb/ais-its-contracts/domain mulai contracts 0.4.0; sampai layanan memakainya, fleet memvalidasi rumus tersimpan di src/domain/fuel-formula.ts#parseFuelFormula dan emission mengevaluasinya di src/domain/expression/evaluator.ts#compileFormula.",
+      "en": "Thesis-specific per-vessel regressions (sample Dharma Ferry VIII); the L/min unit is only implied by the conversion. Document unit, fitting data and valid speed range of each regression and the basis of the 0.5 floor (also applied at 0 kn). The legacy evaluates the strings with new Function/with; NaN is not clamped. v2 uses a safe expression evaluator (spec 15.4: numbers, speedKnot, + - * / ** ^ ( ), Math functions) and reads ^ as power (in legacy JavaScript ^ is XOR): golden tests must check that existing formulas do not use ^. v2: the formula language (grammar, limits, JavaScript semantics) is shared as @darmawanweb/ais-its-contracts/domain parseFuelFormula, evaluateFuelFormula and validateFuelFormula from contracts 0.4.0; until the services adopt it, fleet validates stored formulas in src/domain/fuel-formula.ts#parseFuelFormula and emission evaluates them in src/domain/expression/evaluator.ts#compileFormula."
     }
   },
   {
@@ -1754,12 +1754,12 @@
     ],
     "implementedBy": {
       "service": "fleet",
-      "module": "seeds/demo.ts (fuel_formulas row of the demo vessel)"
+      "module": "src/seeds/samples.seed.ts#FUEL_FORMULA_SEEDS (fuel_formulas seed of the case-study vessel)"
     },
     "legacy": [
       "be-legacy/docs/postman/3.7 Ships - First Fuel Formula.postman_collection.json"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Regresi spesifik tesis yang tampaknya di-fit pada kapal studi kasus; perlu sitasi (sumber data, metode fit, R^2, rentang valid). Parabola memuncak di sekitar 11,33 kn (4,89 L/min) lalu menurun: batasi validitas pada rentang kecepatan fitting. Belum diketahui apakah untuk satu mesin atau total dua mesin induk.",
@@ -1833,11 +1833,11 @@
       "be-legacy/src/utils/cii/fuel-calculation.ts:calculateSecondFormulaFuel",
       "be-legacy/docs/postman/3.7 Ships - First Fuel Formula.postman_collection.json"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
-      "id": "Regresi kapal spesifik tesis (koefisien sama dengan rumus pertama AE kapal contoh). Menerapkannya ke semua kapal tidak punya dasar eksternal. Alternatif v2: model AE per kapal (daya AE terpasang x faktor beban per fase x SFOC_AE, seperti pendekatan Fourth IMO GHG Study). Mengapa konsumsi AE turun dengan kecepatan (beban hotel + manuver pada kecepatan rendah?) perlu penjelasan dari tesis.",
-      "en": "Thesis-specific vessel regression (same coefficients as the sample AE first formula). Applying it to every vessel has no external justification. v2 alternative: a per-vessel AE model (installed AE power x phase load factor x SFOC_AE, as in the Fourth IMO GHG Study approach). Why AE consumption falls with speed (hotel and manoeuvring load at low speed?) needs an explanation from the thesis."
+      "id": "Regresi kapal spesifik tesis (koefisien sama dengan rumus pertama AE kapal contoh). Menerapkannya ke semua kapal tidak punya dasar eksternal. Alternatif v2: model AE per kapal (daya AE terpasang x faktor beban per fase x SFOC_AE, seperti pendekatan Fourth IMO GHG Study). Mengapa konsumsi AE turun dengan kecepatan (beban hotel + manuver pada kecepatan rendah?) perlu penjelasan dari tesis. v2: fleet menyemai rumus contoh di src/seeds/samples.seed.ts#FUEL_FORMULA_SEEDS.",
+      "en": "Thesis-specific vessel regression (same coefficients as the sample AE first formula). Applying it to every vessel has no external justification. v2 alternative: a per-vessel AE model (installed AE power x phase load factor x SFOC_AE, as in the Fourth IMO GHG Study approach). Why AE consumption falls with speed (hotel and manoeuvring load at low speed?) needs an explanation from the thesis. v2: fleet seeds the sample formula in src/seeds/samples.seed.ts#FUEL_FORMULA_SEEDS."
     }
   },
   {
@@ -1919,11 +1919,11 @@
       "be-legacy/src/utils/cii/fuel-calculation.ts:calculateSecondFormulaFuel",
       "be-legacy/src/models/ships/Fuel.ts"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
-      "id": "Massa = volume x densitas adalah konversi standar. Nilai 0,86 kg/L masuk akal untuk MGO, tetapi ISO 8217 hanya memberi batas maksimum (DMA 890 kg/m3 pada 15 derajat C), jadi sumber nilai ini (mis. bunker delivery note atau tesis) perlu dicantumkan. Perlu dijelaskan apakah densitas pada 15 derajat C atau terkoreksi suhu. Seed v2 mencatat sumber setiap densitas.",
-      "en": "Mass = volume x density is a standard conversion. The 0.86 kg/L value is plausible for MGO, but ISO 8217 only gives maxima (DMA 890 kg/m3 at 15 deg C), so its source (e.g. a bunker delivery note or the thesis) must be stated. State whether densities are at 15 deg C or temperature-corrected. The v2 seed records the source of every density."
+      "id": "Massa = volume x densitas adalah konversi standar. Nilai 0,86 kg/L masuk akal untuk MGO, tetapi ISO 8217 hanya memberi batas maksimum (DMA 890 kg/m3 pada 15 derajat C), jadi sumber nilai ini (mis. bunker delivery note atau tesis) perlu dicantumkan. Perlu dijelaskan apakah densitas pada 15 derajat C atau terkoreksi suhu. Seed v2 mencatat sumber setiap densitas. v2: fleet menyemai densitas bahan bakar di src/seeds/fuels.seed.ts#FUEL_SEEDS.",
+      "en": "Mass = volume x density is a standard conversion. The 0.86 kg/L value is plausible for MGO, but ISO 8217 only gives maxima (DMA 890 kg/m3 at 15 deg C), so its source (e.g. a bunker delivery note or the thesis) must be stated. State whether densities are at 15 deg C or temperature-corrected. The v2 seed records the source of every density. v2: fleet seeds the fuel densities in src/seeds/fuels.seed.ts#FUEL_SEEDS."
     }
   },
   {
@@ -1988,7 +1988,7 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/holtrop/hull.ts#hullParticulars"
+      "module": "src/domain/holtrop/hull.ts#displacementVolume (with lengthDisplacement and displacementTonnes)"
     },
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/size-calculation.ts",
@@ -1996,7 +1996,7 @@
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateRw",
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateM1"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Displasemen = volume x 1,025 t/m3 standar; panjang rata-rata dan \"cbnsp\" spesifik tesis (apa itu cbnsp?). Holtrop memakai satu L dan satu volume secara konsisten, sedangkan legacy mencampur (nabla_m pada faktor bentuk, c15, m1; nabla_wl pada hambatan gelombang dan iE); v2 mempertahankan campuran ini demi paritas.",
@@ -2082,7 +2082,7 @@
       "be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateNewFn",
       "be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateRenouldNumber"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Definisi standar. nu = 1,188e-6 m2/s konsisten dengan air laut sekitar 15 derajat C menurut tabel ITTC, tetapi nilai tabelnya tidak terlihat. Air laut Indonesia sekitar 28-30 derajat C (nu lebih kecil): v2 mempertahankan konvensi 15 derajat C demi paritas dan menyatakannya.",
@@ -2143,7 +2143,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateFrictionResistance"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Identik dengan garis korelasi model-kapal ITTC-1957 yang juga dipakai Holtrop-Mennen. Menghasilkan NaN bila V_new <= 0 (ledakan koreksi Kwon): v2 perlu guard.",
@@ -2230,7 +2230,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateFrictionResistance"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Penyimpangan (kemungkinan bug): B/T menggantikan S. Untuk kapal contoh (S = 1221,6 m2, B/T = 3,98) R_F sekitar 307 kali terlalu kecil (0,135 kN vs 41,5 kN pada 12 kn, replika). Memperbaikinya menaikkan R_T dan bahan bakar secara besar: perlu keputusan dan dicatat di spesifikasi 15. rho 1024 di sini vs 1025 pada R_W dan R_A tidak dijelaskan.",
@@ -2343,7 +2343,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateOnePlusK1"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Konstanta adalah rumus Holtrop (1984), tetapi rumus 1984 memakai (B/L)^1,06806; B/L_R adalah variabel versi 1982 (eksponen 0,92497): penyimpangan yang harus dicek terhadap aslinya. Kapal contoh: 1 + k1 = 2,264 (legacy) vs 1,319 dengan B/L (tipikal 1,1-1,5). Campuran L (Lwl) dan volume dari L_m. C_stern = 8 perlu sumber dari tesis.",
@@ -2429,7 +2429,7 @@
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateLCB",
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateLr"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "L_R/L = 1 - C_P + 0,06 C_P lcb/(4 C_P - 1) adalah Holtrop-Mennen, dengan lcb = posisi LCB di depan 0,5L dalam persen L. Legacy memakai 0,25 % L dalam meter (0,17 untuk sampel) dan Lpp: asumsi tesis plus ketidaksesuaian satuan. Usulan v2: lcb (% L, konvensi tanda) sebagai input kapal di fleet.",
@@ -2520,7 +2520,7 @@
       "be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateSaap",
       "be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateFrictionResistance"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "R_APP = 0,5 rho V^2 S_APP (1+k2)eq C_F adalah Holtrop-Mennen. S_app mengikuti aturan luas kemudi minimum kelas A = c1 c2 c3 c4 x 1,75 L T/100 (faktor susunan 1,5 = kemudi di luar arus baling-baling), dengan c5 legacy berperan sebagai c4; luas aturan adalah luas proyeksi minimum, sedangkan S_APP Holtrop adalah luas basah (dua sisi). (1+k2) = 4,3 di luar semua nilai tabel (1,3-3,0); hipotesis: 1,5 + 2,8 dijumlahkan, bukan dirata-rata menurut luas. Input c3 juga dipakai sebagai koefisien bulb Holtrop: pisahkan menjadi dua field.",
@@ -2594,7 +2594,7 @@
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateRa",
       "be-legacy/src/utils/seemp/first-formula.ts:calculateHullCoating"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Rumus luas basah Holtrop-Mennen (1982). Penyimpangan: flag boolean dipakai sebagai A_BT (1 m2). Usulan v2: A_BT (m2) sebagai input kapal. Kapal contoh: S = 1221,6 m2.",
@@ -2681,7 +2681,7 @@
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateC1",
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateC7"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Regresi iE (lebih dari 200 bentuk lambung) dan definisi c1/c7 Holtrop-Mennen. Penyimpangan: untuk B/L > 0,25 metode memakai c7 = 0,5 - 0,0625 L/B, legacy memakai B/T (tidak terpicu untuk sampel, B/L = 0,234). Masalah satuan lcb terbawa. Sampel: c7 = 0,2338, iE = 30,0 derajat, c1 = 7,32.",
@@ -2768,7 +2768,7 @@
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateC5",
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateTotalResistance"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Bentuk Holtrop-Mennen: c2 = exp(-1,89 sqrt c3) dengan c3 dari A_BT, T_F dan h_B (c2 = 1 tanpa bulb), serta suku R_B dan R_TR terpisah. Dengan c3 tersimpan = 1 (tanpa bulb) legacy mendapat c2 = 0,151, bukan 1, sehingga R_W berkurang sekitar 85 %: penyimpangan. A_T = 0 dan penghilangan R_B/R_TR adalah asumsi tesis. Usulan v2: hitung c3 dari field baru A_BT, T_F, h_B dan implementasikan R_B/R_TR. Penyebut c5 memakai C_B, bukan T (tidak berpengaruh selama A_T = 0).",
@@ -2845,7 +2845,7 @@
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateM2",
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateLamda"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Holtrop-Mennen (1982): m2 = c15 C_P^2 exp(-0,1 Fn^-2) dengan c15/c16/m1/lambda; Holtrop (1984) mengganti m2 dengan m4 (tidak terverifikasi). Penyimpangan: c15 seharusnya 0 untuk L^3/V > 1727 (legacy mengembalikan L^3/V; tidak terpicu untuk sampel, L^3/V = 116); C_P tepat 0,8 menghasilkan c16 = 0 (celah legacy). Bentuk m2, d dan pemisahan lambda hanya terkonfirmasi lewat kalkulator sekunder/OCR. Tidak ada cabang kecepatan tinggi (Fn > 0,55): nyatakan rentang validitas. Versi Holtrop yang dikutip tesis belum diketahui.",
@@ -2943,7 +2943,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateRw"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Bentuk Holtrop-Mennen / Holtrop. d = -0,9 hanya terkonfirmasi lewat sumber sekunder. Sampel pada 12 kn: R_W = 3,51 kN (termasuk artefak c2 = 0,151).",
@@ -3018,7 +3018,7 @@
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateCa",
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateRa"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Holtrop-Mennen (c4 = T_F/L, dibatasi 0,04, dengan c2). Legacy memakai T rata-rata untuk T_F dan c2 = 1 (benar tanpa bulb, tetapi tidak konsisten dengan c2 = 0,151 pada R_W). Sampel: C_A = 5,9e-4 dan R_A = 14,0 kN mendominasi R_T hanya karena R_F terlalu kecil.",
@@ -3079,7 +3079,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/total-resistance-calculation.ts:calculateTotalResistance"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Dekomposisi Holtrop R_T = R_F(1+k1) + R_APP + R_W + R_B + R_TR + R_A (R_B dan R_TR dihilangkan). Sea margin sekitar 15 % adalah tunjangan desain tradisional (MAN) untuk kondisi laut rata-rata; di sini dikenakan di atas koreksi cuaca Kwon yang eksplisit, sehingga cuaca mungkin terhitung dua kali untuk bahan bakar operasional: pilihan tesis yang perlu sitasi. Sampel 12 kn: R_T = 18,96 kN.",
@@ -3125,7 +3125,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/power-calculation.ts:calculateEHP"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Definisi standar P_E = R_T V. Sampel 12 kn: P_E = 134,6 kW.",
@@ -3223,7 +3223,7 @@
       "be-legacy/src/utils/cii/second-formula/power-calculation.ts:calculateW",
       "be-legacy/src/utils/cii/second-formula/power-calculation.ts:calculateDHP"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "w = 0,5 C_B - 0,05 (Taylor, baling-baling tunggal) dan t = k w (k 0,7-0,9 untuk kemudi pelat ganda) hanya terlihat di catatan kuliah; eta_H = (1-t)/(1-w) standar. 0,96 dan 0,42 spesifik tesis; regresi w, t, eta_R milik Holtrop tidak dipakai. Sampel: w = 0,272, t = 0,245, eta_H = 1,037, eta_D = 0,418. Kapal contoh punya dua mesin induk: rumus baling-baling tunggal patut dipertanyakan (varian twin-screw 0,55 C_B - 0,20). eta_O dari data baling-baling (B-series) lebih tepat daripada konstanta.",
@@ -3306,7 +3306,7 @@
       "be-legacy/src/utils/cii/second-formula/power-calculation.ts:calculateSHP",
       "be-legacy/src/utils/cii/second-formula/power-calculation.ts:calculateBHPMCR"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Konvensi desain umum (kerugian transmisi sekitar 2 % masing-masing; rating layanan 85 % / engine margin 15 % menurut MAN). Sumber 0,98 dan 0,98 tidak terverifikasi. Bahan bakar seharusnya memakai daya rem yang diperlukan, bukan rating terpasang: pilihan tesis. Sampel 12 kn tanpa angin: P_MCR = 394 kW.",
@@ -3380,13 +3380,13 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/modules/weather/open-meteo.client.ts#getCurrentWind"
+      "module": "src/modules/weather/open-meteo.client.ts#OpenMeteoClient.getCurrentWind"
     },
     "legacy": [
       "be-legacy/src/utils/cii/weather.ts:getWeatherByLocation",
       "be-legacy/src/utils/cii/second-formula/index.ts:perCalculateSecondFormulaFuel"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Parameter current_weather sudah tidak didokumentasikan tetapi masih diterima server (jalur kompatibilitas); v2 memakai current= atau variabel per jam. v2: cache per sel 0,25 derajat dan jam, fallback cuaca tenang dengan flag segmen. Legacy menerapkan cuaca SAAT INI pada segmen lampau dan replay: alternatif API historis (ERA5) pada waktu segmen. Hanya angin, tanpa gelombang, padahal BN Kwon mewakili angin dan laut. Data CC BY 4.0: tampilkan \"Weather data by Open-Meteo.com\" dan nyatakan nilai turunan; tier gratis hanya non-komersial.",
@@ -3460,7 +3460,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/course-calculation.ts:calculateBeafortNumber"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Skala Beaufort (WMO). Batas legacy sama dengan relasi empiris v = 0,836 B^(3/2) m/s yang dievaluasi pada B + 0,5 dan dikonversi ke knot (0,57; 2,99; 6,42; 10,64; 15,51; 20,96; 26,93; 33,38 kn; derivasi sendiri); pita knot WMO (gaya 4 = 11-16, 5 = 17-21, 6 = 22-27 kn) berdekatan. Tabel WMO-No. 558 sendiri belum terlihat dan tabel yang dikutip tesis belum diketahui. Batas BN 8 adalah pilihan tesis (meremehkan badai; mungkin terkait ledakan koreksi Kwon).",
@@ -3520,7 +3520,7 @@
       "be-legacy/src/utils/cii/second-formula/course-calculation.ts:calculateEncountedAngle",
       "be-legacy/src/utils/cii/second-formula/course-calculation.ts:calculateWindCourse"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Sudut relatif dengan konvensi Kwon (0 derajat = laut haluan); implementasinya spesifik legacy. Karena haluan terbalik, angin haluan dan angin buritan tertukar: perbaiki di v2 atau pertahankan paritas (keputusan terbuka).",
@@ -3635,7 +3635,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/coefisien-reduction-calculation.ts:calculateWindCourseRedCoef"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Kwon (2008), struktur metode dikonfirmasi lewat reproduksi sekunder; hanya laut haluan (1) dan haluan serong (1,7 - 0,03(BN-4)^2) yang terverifikasi, sektor samping dan buritan belum. Koefisien samping dan buritan negatif pada BN rendah (samping BN 2 = -0,03), artinya sedikit kenaikan kecepatan: apakah dimaksud?",
@@ -3709,7 +3709,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/coefisien-reduction-calculation.ts:calculateSpeedReductionCoef"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Kwon (2008) mentabulasikan C_U per nilai C_B dan kondisi muatan (normal/loaded; rumus ballast terpisah untuk C_B >= 0,75); polinomial belum diverifikasi. Pemakaian pita (bukan interpolasi), pengabaian kondisi ballast dan Fn pada kecepatan teramati adalah pilihan legacy.",
@@ -3811,7 +3811,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/second-formula/coefisien-reduction-calculation.ts:calculateShipShapeCoef"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Bentuk legacy (kedua suku dibagi, 2,2, massa alih-alih volume) tidak cocok dengan varian terbitan mana pun; kemungkinan salah transkripsi (2,2 vs 22,0): perlu konfirmasi dari tesis. Replika kapal contoh, angin haluan 12 kn: dV = 18,8 % (BN 4), 80,2 % (BN 5), > 100 % untuk BN >= 6 sehingga V_new negatif dan bahan bakar/CII NaN; bahkan bentuk pembagi 2,7 melampaui 100 % pada BN 6 untuk kapal 3000 m3: v2 harus menetapkan batas validitas. Varian mana untuk jenis kapal apa perlu ditentukan.",
@@ -3900,7 +3900,7 @@
       "be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateNewSpeed",
       "be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateNewTime"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Kwon (2008): dV/V1 x 100 % = C_beta C_U C_Form dan V2 = V1 (1 - dV/V1). Membalik rumus untuk menaksir V1 dari V2 teramati (dengan C_U pada Fn dari V2) adalah pemakaian spesifik tesis. v2 perlu guard dV % >= 100 (pembagian nol / kecepatan negatif). Alternatif: ISO 15016:2025 atau metode tambahan hambatan ITTC dengan data gelombang (Open-Meteo Marine); f_w IMO (MEPC.1/Circ.796) adalah koefisien desain EEDI, bukan koreksi per segmen.",
@@ -3999,7 +3999,7 @@
       "be-legacy/src/utils/cii/fuel-calculation.ts:calculateSecondFormulaFuel",
       "be-legacy/src/utils/cii/second-formula/friction-resistance-calculation.ts:calculateNewTime"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Bahan bakar = daya x SFOC x waktu adalah standar, tetapi memakai MCR (= P_B/0,85, +17,6 % dibanding daya rem yang diperlukan) dan t_new alih-alih waktu AIS yang sebenarnya adalah pilihan tesis: t_new < waktu nyata bila V_new > V sehingga sebagian koreksi cuaca batal. SFOC konstan tanpa kurva beban. Replika: 12 kn tanpa angin memberi 0,071 t/jam vs 0,251 t/jam dari regresi sampel (faktor 3,5).",
@@ -4084,7 +4084,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/fuel-calculation.ts:calculateSecondFormulaFuel"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Tidak adanya perkalian dengan menit segmen kemungkinan besar bug implementasi (laju dipakai sebagai jumlah). Memperbaikinya mengubah bahan bakar AE dengan faktor sebesar menit segmen: harus diputuskan (paritas vs perbaikan) dan, bila diperbaiki, dicatat di spesifikasi 15. Saat ini v2 menjaga paritas.",
@@ -4254,11 +4254,11 @@
       "be-legacy/src/models/ships/Fuel.ts",
       "be-legacy/docs/postman/3.3 Ships - Fuel.postman_collection.json"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
-      "id": "Tabel Cf MEPC.364(79) (pengganti MEPC.308(73) yang dirujuk G1). Bahan bakar sampel (Cc 0,8744, Cf 3,206) dan Cf LNG 2,75 cocok. Simpan Cf tabel, bukan turunan 44/12 x Cc (etana 2,927 vs 2,929). Cf biofuel 2,45 bukan nilai IMO (MEPC.1/Circ.905 mengaitkannya dengan intensitas WtW bersertifikat): perlu sitasi dari tesis. Seed fuels di fleet mencatat sumber (MEPC.364(79)).",
-      "en": "Cf table of MEPC.364(79) (successor of the MEPC.308(73) cited by G1). The sample fuel (Cc 0.8744, Cf 3.206) and the LNG Cf 2.75 match. Store the tabulated Cf, not 44/12 x Cc (ethane 2.927 vs 2.929). The biofuel Cf 2.45 is not an IMO value (MEPC.1/Circ.905 ties it to certified WtW intensity): needs citation from the thesis. The fleet fuel seed records its source (MEPC.364(79))."
+      "id": "Tabel Cf MEPC.364(79) (pengganti MEPC.308(73) yang dirujuk G1). Bahan bakar sampel (Cc 0,8744, Cf 3,206) dan Cf LNG 2,75 cocok. Simpan Cf tabel, bukan turunan 44/12 x Cc (etana 2,927 vs 2,929). Cf biofuel 2,45 bukan nilai IMO (MEPC.1/Circ.905 mengaitkannya dengan intensitas WtW bersertifikat): perlu sitasi dari tesis. Seed fuels di fleet mencatat sumber (MEPC.364(79)). v2: fleet menyemai faktor konversi Cf di src/seeds/fuels.seed.ts#FUEL_SEEDS.",
+      "en": "Cf table of MEPC.364(79) (successor of the MEPC.308(73) cited by G1). The sample fuel (Cc 0.8744, Cf 3.206) and the LNG Cf 2.75 match. Store the tabulated Cf, not 44/12 x Cc (ethane 2.927 vs 2.929). The biofuel Cf 2.45 is not an IMO value (MEPC.1/Circ.905 ties it to certified WtW intensity): needs citation from the thesis. The fleet fuel seed records its source (MEPC.364(79)). v2: fleet seeds the conversion factors Cf in src/seeds/fuels.seed.ts#FUEL_SEEDS."
     }
   },
   {
@@ -4347,7 +4347,7 @@
       "be-legacy/src/repositories/cii/dailycii.repository.ts:update",
       "be-legacy/src/repositories/cii/dailycii.repository.ts:getLatestByMmsi"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "CII attained tahunan operasional G1 (MEPC.352(78) sebagaimana diubah MEPC.412(84)): M/W dengan kapasitas DWT atau GT menurut jenis kapal. Akumulasi seumur hidup legacy tidak punya dasar regulasi; v2 menghitung per tahun kalender dari segmen (segments -> cii_daily -> cii_annual; spesifikasi 15.3). Faktor koreksi G5 tidak diterapkan. Kartu frontend legacy memberi label jarak \"m\" padahal nm. Segmen dengan metode berbeda tercatat di kolom method.",
@@ -4449,11 +4449,11 @@
       "be-legacy/src/models/ships/Type.ts",
       "be-legacy/docs/postman/3.4 Ships - Type.postman_collection.json"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
-      "id": "G2 MEPC.353(78) Tabel 1 (mencabut MEPC.337(76)). Sampel legacy 7540/0,587 adalah nilai 2021; MEPC.353(78) memberi 2023/0,460 (kapal contoh: 70,303 vs 51,866). v2: fleet men-seed vessel_types (a, c, capacity_fixed, d1..d4) dengan sumber; kapasitas lewat ciiCapacity di contracts. Koreksi seed diterapkan (LNG < 65 000 DWT a = 14779E10; ro-ro cargo berbasis GT). Verifikasi ulang setiap a/c terhadap PDF resmi.",
-      "en": "G2 MEPC.353(78) Table 1 (revokes MEPC.337(76)). The legacy sample 7540/0.587 is the 2021 value; MEPC.353(78) gives 2023/0.460 (sample ship: 70.303 vs 51.866). v2: fleet seeds vessel_types (a, c, capacity_fixed, d1..d4) with sources; capacity via ciiCapacity in contracts. Seed corrections applied (LNG < 65,000 DWT a = 14779E10; ro-ro cargo on GT). Re-verify every a/c against the official PDF."
+      "id": "G2 MEPC.353(78) Tabel 1 (mencabut MEPC.337(76)). Sampel legacy 7540/0,587 adalah nilai 2021; MEPC.353(78) memberi 2023/0,460 (kapal contoh: 70,303 vs 51,866). v2: fleet men-seed vessel_types (a, c, capacity_fixed, d1..d4) dengan sumber; kapasitas lewat ciiCapacity di contracts. Koreksi seed diterapkan (LNG < 65 000 DWT a = 14779E10; ro-ro cargo berbasis GT). Verifikasi ulang setiap a/c terhadap PDF resmi. v2: fleet menyemai parameter a dan c per jenis kapal di src/seeds/vessel-types.seed.ts#VESSEL_TYPE_SEEDS.",
+      "en": "G2 MEPC.353(78) Table 1 (revokes MEPC.337(76)). The legacy sample 7540/0.587 is the 2021 value; MEPC.353(78) gives 2023/0.460 (sample ship: 70.303 vs 51.866). v2: fleet seeds vessel_types (a, c, capacity_fixed, d1..d4) with sources; capacity via ciiCapacity in contracts. Seed corrections applied (LNG < 65,000 DWT a = 14779E10; ro-ro cargo on GT). Re-verify every a/c against the official PDF. v2: fleet seeds the a and c parameters per ship type in src/seeds/vessel-types.seed.ts#VESSEL_TYPE_SEEDS."
     }
   },
   {
@@ -4532,14 +4532,14 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/cii.ts#reductionFactor"
+      "module": "src/domain/cii.ts#reductionFactorOf"
     },
     "legacy": [
       "be-legacy/src/repositories/cii/zvalue.repository.ts:getValueByYear",
       "be-legacy/src/repositories/cii/zvalue.repository.ts:getHighestYear",
       "be-legacy/docs/postman/5.1 CII - ZValue.postman_collection.json"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "G3 MEPC.338(76) (5/7/9/11 % untuk 2023-2026 relatif 2019) dan MEPC.400(83) (13,625/16,250/18,875/21,500 % untuk 2027-2030). v2 men-seed tabel reduction_factors (dapat diubah, dengan sumber). Hasil tesis sebelum MEPC 83 (April 2025) tidak dapat memuat 2027-2030, dan horizon SEEMP legacy bergantung pada tahun yang ada di basis data. Tidak ada nilai IMO setelah 2030.",
@@ -4589,7 +4589,7 @@
     "legacy": [
       "be-legacy/src/utils/cii/cii-calculation.ts:calculateCIIRequired"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "MARPOL Annex VI reg. 28 dengan G2 dan G3. Legacy memakai tahun server, bukan tahun segmen (replay melintasi tahun baru memakai Z yang salah); v2 memakai tahun kalender segmen. Sampel ro-pax (set 2021): CII_ref 70,303 -> required 65,382 (2024), 63,976 (2025), 62,570 (2026), sama dengan data Postman; dengan set 2022: 48,235 (2024).",
@@ -4669,8 +4669,8 @@
     "status": "implemented",
     "needsCitation": false,
     "notes": {
-      "id": "G4 MEPC.354(78): empat batas = exp(d_i) x required. Nilai tersimpan sudah exp(d), sehingga membandingkan rating dengan d sama dengan membandingkan attained dengan d x required (fungsi legacy New). Sudah ada di contracts (paritas, termasuk NaN -> E). Inklusivitas batas menurut Tabel 2 G4 belum terverifikasi. Regulasi menilai nilai tahunan; legacy menilai total berjalan. Vektor sampel legacy adalah set 2021 (MEPC.339(76)).",
-      "en": "G4 MEPC.354(78): four boundaries = exp(d_i) x required. Stored values are already exp(d), so comparing the rating with d equals comparing attained with d x required (the legacy 'New' function). Already in contracts (parity, incl. NaN -> E). Boundary inclusivity per G4 Table 2 is unverified. The regulation grades the annual value; the legacy graded the running total. The legacy sample vector is the 2021 set (MEPC.339(76))."
+      "id": "G4 MEPC.354(78): empat batas = exp(d_i) x required. Nilai tersimpan sudah exp(d), sehingga membandingkan rating dengan d sama dengan membandingkan attained dengan d x required (fungsi legacy New). Sudah ada di contracts (paritas, termasuk NaN -> E). Inklusivitas batas menurut Tabel 2 G4 belum terverifikasi. Regulasi menilai nilai tahunan; legacy menilai total berjalan. Vektor sampel legacy adalah set 2021 (MEPC.339(76)). v2: diterapkan oleh emission di src/domain/cii.ts#rateCii; fleet menyemai vektor dd di src/seeds/vessel-types.seed.ts#VESSEL_TYPE_SEEDS.",
+      "en": "G4 MEPC.354(78): four boundaries = exp(d_i) x required. Stored values are already exp(d), so comparing the rating with d equals comparing attained with d x required (the legacy 'New' function). Already in contracts (parity, incl. NaN -> E). Boundary inclusivity per G4 Table 2 is unverified. The regulation grades the annual value; the legacy graded the running total. The legacy sample vector is the 2021 set (MEPC.339(76)). v2: applied by emission in src/domain/cii.ts#rateCii; fleet seeds the dd vectors in src/seeds/vessel-types.seed.ts#VESSEL_TYPE_SEEDS."
     }
   },
   {
@@ -4732,8 +4732,8 @@
     "status": "implemented",
     "needsCitation": false,
     "notes": {
-      "id": "Definisi batas MEPC.354(78) (superior/lower/upper/inferior); gaya grafik spesifik UI. Batas harian legacy dari entri pertama menjadi basi setelah tahun berganti; v2 menghitung batas per tahun rating (GET /cii/vessels/:mmsi/annual).",
-      "en": "MEPC.354(78) boundary definition (superior/lower/upper/inferior); chart styling is UI-specific. The legacy daily boundaries from the first entry become stale after the year changes; v2 computes boundaries per rating year (GET /cii/vessels/:mmsi/annual)."
+      "id": "Definisi batas MEPC.354(78) (superior/lower/upper/inferior); gaya grafik spesifik UI. Batas harian legacy dari entri pertama menjadi basi setelah tahun berganti; v2 menghitung batas per tahun rating (GET /cii/vessels/:mmsi/annual). v2: diterapkan oleh emission di src/domain/cii.ts#gradeAgainstRequired.",
+      "en": "MEPC.354(78) boundary definition (superior/lower/upper/inferior); chart styling is UI-specific. The legacy daily boundaries from the first entry become stale after the year changes; v2 computes boundaries per rating year (GET /cii/vessels/:mmsi/annual). v2: applied by emission in src/domain/cii.ts#gradeAgainstRequired."
     }
   },
   {
@@ -4773,14 +4773,14 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "cii_annual_manual table (fallback when no segment data exists for a year)"
+      "module": "src/modules/cii/cii-figures.ts#figuresFromManual (cii_annual_manual table, used when a year has no segment data)"
     },
     "legacy": [
       "be-legacy/src/services/cii/annualcii.service.ts",
       "be-legacy/src/repositories/cii/annualcii.repository.ts",
       "be-legacy/docs/postman/5.3 CII - Annual CII.postman_collection.json"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Data tesis dengan sumber tidak terdokumentasi (laporan DCS? noon report?). Menghitung ulang sampel dengan Cf 3,206 memberi 60,61 (Cf tersirat 3,195), jadi nilai tersimpan dibuat di luar kode. Bahan bakar AE (737 t) > ME (367 t): perlu dicek kewajarannya. Di v2 hanya fallback historis; nilai yang sebenarnya dari segmen.",
@@ -4925,7 +4925,7 @@
       "be-legacy/src/utils/seemp/utils.ts:calculateFirstCiiAndGrade",
       "be-legacy/src/services/seemp.service.ts:calculateSemp"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Model spesifik tesis. Potensi terbitan (Bouman et al. 2017) adalah reduksi CO2 tingkat kapal, tidak diskalakan dengan porsi waktu di laut. Makna v (41,667 = 5/12: 10 jam per hari atau 5 dari 12 bulan?) tidak terdokumentasi; untuk sampel p = 8/9/10/13 % menjadi potongan efektif 3,33/3,75/4,17/5,42 %. Mencampur attained tahun lalu dengan required tahun berjalan. Alternatif yang dapat dipertanggungjawabkan: terapkan p pada bahan bakar yang dipengaruhi langkah (bahan bakar ME untuk langkah lambung/propulsi, kategori B MEPC.1/Circ.896).",
@@ -5001,7 +5001,7 @@
       "be-legacy/src/utils/seemp/utils.ts:calculateSecondCiiAndGrade",
       "be-legacy/src/utils/seemp/second-formula.ts"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis. Tidak ada koreksi kandungan energi: pada kebutuhan energi sama, massa baru = FC x LCV_lama/LCV_baru (MGO 42 700, LNG 48 000 kJ/kg menurut MEPC.364(79)); diesel ke LNG memberi -14,2 % (legacy) vs -23,7 % CO2 tank-to-wake setara energi. cii[0] adalah rekaman tahunan TERTUA sedangkan nilai \"sebelum\" memakai yang terbaru (cacat kode). Cf biofuel 2,45 tidak cocok dengan nilai IMO mana pun (catatan aritmetika saja: 2,750 x 42 700/48 000 = 2,446).",
@@ -5077,7 +5077,7 @@
       "be-legacy/src/utils/seemp/utils.ts:calculateThirdCiiAndGrade",
       "be-legacy/src/utils/seemp/third-formula.ts"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis. Varian cold ironing mempertahankan porsi pelabuhan dan memotong porsi di laut, terbalik terhadap listrik darat yang menggantikan AE saat sandar (IEC/IEEE 80005-1): kandidat FC_AE x [1 - (1 - v/100) x f_shore] bila v adalah porsi waktu di laut. Parameter mati: surya mengirim v = 42 (tidak dipakai), cold ironing mengirim p = 0,1 (tidak dipakai). Sampel: cold ironing memotong 8,33 % bahan bakar AE.",
@@ -5137,7 +5137,7 @@
       "be-legacy/src/utils/seemp/utils.ts:calculateCostbyPower",
       "be-legacy/src/utils/seemp/utils.ts:formatCost"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Model biaya satuan spesifik tesis: setiap nilai USD/kW, mata uang dan tahun harganya perlu sitasi. AE yang berbeda-beda diabaikan (AE pertama x jumlah). CAPEX sampel (USD): variable speed generation 2 100 000; WHR 475 200; LNG 7 508 160; biofuel 95 040; surya 1 656 000; angin 2 208 000; cold ironing 800 426; sel bahan bakar 982 560.",
@@ -5212,7 +5212,7 @@
       "be-legacy/src/utils/seemp/cost-calc.ts:calculatedYear",
       "be-legacy/src/utils/seemp/cost-calc.ts:calculateCostPerYear"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Amortisasi \"tahun kepatuhan\" spesifik tesis tanpa diskonto, OPEX atau penghematan bahan bakar; diskontinu pada N <= 1. Horizon (dan semua biaya) berubah ketika nilai Z 2027-2030 dimasukkan; hasil legacy juga bergantung pada jam server. Alternatif: biaya bersih kini atau biaya abatement marjinal (USD per t CO2) dengan faktor pemulihan modal selama umur peralatan (praktik studi MACC; tidak diperiksa di sini).",
@@ -5255,13 +5255,13 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/modules/seemp/seemp.service.ts#recommendations"
+      "module": "src/domain/seemp/recommendations.ts#recommendMeasures"
     },
     "legacy": [
       "be-legacy/src/services/seemp.service.ts:calculateSemp",
       "be-legacy/src/services/seemp.service.ts:calculateSEEMPbyMMSI"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Aturan keputusan spesifik tesis. Menerima A-C konsisten dengan tujuan SEEMP Part III (MARPOL Annex VI reg. 28: rencana tindakan korektif setelah D tiga tahun berturut-turut atau E), tetapi aturan selebihnya perlu sitasi: langkah tidak pernah dikombinasikan; peringkat menurut biaya, bukan efektivitas biaya (USD per t CO2). v2: GET /seemp/vessels/:mmsi/recommendations (paritas) dan simulasi kombinasi.",
@@ -5318,12 +5318,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: air_lubrication)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: air_lubrication)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/first-formula.ts:calculateAirLubrication"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis. 8 % berada di dalam rentang Bouman 1-15 % (ITF: air lubrication dan permukaan lambung 2-9 %), tetapi pita CAPEX menurut LOA tidak ditemukan di sumber mana pun (portal GloMEEP: biaya 2-3 % harga kapal baru, tanpa angka penghematan pasti). Air lubrication mengurangi daya propulsi (kategori B-1), jadi seharusnya bekerja pada bahan bakar ME; kesesuaiannya untuk feri 73,3 m, 12 kn tidak terdokumentasi.",
@@ -5376,12 +5376,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: resistance_reduction_devices)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: resistance_reduction_devices)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/first-formula.ts:calculateResistanceReduceDevice"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis; tidak ditemukan rentang terbitan untuk langkah ini dan perangkat yang dimaksud tidak didefinisikan.",
@@ -5435,12 +5435,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: hull_coating)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: hull_coating)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/first-formula.ts:calculateHullCoating"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis. 10 % sama dengan batas atas rentang Bouman 1-10 %; 100 USD/m2 tidak bersumber. Biaya dok berulang diperlakukan sebagai CAPEX satu kali. Luas S dari resistance.holtrop.wetted_surface.",
@@ -5493,12 +5493,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: power_system_machinery)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: power_system_machinery)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/first-formula.ts:calculatePowerSystemMachinery"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis (nama langkah seperti \"variable speed generators\" di panduan efisiensi ABS/MARAD, tidak diverifikasi). Mengapa biaya langkah generator didasarkan pada daya mesin induk tidak dijelaskan (sampel 2 100 000 USD).",
@@ -5554,12 +5554,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: propulsion_efficiency_devices)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: propulsion_efficiency_devices)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/first-formula.ts:calculatePropEffDevice"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "13 % sama dengan titik tengah rentang 1-25 % (ITF mengutip Bouman 2017): asal yang masuk akal tetapi belum terverifikasi. Rentang CAPEX spesifik tesis.",
@@ -5615,12 +5615,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: waste_heat_recovery)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: waste_heat_recovery)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/first-formula.ts:calculateWasteHeatRecovery"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis. 10 % berada di dalam rentang WHR Bouman 1-20 % tetapi di luar baris \"heat recovery\" ITF 0-4 %: tesis harus menyatakan sumber mana yang dipakai. MEPC.1/Circ.896 memperlakukan WHR sebagai teknologi daya bantu (C-1), sedangkan legacy menerapkannya pada CII seluruh kapal. Kesesuaian untuk mesin empat langkah kecil 2 x 2100 kW belum terdokumentasi (sampel 475 200 USD).",
@@ -5676,12 +5676,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: lng)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: lng)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/second-formula.ts:calculateLNGFuel"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Cf 2,750 adalah nilai IMO untuk LNG (MEPC.364(79)); 1580 USD/kW spesifik tesis (sampel 7 508 160 USD). Koreksi LCV (-23,7 % alih-alih -14,2 %) dan bahan bakar pilot diabaikan; methane slip tidak masuk CII (hanya CO2) tetapi penting untuk klaim GRK well-to-wake.",
@@ -5736,12 +5736,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: biofuel)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: biofuel)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/second-formula.ts:calculateBioFuel"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis. 2,45 bukan Cf IMO (diesel 3,206; LNG 2,750; etanol 1,913; metanol 1,375); MEPC.1/Circ.905 (dan Rev.1) mengaitkan Cf biofuel dengan intensitas WtW bersertifikat. Premi harga bahan bakar diabaikan (sampel 95 040 USD). Usulan v2: perlakuan MEPC.1/Circ.905/Rev.1.",
@@ -5797,12 +5797,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: solar)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: solar)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/third-formula.ts:calculateSolarPower"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "12 % sama dengan batas atas rentang Bouman 0,2-12 % (pengurangan CO2 tingkat kapal), tetapi di sini diterapkan pada bahan bakar AE saja; sumber biaya spesifik tesis. Ukuran PV sebesar rating AE penuh tidak konsisten dengan penghematan 12 % (sampel 1 656 000 USD). MEPC.1/Circ.896 (C-2) mendukung pemodelan surya pada beban bantu.",
@@ -5857,12 +5857,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: wind)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: wind)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/third-formula.ts:calculateWindPower"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis. Potensi angin terbitan (Bouman 1-50 %; MEPC.1/Circ.896 kategori B-2) menyangkut propulsi berbantuan angin (beban ME), bukan listrik di kapal (sampel 2 208 000 USD).",
@@ -5930,12 +5930,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: cold_ironing)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: cold_ironing)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/third-formula.ts:calculateColdIroning"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis (lihat seemp.reduction_type3_auxiliary untuk porsi yang terbalik). Sumber 800 150 USD dan 0,5 USD/kW tidak diketahui (sampel 800 426 USD); ketersediaan listrik darat di Lembar dan Padang Bai belum diperiksa. Bouman: 3-10 % (langkah legacy mengirim p = 0,1 yang tidak dipakai).",
@@ -5989,12 +5989,12 @@
     ],
     "implementedBy": {
       "service": "emission",
-      "module": "src/domain/seemp/measures.ts (seemp_measures seed: fuel_cells)"
+      "module": "src/domain/seemp/measures.ts#LEGACY_SEEMP_MEASURES (seemp_measures seed: fuel_cells)"
     },
     "legacy": [
       "be-legacy/src/utils/seemp/third-formula.ts:calculateFuelCells"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "20 % sama dengan batas atas rentang Bouman 2-20 %; dasar biaya spesifik tesis (sampel 982 560 USD). Bahan bakar sel (H2, LNG, metanol) dan Cf-nya diabaikan, sehingga potongan 20 % tetap memakai Cf diesel.",
@@ -6049,12 +6049,12 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/transhipment/priority.ts#checkSpeed"
+      "module": "src/domain/transhipment/priority.ts#speedPriority"
     },
     "legacy": [
       "be-legacy/src/utils/illegal-transhipment.ts:checkSpeed"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis. Konteks: encounter GFW memakai kecepatan MUTLAK median < 2 kn selama >= 2 jam (Miller et al. 2018), sedangkan legacy memakai SELISIH kecepatan, sehingga dua kapal beriringan pada 12 kn mendapat skor 3: perlu syarat kecepatan rendah absolut?",
@@ -6110,12 +6110,12 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/transhipment/priority.ts#checkLocation"
+      "module": "src/domain/transhipment/priority.ts#locationPriority"
     },
     "legacy": [
       "be-legacy/src/utils/illegal-transhipment.ts:checkLocation"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Ambang spesifik tesis (600 m mendekati jarak encounter GFW 500 m, hanya konteks). AIS melaporkan posisi antena, sehingga kapal yang bersandingan bisa berjarak > 34 m: pertimbangkan dimensi AIS A/B/C/D. v2 mencari kandidat dengan PostGIS ST_DWithin 600 m.",
@@ -6170,12 +6170,12 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/transhipment/priority.ts#checkHeading"
+      "module": "src/domain/transhipment/priority.ts#headingPriority"
     },
     "legacy": [
       "be-legacy/src/utils/illegal-transhipment.ts:checkHeading"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis (heading sejajar khas transfer kapal ke kapal). HDG 511 (tidak tersedia) harus ditangani (pakai COG atau lewati). Mengapa haluan bersilangan (90 derajat) mendapat skor lebih tinggi daripada berlawanan? Cabang > 186 tidak tercapai.",
@@ -6273,7 +6273,7 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/transhipment/candidate-queue.ts (vessel_state, transhipment_pairs)"
+      "module": "src/domain/transhipment/pairs.ts#candidateObservations (queue: transhipment_pairs)"
     },
     "legacy": [
       "be-legacy/src/services/illegal-transhipment/illegal-transhipment.service.ts:detectIllegalTranshipment",
@@ -6282,7 +6282,7 @@
       "be-legacy/src/workers/illegal-transhipment-child-worker.ts:processOne",
       "be-legacy/src/services/illegal-transhipment/illegal-transhipment-det.service.ts:processQueue"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Skor multi-kriteria spesifik tesis. v2: kandidat dari sumber batam atau di dalam zona transhipment_area; \"pasangan di atas ambang\" pada spesifikasi belum didefinisikan (legacy tanpa ambang) dan akumulasi bergantung pada laju pesan. Worker dinonaktifkan di ecosystem.config.js: run mana yang menghasilkan hasil tesis? Definisi hukum \"transhipment ilegal\" (Permen KP 57/2014 hanya untuk kapal penangkap ikan) harus dinyatakan.",
@@ -6349,14 +6349,14 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/transhipment/track.ts#getPositionAtTime"
+      "module": "src/domain/transhipment/track.ts#fixAtTime"
     },
     "legacy": [
       "be-legacy/src/utils/illegal-transhipment.ts:interpolatePositions",
       "be-legacy/src/utils/illegal-transhipment.ts:getPositionAtTime",
       "be-legacy/src/utils/illegal-transhipment.ts:sampleRoute"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Interpolasi linear dalam waktu adalah standar; parameter sampling spesifik tesis. Heading diinterpolasi tanpa wrap 0/360 (350 -> 10 melewati 180): interpolasi pada lingkaran perlu diputuskan.",
@@ -6423,12 +6423,12 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/transhipment/analysis.ts#detectIllegalTranshipment"
+      "module": "src/domain/transhipment/analysis.ts#detectTranshipment"
     },
     "legacy": [
       "be-legacy/src/utils/illegal-transhipment.ts:detectIllegalTranshipment"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Desain jendela spesifik tesis (encounter GFW memakai durasi minimum 2 jam). Jendela pertama, bukan terbaik, yang dikembalikan; lintasan lebih pendek dari 30 menit tidak pernah dievaluasi.",
@@ -6468,12 +6468,12 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/transhipment/analysis.ts#calculateWeightedScore"
+      "module": "src/domain/transhipment/analysis.ts#weightedScore"
     },
     "legacy": [
       "be-legacy/src/utils/illegal-transhipment.ts:calculateWeightedScore"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis; alasan pemetaan non-linear perlu dijelaskan.",
@@ -6555,12 +6555,12 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/transhipment/analysis.ts#transhipmentScore"
+      "module": "src/domain/transhipment/analysis.ts#transhipmentScore"
     },
     "legacy": [
       "be-legacy/src/utils/illegal-transhipment.ts:detectIllegalTranshipment"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Skor keyakinan spesifik tesis, BUKAN akurasi statistik: v2 sebaiknya menyebutnya \"skor\" dan mengkalibrasi ambang 70 dengan kasus berlabel (mis. event encounter GFW di perairan Indonesia).",
@@ -6600,14 +6600,14 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/transhipment/analysis.ts#priorityDistribution"
+      "module": "src/domain/transhipment/analysis.ts#priorityCategory (mean and distribution in detectTranshipment)"
     },
     "legacy": [
       "be-legacy/src/utils/illegal-transhipment.ts:getPriorityCategory",
       "be-legacy/src/utils/illegal-transhipment.ts:detectIllegalTranshipment",
       "be-legacy/src/workers/illegal-transhipment-child-worker.ts:processOne"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Spesifik tesis. Jalur det.service yang lebih lama tidak menyimpan averagePriority/distribution: v2 menyelaraskan.",
@@ -6735,13 +6735,13 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/anomaly/anomaly.detector.ts"
+      "module": "src/detectors/anomaly/anomaly.detector.ts#AnomalyDetector"
     },
     "legacy": [
       "fe-legacy/src/pages/anomaly/components/navstatus-anomaly-card.tsx:anomalies",
       "be-legacy/src/repositories/ais.repository.ts:streamRecent"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Aturan konsistensi spesifik tesis; persistensi 3 posisi adalah pilihan desain v2. Premisnya (status yang dilaporkan tidak andal) didukung A.1106(29) dan Harati-Mokhtari et al. (2007). Aturan murni sudah ada di contracts (src/domain/ais.ts#isNavStatusAnomaly). Laporan 5 (tertambat) dengan prediksi 1 ikut ditandai; aturan mewarisi heuristik prediksi yang belum divalidasi; unit kelas B tidak mengirim status navigasi sehingga harus dikecualikan. Legacy mengevaluasi posisi terakhir tiap kapal dari GET /ais (24 jam) di frontend.",
@@ -6840,10 +6840,10 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/dark/dark.detector.ts"
+      "module": "src/detectors/dark/dark.detector.ts#DarkDetector"
     },
     "legacy": [],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Pilihan desain v2, bukan dari tesis. Literatur penonaktifan AIS memakai celah >= 12 jam yang dimulai > 50 nm dari pantai di area dengan penerimaan baik (Welch et al. 2022; GFW): 30 menit jauh lebih pendek dan perlu justifikasi serta kalibrasi terhadap cakupan penerima AIS di Indonesia (belum ada data). Mematikan AIS bisa sah (A.1106(29)); kapal kecil di luar kewajiban SOLAS; kewajiban nasional PM 7/2019 diganti PM 18/2022.",
@@ -6896,10 +6896,10 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/geofence/geofence.detector.ts"
+      "module": "src/detectors/geofence/geofence.detector.ts#GeofenceDetector"
     },
     "legacy": [],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": false,
     "notes": {
       "id": "Pilihan desain v2 (geofencing titik-dalam-poligon standar dengan ZoneIndex SDK dan zona dari layanan geo), bukan dari tesis. Terbuka: histeresis/debounce untuk kapal tepat di batas zona.",
@@ -6984,10 +6984,10 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "src/detectors/fishing/fishing.detector.ts"
+      "module": "src/detectors/fishing/fishing.detector.ts#FishingDetector"
     },
     "legacy": [],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Pilihan desain v2. Literatur memakai pita kecepatan per jenis alat tangkap atau profil kecepatan per kapal (Natale 2015, de Souza 2016) dan klasifikasi CNN (Kroodsma 2018); pita 0,5-4 kn tidak ditemukan di sumber terverifikasi dan \"perubahan haluan sering\" belum punya definisi operasional. Dalam terminologi GFW/Miller, \"loitering\" menggambarkan kapal pengangkut, bukan aktivitas menangkap ikan: nama ini dapat menyesatkan.",
@@ -7030,13 +7030,13 @@
     ],
     "implementedBy": {
       "service": "surveillance",
-      "module": "fishing_violations import (legacy apps/web/src/data/ilegal.json)"
+      "module": "src/modules/fishing-violations/fishing-violations.seed.ts#seedFishingViolations (fishing_violations, from the legacy apps/web/src/data/ilegal.json)"
     },
     "legacy": [
       "fe-legacy/src/data/ilegal.json",
       "fe-legacy/src/components/common/old-map.tsx"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Bendera: Vietnam 187, Indonesia 118, Malaysia 47, Filipina 42, Thailand 7, Tiongkok 1, Timor-Leste 1. Subset 2016 (163 = 140 asing + 23 Indonesia) sama dengan total yang diumumkan KKP; Tabel 3.4 Laporan Kinerja Ditjen PSDKP 2017 adalah kandidat asal; provenans pasti, lisensi dan izin redistribusi belum diketahui: perlu sitasi dari tesis. Posisi adalah titik penangkapan, bukan lokasi menangkap ikan. Ejaan perlu dinormalisasi (\"Philipina\", \"dikawal\").",
@@ -7171,13 +7171,13 @@
     ],
     "implementedBy": {
       "service": "ais-pipeline",
-      "module": "data/coastline.geojson (loaded once, flatbush index)"
+      "module": "src/shared/domain/coastline.ts#CoastlineGeometry.fromGeoJson (data/coastline.geojson, loaded once, flatbush index)"
     },
     "legacy": [
       "be-legacy/data/indonesia.json",
       "be-legacy/src/utils/calculate-ews.ts:findNearestCoastDistance"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Batas administrasi provinsi yang disederhanakan (kode Kemendagri 35), bukan garis pantai hidrografis; hampir pasti diekspor dengan mapshaper. Sumber asal tidak terlacak (Natural Earth dan salinan GADM 2.x sudah dikesampingkan) dan lisensinya tidak diketahui, sehingga redistribusi sebagai data v2 belum aman: perlu sitasi dari tesis. Pengganti dengan lisensi jelas: Natural Earth (domain publik, kasar), poligon daratan OSM (ODbL: atribusi + share-alike) atau data BIG (belum diperiksa).",
@@ -7231,7 +7231,7 @@
     ],
     "implementedBy": {
       "service": "geo",
-      "module": "seed zone kind pipeline (from legacy data/pipeline.json, buffer 1750 m)"
+      "module": "src/modules/seed/legacy-datasets.ts#pipelineSeedZone (zone kind pipeline from the legacy data/pipeline.json, buffer PIPELINE_CORRIDOR_BUFFER_M = 1750 m)"
     },
     "legacy": [
       "be-legacy/data/pipeline.json",
@@ -7239,7 +7239,7 @@
       "be-legacy/src/utils/calculate-ews.ts:checkShipStatus",
       "fe-legacy/src/components/common/map.tsx:sortedData"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Daftar KP pipa bawah laut di lepas Gresik pada pendekatan barat Surabaya (APBS); berita menyebut pipa gas 16 inci eks-Kodeco/PHE WMO di bawah APBS, tetapi BELUM dikonfirmasi bahwa file ini pipa tersebut: perlu sitasi atau izin dari tesis/operator. Analisis forensik sendiri: 59/61 lintang tepat 0,01 detik busur dan 21/61 titik bertimur UTM 49S bulat meter, konsisten dengan daftar posisi rekayasa/survei. Dua titik berbeda berlabel \"KP 42.200\"; segmen lurus sekitar 5,3 km antara KP 42,72 dan 48,05. Datum dan status desain/as-laid tidak diketahui; perlu izin untuk mempublikasikan koordinat infrastruktur kritis. v2 sebaiknya mengurutkan menurut KP (efek kecil).",
@@ -7282,13 +7282,13 @@
     ],
     "implementedBy": {
       "service": "geo",
-      "module": "seed zone kind transhipment_area (from legacy data/batam.json)"
+      "module": "src/modules/seed/legacy-datasets.ts#batamSeedZone (zone kind transhipment_area from the legacy data/batam.json)"
     },
     "legacy": [
       "be-legacy/data/batam.json",
       "be-legacy/src/config/ws-batam.ts"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Keluarga sumber yang sama dengan indonesia.json (skema dan tata letak mapshaper sama; Natural Earth dikesampingkan); lisensi tidak diketahui. Poligon daratan provinsi BUKAN definisi area transhipment, STS atau labuh: definisikan area dari tesis atau otoritas pelabuhan sebelum menjadikannya seed.",
@@ -7358,16 +7358,1391 @@
     ],
     "implementedBy": {
       "service": "fleet",
-      "module": "seed:demo (demo vessel) + golden parity tests"
+      "module": "src/seeds/samples.seed.ts#ENGINE_SEEDS (with FUEL_FORMULA_SEEDS and PORT_SEEDS; the vessel particulars are golden test vectors)"
     },
     "legacy": [
       "be-legacy/docs/postman/*.postman_collection.json"
     ],
-    "status": "planned",
+    "status": "implemented",
     "needsCitation": true,
     "notes": {
       "id": "Kapal studi kasus tesis (feri Lembar-Padang Bai); data kapal perlu sitasi (rencana umum, sertifikat tonase, lembar data mesin). Hanya Cc/Cf bahan bakar, a/c/d 2021 dan Z 2025 yang tertelusur ke teks IMO. Cek offline: digit cek IMO 9037941 valid; MID 525 diyakini Indonesia (tidak diverifikasi ulang). Satuan rating ME 2100 (kW atau PS) belum jelas; C_stern 8 vs nilai panduan. Dipakai sebagai vektor golden paritas numerik v2.",
       "en": "Thesis case-study vessel (Lembar-Padang Bai ferry); its particulars need citation (general arrangement, tonnage certificate, engine data sheets). Only the fuel Cc/Cf, the 2021 a/c/d values and Z 2025 trace to IMO texts. Offline checks: the IMO 9037941 check digit is valid; MID 525 is believed to be Indonesia (not re-verified). The unit of the ME rating 2100 (kW or PS) is unclear; C_stern 8 vs guide values. Used as the golden vector for v2 numerical parity."
+    }
+  },
+  {
+    "id": "emission.segment_window",
+    "domain": "emission",
+    "name": {
+      "id": "Jendela segmen dan penanda celah",
+      "en": "Segment window and gap flag"
+    },
+    "summary": {
+      "id": "Peristiwa posisi membentuk segmen dengan posisi sebelumnya dari kapal yang sama: tanpa posisi sebelumnya, atau bila t_kini - t_sebelum <= 0 (tidak berurutan atau duplikat), tidak ada segmen; celah lebih panjang dari SEGMENT_MAX_GAP_MIN (bawaan 360 menit) disimpan sebagai gap dengan bahan bakar nol dan dikeluarkan dari jumlah CII; selain itu menjadi segmen.",
+      "en": "A position event forms a segment with the previous fix of the same vessel: no previous fix, or t_current - t_previous <= 0 (out of order or duplicate), gives no segment; a gap longer than SEGMENT_MAX_GAP_MIN (default 360 min) is stored as a gap with zero fuel and excluded from the CII sums; otherwise it is a segment."
+    },
+    "formulaLatex": "\\Delta t=t_i-t_{i-1},\\qquad \\text{segment}\\iff 0<\\Delta t\\le\\Delta t_{max},\\qquad \\text{gap}\\iff\\Delta t>\\Delta t_{max}",
+    "variables": [
+      {
+        "symbol": "\\Delta t",
+        "name": {
+          "id": "Selang waktu antara posisi sebelumnya dan posisi kini",
+          "en": "Time between the previous and the current fix"
+        },
+        "description": {
+          "id": "Selang waktu antara posisi sebelumnya dan posisi kini",
+          "en": "Time between the previous and the current fix"
+        },
+        "unit": "min",
+        "source": "AIS position times"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "\\Delta t_{max}",
+        "name": {
+          "id": "Celah maksimum sebuah segmen (SEGMENT_MAX_GAP_MIN, dapat dikonfigurasi)",
+          "en": "Longest gap of a segment (SEGMENT_MAX_GAP_MIN, configurable)"
+        },
+        "value": 360,
+        "unit": "min",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "emission",
+      "module": "src/domain/segment.ts#classifySegmentWindow"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan v2 tanpa padanan legacy (MVP menghitung segmen untuk setiap pasangan posisi). Nilai bawaan 360 menit adalah nilai desain spesifikasi §13.5.",
+      "en": "v2 rule without a legacy equivalent (the MVP computed a segment for every pair of fixes). The 360 min default is a design default of spec 13.5."
+    }
+  },
+  {
+    "id": "cii.year_end_projection",
+    "domain": "emission",
+    "name": {
+      "id": "Proyeksi CII akhir tahun (linear)",
+      "en": "Year-end CII projection (linear)"
+    },
+    "summary": {
+      "id": "Total sejak awal tahun (jarak, bahan bakar, CO2) dari tahun berjalan diproyeksikan linear ke 31 Desember, X_tahun = X_YTD / f dengan f fraksi tahun kalender yang telah lewat pada segmen terakhir, lalu CII tercapai proyeksi = CO2_tahun x 10^6 / (Kapasitas x D_tahun) dinilai. CO2 dan jarak berskala sama, sehingga CII tercapai, rating dan grade proyeksi sama dengan nilai sejak awal tahun; tren CII kumulatif harian sengaja tidak diekstrapolasi.",
+      "en": "Projects the year-to-date totals (distance, fuel, CO2) of a year in progress linearly to 31 December, X_year = X_YTD / f with f the elapsed fraction of the calendar year at the last segment, and rates the projected attained CII = CO2_year x 10^6 / (Capacity x D_year). CO2 and distance scale alike, so the projected attained CII, rating and grade equal the year-to-date values; the trend of the daily cumulative CII is deliberately not extrapolated."
+    },
+    "formulaLatex": "X_{year}=\\frac{X_{YTD}}{f},\\quad f=\\frac{t_{last}-t_{1\\,Jan}}{t_{1\\,Jan+1}-t_{1\\,Jan}}\\in(0,1],\\qquad CII_{year}=\\frac{CO2_{year}\\cdot10^{6}}{Cap\\cdot D_{year}}=CII_{YTD}",
+    "variables": [
+      {
+        "symbol": "X_{YTD}",
+        "name": {
+          "id": "Total sejak awal tahun: jarak, bahan bakar, CO2",
+          "en": "Year-to-date totals: distance, fuel, CO2"
+        },
+        "description": {
+          "id": "Total sejak awal tahun: jarak, bahan bakar, CO2",
+          "en": "Year-to-date totals: distance, fuel, CO2"
+        },
+        "unit": "nm, t",
+        "source": "cii.attained_accumulation"
+      },
+      {
+        "symbol": "f",
+        "name": {
+          "id": "Fraksi tahun kalender yang telah lewat pada segmen terakhir",
+          "en": "Elapsed fraction of the calendar year at the last segment"
+        },
+        "description": {
+          "id": "Fraksi tahun kalender yang telah lewat pada segmen terakhir",
+          "en": "Elapsed fraction of the calendar year at the last segment"
+        },
+        "unit": null,
+        "source": "segment times"
+      },
+      {
+        "symbol": "Cap",
+        "name": {
+          "id": "Kapasitas CII (DWT atau GT)",
+          "en": "CII capacity (DWT or GT)"
+        },
+        "description": {
+          "id": "Kapasitas CII (DWT atau GT)",
+          "en": "CII capacity (DWT or GT)"
+        },
+        "unit": "t",
+        "source": "fleet"
+      },
+      {
+        "symbol": "D_{year}",
+        "name": {
+          "id": "Jarak proyeksi setahun",
+          "en": "Projected annual distance"
+        },
+        "description": {
+          "id": "Jarak proyeksi setahun",
+          "en": "Projected annual distance"
+        },
+        "unit": "nm",
+        "source": "projection"
+      }
+    ],
+    "constants": [],
+    "referenceIds": [
+      "imo-mepc-352-78",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "emission",
+      "module": "src/domain/cii-projection.ts#projectYearEnd (with projectTotals and elapsedYearFraction)"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Alat bantu tampilan v2, bukan angka regulasi: CII IMO dinilai atas satu tahun kalender penuh (G1, G4). Linear pada total menurut desain; profil operasi musiman tidak dimodelkan.",
+      "en": "v2 display aid, not a regulatory figure: the IMO CII is rated on the full calendar year (G1, G4). Linear in the totals by design; seasonal operating profiles are not modelled."
+    }
+  },
+  {
+    "id": "emission.dcs_summary",
+    "domain": "emission",
+    "name": {
+      "id": "Ringkasan tahunan gaya IMO DCS",
+      "en": "IMO DCS-style annual summary"
+    },
+    "summary": {
+      "id": "Ringkasan tahunan sebuah kapal per jenis bahan bakar: bahan bakar mesin induk dan mesin bantu (t), CO2 = bahan bakar x C_F (t), jarak (nm) dan jam berlayar (segmen >= 1 kn), dari segmen terhitung tahun itu atau, bila tidak ada, dari catatan tahunan manual (bahan bakar dengan jenis bahan bakar kapal saat ini, jam tidak diketahui). Diekspor sebagai CSV (RFC 4180). Bukan laporan DCS statutori.",
+      "en": "Annual summary of a vessel per fuel type: main and auxiliary engine fuel (t), CO2 = fuel x C_F (t), distance (nm) and hours under way (segments at >= 1 kn), from the counted segments of the year or, without them, from the manual annual record (fuel of the vessel's current fuel type, hours unknown). Exported as CSV (RFC 4180). Not the statutory DCS report."
+    },
+    "formulaLatex": "FC_j=\\sum_s\\left(FC_{ME,s,j}+FC_{AE,s,j}\\right),\\quad CO2=\\sum_j FC_j\\,C_{F,j},\\quad D=\\sum_s d_s,\\quad T_{uw}=\\sum_{s:\\,v_s\\ge v_{uw}}\\Delta t_s",
+    "variables": [
+      {
+        "symbol": "FC_j",
+        "name": {
+          "id": "Bahan bakar jenis j dalam setahun",
+          "en": "Fuel of type j in the year"
+        },
+        "description": {
+          "id": "Bahan bakar jenis j dalam setahun",
+          "en": "Fuel of type j in the year"
+        },
+        "unit": "t",
+        "source": "fuel methods"
+      },
+      {
+        "symbol": "C_{F,j}",
+        "name": {
+          "id": "Faktor konversi CO2 bahan bakar j",
+          "en": "CO2 conversion factor of fuel j"
+        },
+        "description": {
+          "id": "Faktor konversi CO2 bahan bakar j",
+          "en": "CO2 conversion factor of fuel j"
+        },
+        "unit": "t CO2/t",
+        "source": "emission.co2_conversion"
+      },
+      {
+        "symbol": "d_s",
+        "name": {
+          "id": "Jarak segmen",
+          "en": "Segment distance"
+        },
+        "description": {
+          "id": "Jarak segmen",
+          "en": "Segment distance"
+        },
+        "unit": "nm",
+        "source": "geo.haversine_distance"
+      },
+      {
+        "symbol": "v_s",
+        "name": {
+          "id": "Kecepatan segmen",
+          "en": "Segment speed"
+        },
+        "description": {
+          "id": "Kecepatan segmen",
+          "en": "Segment speed"
+        },
+        "unit": "kn",
+        "source": "geo.speed_from_positions"
+      },
+      {
+        "symbol": "\\Delta t_s",
+        "name": {
+          "id": "Durasi segmen",
+          "en": "Segment duration"
+        },
+        "description": {
+          "id": "Durasi segmen",
+          "en": "Segment duration"
+        },
+        "unit": "h",
+        "source": "segment times"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "v_{uw}",
+        "name": {
+          "id": "Kecepatan minimum yang dihitung sebagai berlayar (UNDER_WAY_MIN_SPEED_KN)",
+          "en": "Minimum speed counted as under way (UNDER_WAY_MIN_SPEED_KN)"
+        },
+        "value": 1,
+        "unit": "kn",
+        "referenceIds": [
+          "imo-fourth-ghg-study-2020"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "imo-mepc-278-70",
+      "imo-fourth-ghg-study-2020",
+      "ietf-rfc-4180"
+    ],
+    "implementedBy": {
+      "service": "emission",
+      "module": "src/modules/dcs/dcs.service.ts#DcsService.summary (CSV in src/domain/dcs.ts#dcsCsv)"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Angka bergaya DCS untuk operator (MEPC.278(70) menjumlahkan bahan bakar per jenis, jarak dan jam berlayar per tahun kalender); format laporan statutori (Appendix IX MARPOL Annex VI, granularitas MEPC.385(81)) tidak dihasilkan. Ambang berlayar 1 kn mengikuti klasifikasi kecepatan AIS Fourth IMO GHG Study (belum diverifikasi ulang).",
+      "en": "DCS-style figures for the operator (MEPC.278(70) aggregates fuel per type, distance and hours under way per calendar year); the statutory report format (Appendix IX of MARPOL Annex VI, MEPC.385(81) granularity) is not produced. The 1 kn under-way threshold follows the AIS speed classification of the Fourth IMO GHG Study (not re-verified)."
+    }
+  },
+  {
+    "id": "seemp.simulation_combination",
+    "domain": "seemp",
+    "name": {
+      "id": "Kombinasi langkah SEEMP (simulasi bagaimana-jika)",
+      "en": "SEEMP measure combination (what-if simulation)"
+    },
+    "summary": {
+      "id": "Langkah SEEMP terpilih digabung secara berurutan dan multiplikatif, dan untuk satu langkah sama dengan rumus legacy: sisi bahan bakar dahulu (penggantian bahan bakar mengganti C_F, paling banyak satu per simulasi; setiap langkah energi bantu mengalikan sisa bahan bakar AE), lalu CII tercapai dihitung ulang dari sisi bahan bakar bila ada langkah tipe 2/3, lalu setiap langkah operasional/teknis (tipe 1) menguranginya: CII <- CII - (CII x p/100) x v/100. Biaya per tahun langkah terpilih dijumlahkan.",
+      "en": "Combines the selected SEEMP measures sequentially and multiplicatively, reducing to the legacy formulas for a single measure: fuel side first (a fuel switch replaces C_F, at most one per simulation; each auxiliary-energy measure multiplies the remaining AE fuel), then the attained CII is re-rated from the fuel side when a type 2/3 measure is selected, then each operational/technical (type 1) measure reduces it: CII <- CII - (CII x p/100) x v/100. The per-year costs of the selected measures are summed."
+    },
+    "formulaLatex": "CII_0=\\frac{\\left(FC_{ME}+FC_{AE}^{\\prime}\\right)C_F^{\\prime}}{D\\cdot Cap}\\cdot10^{6},\\qquad CII_{after}=CII_0\\prod_{k\\in T_1}\\left(1-\\frac{p_k\\,v_k}{10^{4}}\\right),\\qquad C_{year}=\\sum_k C_{year,k}",
+    "variables": [
+      {
+        "symbol": "FC_{AE}^{\\prime}",
+        "name": {
+          "id": "Bahan bakar AE setelah langkah energi bantu",
+          "en": "AE fuel after the auxiliary-energy measures"
+        },
+        "description": {
+          "id": "Bahan bakar AE setelah langkah energi bantu",
+          "en": "AE fuel after the auxiliary-energy measures"
+        },
+        "unit": "t",
+        "source": "seemp.reduction_type3_auxiliary"
+      },
+      {
+        "symbol": "C_F^{\\prime}",
+        "name": {
+          "id": "Faktor konversi setelah penggantian bahan bakar",
+          "en": "Conversion factor after the fuel switch"
+        },
+        "description": {
+          "id": "Faktor konversi setelah penggantian bahan bakar",
+          "en": "Conversion factor after the fuel switch"
+        },
+        "unit": "t CO2/t",
+        "source": "seemp.reduction_type2_fuel_switch"
+      },
+      {
+        "symbol": "p_k, v_k",
+        "name": {
+          "id": "Bagian operasional dan nilai reduksi langkah tipe 1",
+          "en": "Operational share and reduction value of a type 1 measure"
+        },
+        "description": {
+          "id": "Bagian operasional dan nilai reduksi langkah tipe 1",
+          "en": "Operational share and reduction value of a type 1 measure"
+        },
+        "unit": "%",
+        "source": "seemp.reduction_type1_operational_share"
+      },
+      {
+        "symbol": "C_{year,k}",
+        "name": {
+          "id": "Biaya per tahun langkah k",
+          "en": "Per-year cost of measure k"
+        },
+        "description": {
+          "id": "Biaya per tahun langkah k",
+          "en": "Per-year cost of measure k"
+        },
+        "unit": "USD/year",
+        "source": "seemp.cost_amortization"
+      }
+    ],
+    "constants": [],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "emission",
+      "module": "src/domain/seemp/simulation.ts#simulateMeasures"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Hanya v2; untuk satu langkah sama dengan seemp.reduction_type1_operational_share, seemp.reduction_type2_fuel_switch dan seemp.reduction_type3_auxiliary. Interaksi antarlangkah tidak dimodelkan selain hasil kali berurutan; lebih dari satu penggantian bahan bakar ditolak (IncompatibleMeasuresError).",
+      "en": "v2 only; reduces to seemp.reduction_type1_operational_share, seemp.reduction_type2_fuel_switch and seemp.reduction_type3_auxiliary for a single measure. Interactions between measures are not modelled beyond the sequential product; more than one fuel switch is refused (IncompatibleMeasuresError)."
+    }
+  },
+  {
+    "id": "geo.track_simplification",
+    "domain": "geo",
+    "name": {
+      "id": "Penyederhanaan lintasan untuk tampilan (Ramer-Douglas-Peucker)",
+      "en": "Track simplification for display (Ramer-Douglas-Peucker)"
+    },
+    "summary": {
+      "id": "Lintasan kapal disederhanakan untuk tampilan (parameter simplify dari endpoint lintasan): posisi pertama dan terakhir dipertahankan, demikian pula setiap posisi yang lebih jauh dari toleransi terhadap tali busur rentangnya (Ramer-Douglas-Peucker iteratif); jarak dihitung planar dalam proyeksi ekuirektangular lokal (x = dlambda cos phi0, y = dphi, phi0 = lintang rata-rata, bujur dibuka melintasi antimeridian). Posisi yang dipertahankan dikembalikan tanpa perubahan dalam urutan waktu.",
+      "en": "Simplifies a vessel track for display (simplify parameter of the track endpoint): keeps the first and last fix and every fix farther than the tolerance from the chord of its span (iterative Ramer-Douglas-Peucker); distances are planar in a local equirectangular projection (x = dlambda cos phi0, y = dphi, phi0 = mean latitude, longitudes unwrapped across the antimeridian). The kept fixes are returned unchanged, in time order."
+    },
+    "formulaLatex": "x=m\\,\\Delta\\lambda\\cos\\varphi_0,\\quad y=m\\,\\varphi,\\quad m=\\frac{\\pi R}{180},\\qquad \\text{keep }p_k\\iff d_\\perp\\left(p_k,\\overline{p_ip_j}\\right)=\\max_{i<l<j}d_\\perp\\left(p_l,\\overline{p_ip_j}\\right)>\\varepsilon",
+    "variables": [
+      {
+        "symbol": "\\varepsilon",
+        "name": {
+          "id": "Toleransi jarak tegak lurus (parameter permintaan)",
+          "en": "Perpendicular distance tolerance (request parameter)"
+        },
+        "description": {
+          "id": "Toleransi jarak tegak lurus (parameter permintaan)",
+          "en": "Perpendicular distance tolerance (request parameter)"
+        },
+        "unit": "m",
+        "source": "query simplify"
+      },
+      {
+        "symbol": "\\varphi_0",
+        "name": {
+          "id": "Lintang rata-rata lintasan",
+          "en": "Mean latitude of the track"
+        },
+        "description": {
+          "id": "Lintang rata-rata lintasan",
+          "en": "Mean latitude of the track"
+        },
+        "unit": "deg",
+        "source": "AIS lat"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "R",
+        "name": {
+          "id": "Jari-jari bumi rata-rata (proyeksi lokal)",
+          "en": "Mean Earth radius (local projection)"
+        },
+        "value": 6371008.8,
+        "unit": "m",
+        "referenceIds": [],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "douglas-peucker-1973",
+      "ramer-1972"
+    ],
+    "implementedBy": {
+      "service": "ais-pipeline",
+      "module": "src/shared/domain/simplify.ts#simplifyTrack"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Hanya untuk tampilan: analitik memakai posisi mentah. Toleransi <= 0 mempertahankan setiap posisi.",
+      "en": "Display only: analytics use the raw fixes. A tolerance <= 0 keeps every fix."
+    }
+  },
+  {
+    "id": "geo.zone_geometry_rules",
+    "domain": "geo",
+    "name": {
+      "id": "Aturan input geometri zona",
+      "en": "Zone geometry input rules"
+    },
+    "summary": {
+      "id": "Geometri zona diterima bila GeoJSON valid dengan posisi bujur/lintang WGS 84 dalam [-180, 180] x [-90, 90]; jenis geometri diizinkan untuk jenis zona; paling banyak 50 000 verteks; zona titik memerlukan buffer_m > 0; geometri yang melintasi antimeridian ditolak (klien harus memotongnya, RFC 7946 §3.1.9); validitas topologi diperiksa dengan PostGIS ST_IsValidDetail; tidak ada perbaikan diam-diam.",
+      "en": "A zone geometry is accepted when it is valid GeoJSON with WGS 84 longitude/latitude positions within [-180, 180] x [-90, 90]; its geometry type is allowed for the zone kind; it has at most 50 000 vertices; a point zone has buffer_m > 0; geometries crossing the antimeridian are refused (the client cuts them, RFC 7946 section 3.1.9); topological validity is checked with PostGIS ST_IsValidDetail; nothing is repaired silently."
+    },
+    "formulaLatex": null,
+    "variables": [],
+    "constants": [
+      {
+        "symbol": "N_{max}",
+        "name": {
+          "id": "Jumlah verteks maksimum (ZONE_MAX_VERTICES)",
+          "en": "Maximum number of vertices (ZONE_MAX_VERTICES)"
+        },
+        "value": 50000,
+        "unit": null,
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      },
+      {
+        "symbol": "\\Delta\\lambda_{edge,max}",
+        "name": {
+          "id": "Rentang bujur sisi di atas mana sisi dianggap melintasi antimeridian (MAX_EDGE_LONGITUDE_SPAN_DEG)",
+          "en": "Longitude span of an edge above which it is taken to cross the antimeridian (MAX_EDGE_LONGITUDE_SPAN_DEG)"
+        },
+        "value": 180,
+        "unit": "deg",
+        "referenceIds": [
+          "ietf-rfc-7946"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "ietf-rfc-7946",
+      "nima-tr8350-2-wgs84",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "geo",
+      "module": "src/domain/zone-geometry.ts#assertZoneGeometryRules (parsing in parseZoneGeometry, antimeridian rule in assertNoAntimeridianCrossing, ST_IsValidDetail in the zones repository)"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan validasi input platform, bukan metode analitik; diusulkan oleh layanan geo (spesifikasi §13.6).",
+      "en": "A platform input-validation rule rather than an analytic method; proposed by the geo service (spec 13.6)."
+    }
+  },
+  {
+    "id": "geo.zone_buffer_extent",
+    "domain": "geo",
+    "name": {
+      "id": "Jari-jari buffer konservatif dalam derajat",
+      "en": "Conservative buffer radius in degrees"
+    },
+    "summary": {
+      "id": "Buffer zona dalam meter diubah menjadi jari-jari konservatif dalam derajat untuk filter kotak pembatas: r = 1,01 x max(b / 110 574,2696, b / (111 319,4908 x cos phi)), dengan phi lintang paling dekat kutub yang dicapai zona ber-buffer (|lintang|maks + b / 110 574,2696); dalam 1 derajat dari kutub (phi >= 89) setiap bujur cocok (r = 360). Zona paling jauh sekitar 1 % di luar buffernya dapat cocok; tidak ada zona yang buffernya mencapai kotak yang terlewat.",
+      "en": "Converts a zone buffer in metres into a conservative radius in degrees for bounding-box filters: r = 1.01 x max(b / 110 574.2696, b / (111 319.4908 x cos phi)), with phi the most poleward latitude the buffered zone reaches (|lat|max + b / 110 574.2696); within 1 degree of a pole (phi >= 89) every longitude matches (r = 360). A zone at most about 1 % beyond its buffer may match; none whose buffer reaches the box is missed."
+    },
+    "formulaLatex": "r=\\min\\left(360^{\\circ},\\ k\\max\\left(\\frac{b}{m_\\varphi},\\ \\frac{b}{m_\\lambda\\cos\\varphi}\\right)\\right),\\quad \\varphi=\\min\\left(90^{\\circ},\\ |\\phi|_{max}+\\frac{b}{m_\\varphi}\\right),\\quad r=360^{\\circ}\\ \\text{if}\\ \\varphi\\ge 89^{\\circ}",
+    "variables": [
+      {
+        "symbol": "b",
+        "name": {
+          "id": "Buffer zona (buffer_m)",
+          "en": "Zone buffer (buffer_m)"
+        },
+        "description": {
+          "id": "Buffer zona (buffer_m)",
+          "en": "Zone buffer (buffer_m)"
+        },
+        "unit": "m",
+        "source": "geo zones"
+      },
+      {
+        "symbol": "|\\phi|_{max}",
+        "name": {
+          "id": "Lintang absolut terbesar dari geometri",
+          "en": "Largest absolute latitude of the geometry"
+        },
+        "description": {
+          "id": "Lintang absolut terbesar dari geometri",
+          "en": "Largest absolute latitude of the geometry"
+        },
+        "unit": "deg",
+        "source": "zone geometry"
+      },
+      {
+        "symbol": "r",
+        "name": {
+          "id": "Jari-jari buffer dalam derajat",
+          "en": "Buffer radius in degrees"
+        },
+        "description": {
+          "id": "Jari-jari buffer dalam derajat",
+          "en": "Buffer radius in degrees"
+        },
+        "unit": "deg",
+        "source": "result"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "m_\\varphi",
+        "name": {
+          "id": "Panjang satu derajat meridian, batas bawah (WGS 84 di ekuator: M(0) x pi/180 = 110 574,276 m)",
+          "en": "Length of a meridian degree, lower bound (WGS 84 at the equator: M(0) x pi/180 = 110 574.276 m)"
+        },
+        "value": 110574.2696,
+        "unit": "m",
+        "referenceIds": [
+          "nima-tr8350-2-wgs84"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "m_\\lambda",
+        "name": {
+          "id": "Panjang satu derajat paralel di ekuator, a x pi/180",
+          "en": "Length of a parallel degree at the equator, a x pi/180"
+        },
+        "value": 111319.4908,
+        "unit": "m",
+        "referenceIds": [
+          "nima-tr8350-2-wgs84"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "k",
+        "name": {
+          "id": "Margin untuk pendekatan sferis",
+          "en": "Margin for the spherical approximation"
+        },
+        "value": 1.01,
+        "unit": null,
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "\\varphi_{pole}",
+        "name": {
+          "id": "Lintang di atas mana setiap bujur cocok",
+          "en": "Latitude above which every longitude matches"
+        },
+        "value": 89,
+        "unit": "deg",
+        "referenceIds": [],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "nima-tr8350-2-wgs84",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "geo",
+      "module": "src/modules/zones/zones.repository.ts#bufferedBBoxCondition (SQL zone_buffer_degrees of migrations/0002_map_extent_quota_tiles.sql)"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "m_lambda = a x pi/180 dan M(0) = a(1 - e^2) dihitung dari a = 6 378 137 m dan 1/f = 298,257223563 (terverifikasi di referensi WGS 84); 110 574,2696 m adalah pembulatan ke bawah (konservatif) dari 110 574,276 m. Margin 1 % dan batas kutub 89 derajat adalah nilai desain v2.",
+      "en": "m_lambda = a x pi/180 and M(0) = a(1 - e^2) follow from a = 6 378 137 m and 1/f = 298.257223563 (verified in the WGS 84 reference); 110 574.2696 m is a slightly low (conservative) rounding of 110 574.276 m. The 1 % margin and the 89 degree pole cut-off are v2 design defaults."
+    }
+  },
+  {
+    "id": "geo.map_simplification",
+    "domain": "geo",
+    "name": {
+      "id": "Penyederhanaan geometri lapisan peta zona",
+      "en": "Zone map layer geometry simplification"
+    },
+    "summary": {
+      "id": "Untuk GET /api/v2/zones/geojson, geometri disederhanakan untuk zoom yang diminta dengan Douglas-Peucker yang mempertahankan topologi pada toleransi setengah piksel tile 512 px, epsilon = 0,5 x 360 / (512 x 2^z) derajat (0 tanpa zoom atau bila di bawah pembulatan 6 desimal), lalu dibulatkan ke 6 desimal; satu respons memuat paling banyak maxFeatures fitur dan maxVertices verteks (awalan terpanjang dari zona dalam kedua anggaran, ditandai bila dipotong).",
+      "en": "For GET /api/v2/zones/geojson, geometries are simplified for the requested zoom with topology-preserving Douglas-Peucker at a tolerance of half a pixel of a 512 px tile, epsilon = 0.5 x 360 / (512 x 2^z) degrees (0 without a zoom or below the 6-decimal rounding), and rounded to 6 decimals; a response holds at most maxFeatures features and maxVertices vertices (the longest prefix of the zones within both budgets, flagged when cut)."
+    },
+    "formulaLatex": "\\varepsilon(z)=\\frac{p\\cdot360^{\\circ}}{T\\cdot2^{z}},\\qquad \\varepsilon=0\\ \\text{if}\\ \\varepsilon<10^{-6}",
+    "variables": [
+      {
+        "symbol": "z",
+        "name": {
+          "id": "Zoom peta yang diminta (0-24)",
+          "en": "Requested map zoom (0-24)"
+        },
+        "description": {
+          "id": "Zoom peta yang diminta (0-24)",
+          "en": "Requested map zoom (0-24)"
+        },
+        "unit": null,
+        "source": "query zoom"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "p",
+        "name": {
+          "id": "Toleransi dalam piksel (MAP_SIMPLIFICATION_PX)",
+          "en": "Tolerance in pixels (MAP_SIMPLIFICATION_PX)"
+        },
+        "value": 0.5,
+        "unit": "px",
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "T",
+        "name": {
+          "id": "Ukuran tile (MAP_TILE_SIZE_PX)",
+          "en": "Tile size (MAP_TILE_SIZE_PX)"
+        },
+        "value": 512,
+        "unit": "px",
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "d",
+        "name": {
+          "id": "Desimal koordinat (MAP_GEOMETRY_DIGITS)",
+          "en": "Coordinate decimals (MAP_GEOMETRY_DIGITS)"
+        },
+        "value": 6,
+        "unit": null,
+        "referenceIds": [],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "douglas-peucker-1973",
+      "ietf-rfc-7946",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "geo",
+      "module": "src/domain/zone-map.ts#simplificationToleranceDeg (budgets in exceededBudget and planFetchChunks)"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan tampilan kartografis, bukan metode analitik; diusulkan oleh layanan geo. Geometri tersimpan tidak pernah disederhanakan.",
+      "en": "A cartographic display rule rather than an analytic method; proposed by the geo service. Stored geometries are never simplified."
+    }
+  },
+  {
+    "id": "telemetry.reading_validation",
+    "domain": "telemetry",
+    "name": {
+      "id": "Aturan plausibilitas bacaan bahan bakar",
+      "en": "Fuel reading plausibility rules"
+    },
+    "summary": {
+      "id": "Bacaan bahan bakar diterima bila jumlahnya berhingga, tidak negatif dan paling besar nilai maksimum yang dikonfigurasi (500 t mesin induk, 100 t mesin bantu), waktunya paling jauh 5 menit di depan jam server dan paling tua 5 tahun, serta awal periode opsional terletak sebelum waktunya dengan periode paling lama 24 jam; satu batch memuat paling banyak 1000 bacaan dan tidak boleh memuat dua bacaan berbeda untuk (mmsi, waktu) yang sama.",
+      "en": "A fuel reading is accepted when its amounts are finite, non-negative and at most the configured maxima (500 t main engine, 100 t auxiliary engines), its time is at most 5 min ahead of the server clock and at most 5 years old, and an optional period start lies before the time with a period of at most 24 h; a batch holds at most 1000 readings and must not report two different readings for the same (mmsi, time)."
+    },
+    "formulaLatex": "0\\le FC_{ME}\\le FC_{ME,max},\\quad 0\\le FC_{AE}\\le FC_{AE,max},\\quad t-t_{now}\\le\\Delta_{skew},\\quad t_{now}-t\\le\\Delta_{age},\\quad 0<t-t_{start}\\le\\Delta_{period}",
+    "variables": [
+      {
+        "symbol": "FC_{ME}, FC_{AE}",
+        "name": {
+          "id": "Bahan bakar mesin induk dan mesin bantu dari bacaan",
+          "en": "Main and auxiliary engine fuel of the reading"
+        },
+        "description": {
+          "id": "Bahan bakar mesin induk dan mesin bantu dari bacaan",
+          "en": "Main and auxiliary engine fuel of the reading"
+        },
+        "unit": "t",
+        "source": "telemetry reading"
+      },
+      {
+        "symbol": "t, t_{start}",
+        "name": {
+          "id": "Waktu bacaan dan awal periode opsional",
+          "en": "Reading time and optional period start"
+        },
+        "description": {
+          "id": "Waktu bacaan dan awal periode opsional",
+          "en": "Reading time and optional period start"
+        },
+        "unit": null,
+        "source": "telemetry reading"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "FC_{ME,max}",
+        "name": {
+          "id": "Bahan bakar mesin induk maksimum per bacaan",
+          "en": "Maximum main engine fuel per reading"
+        },
+        "value": 500,
+        "unit": "t",
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "FC_{AE,max}",
+        "name": {
+          "id": "Bahan bakar mesin bantu maksimum per bacaan",
+          "en": "Maximum auxiliary engine fuel per reading"
+        },
+        "value": 100,
+        "unit": "t",
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "\\Delta_{skew}",
+        "name": {
+          "id": "Selisih jam maksimum ke masa depan",
+          "en": "Maximum clock skew into the future"
+        },
+        "value": 5,
+        "unit": "min",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      },
+      {
+        "symbol": "\\Delta_{age}",
+        "name": {
+          "id": "Umur maksimum bacaan (periode retensi)",
+          "en": "Maximum age of a reading (retention period)"
+        },
+        "value": 5,
+        "unit": "year",
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "\\Delta_{period}",
+        "name": {
+          "id": "Periode maksimum sebuah bacaan",
+          "en": "Maximum period of a reading"
+        },
+        "value": 24,
+        "unit": "h",
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "N_{batch}",
+        "name": {
+          "id": "Jumlah bacaan maksimum per batch",
+          "en": "Maximum readings per batch"
+        },
+        "value": 1000,
+        "unit": null,
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "telemetry",
+      "module": "src/domain/fuel-reading.ts#readingViolations (batch rules in batchViolations and repeatViolations)"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Selisih jam 5 menit dan batas batch 1000 berasal dari spesifikasi §13.4; nilai maksimum bahan bakar, periode 24 jam dan umur 5 tahun adalah nilai desain v2 tanpa sumber eksternal.",
+      "en": "The 5 min skew and the 1000-reading batch limit come from spec 13.4; the fuel maxima, the 24 h period and the 5-year age are v2 design defaults without an external source."
+    }
+  },
+  {
+    "id": "data.ais_position_time",
+    "domain": "ais",
+    "name": {
+      "id": "Waktu posisi AIS (pembacaan time stamp ITU) dan jendela plausibilitas",
+      "en": "AIS position time (ITU time stamp reading) and plausibility window"
+    },
+    "summary": {
+      "id": "Dengan AIS_UTC_MODE=itu, field utc penyedia dibaca sebagai time stamp ITU-R M.1371 (detik UTC 0-59 saat laporan dibuat): waktu posisi adalah detik utuh terakhir yang detik UTC-nya sama dengan utc, tidak lebih lambat dari timestamp pesan ditambah toleransi jam 5 s; 60-63 (tidak tersedia, input manual, dead reckoning, sistem posisi tidak berfungsi) atau nilai lain mempertahankan timestamp pesan. Pada kedua mode waktu posisi harus antara 24 jam sebelum dan 5 menit sesudah penerimaan (STALE_TIMESTAMP / FUTURE_TIMESTAMP), tidak pernah sebelum 1970. utcSecondLag = (detik(timestamp) - utc) mod 60 menunjukkan pembacaan mana yang dipakai penyedia.",
+      "en": "With AIS_UTC_MODE=itu the provider field utc is read as the ITU-R M.1371 time stamp (UTC second 0-59 at which the report was generated): the position time is the latest whole second whose UTC second equals utc, no later than the message timestamp plus a 5 s clock tolerance; 60-63 (not available, manual input, dead reckoning, positioning system inoperative) or any other value keep the message timestamp. In both modes the position time must lie between 24 h before and 5 min after the reception (STALE_TIMESTAMP / FUTURE_TIMESTAMP), never before 1970. utcSecondLag = (second(timestamp) - utc) mod 60 shows which reading the provider uses."
+    },
+    "formulaLatex": "t_{pos}=\\max\\left\\{t\\le t_{msg}+\\tau:\\ t\\in\\mathbb{Z}\\,\\mathrm{s},\\ t\\bmod 60=utc\\right\\}\\ (utc<60),\\qquad t_{rx}-\\Delta_{age}\\le t_{pos}\\le t_{rx}+\\Delta_{skew}",
+    "variables": [
+      {
+        "symbol": "utc",
+        "name": {
+          "id": "Field utc penyedia (time stamp ITU, detik 0-63)",
+          "en": "Provider field utc (ITU time stamp, second 0-63)"
+        },
+        "description": {
+          "id": "Field utc penyedia (time stamp ITU, detik 0-63)",
+          "en": "Provider field utc (ITU time stamp, second 0-63)"
+        },
+        "unit": "s",
+        "source": "AIS data.utc"
+      },
+      {
+        "symbol": "t_{msg}",
+        "name": {
+          "id": "Timestamp pesan dari penyedia",
+          "en": "Message timestamp of the provider"
+        },
+        "description": {
+          "id": "Timestamp pesan dari penyedia",
+          "en": "Message timestamp of the provider"
+        },
+        "unit": null,
+        "source": "AIS timestamp"
+      },
+      {
+        "symbol": "t_{rx}",
+        "name": {
+          "id": "Waktu penerimaan oleh ingestor",
+          "en": "Reception time at the ingestor"
+        },
+        "description": {
+          "id": "Waktu penerimaan oleh ingestor",
+          "en": "Reception time at the ingestor"
+        },
+        "unit": null,
+        "source": "ingestor clock"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "utc \\ge 60",
+        "name": {
+          "id": "Nilai khusus time stamp: 60 tidak tersedia, 61 input manual, 62 dead reckoning, 63 sistem posisi tidak berfungsi",
+          "en": "Special time stamp values: 60 not available, 61 manual input, 62 dead reckoning, 63 positioning system inoperative"
+        },
+        "value": "60-63",
+        "unit": "s",
+        "referenceIds": [
+          "itu-r-m1371-5"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "\\tau",
+        "name": {
+          "id": "Toleransi jam penerima di belakang jam GNSS (ITU_TIME_STAMP_TOLERANCE_MS)",
+          "en": "Tolerance of a receiver clock behind the GNSS clock (ITU_TIME_STAMP_TOLERANCE_MS)"
+        },
+        "value": 5,
+        "unit": "s",
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "\\Delta_{skew}",
+        "name": {
+          "id": "Selisih maksimum ke masa depan (MAX_FUTURE_SKEW_MS)",
+          "en": "Maximum skew into the future (MAX_FUTURE_SKEW_MS)"
+        },
+        "value": 5,
+        "unit": "min",
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "\\Delta_{age}",
+        "name": {
+          "id": "Umur maksimum posisi saat diterima (INGEST_MAX_POSITION_AGE_S)",
+          "en": "Maximum age of a position at reception (INGEST_MAX_POSITION_AGE_S)"
+        },
+        "value": 24,
+        "unit": "h",
+        "referenceIds": [],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "itu-r-m1371-5",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "ais-pipeline",
+      "module": "src/shared/domain/normalize.ts#ituPositionTime (window in positionTimeOf, diagnostic utcSecondLag)"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Diusulkan oleh ais-pipeline untuk memisahkan aturan waktu posisi v2 dari data.ais_ingest_rules, yang mempertahankan pembacaan legacy t_msg - utc (AIS_UTC_MODE=legacy, bawaan demi paritas). Toleransi, selisih dan batas umur adalah nilai desain.",
+      "en": "Proposed by ais-pipeline to separate the v2 position-time rules from data.ais_ingest_rules, which keeps the legacy reading t_msg - utc (AIS_UTC_MODE=legacy, the default for parity). The tolerance, skew and age limits are design defaults."
+    }
+  },
+  {
+    "id": "notify.alert_dedup_merge",
+    "domain": "notification",
+    "name": {
+      "id": "Penggabungan kejadian alert per kunci dedup",
+      "en": "Merge of alert occurrences per dedup key"
+    },
+    "summary": {
+      "id": "Kejadian baru sebuah alert digabung ke alert inbox yang belum diselesaikan (open atau acknowledged) dengan dedupKey yang sama: occurrences + 1, lastOccurredAt = waktu kejadian terbaru (occurredAt kejadian pertama tidak pernah berubah), severity = maks(tersimpan, baru) (info < warning < critical); judul, pesan, posisi, kapal terkait, zona, method id dan detail mengikuti kejadian terbaru (kejadian lebih lama yang datang terlambat dihitung dan hanya dapat menaikkan severity); alert acknowledged yang severity-nya naik dibuka kembali. Alert resolved tidak pernah digabung: kejadian berikutnya membuka alert inbox baru.",
+      "en": "A new occurrence of an alert merges into the unresolved (open or acknowledged) inbox alert of the same dedupKey: occurrences + 1, lastOccurredAt = latest occurrence time (occurredAt of the first occurrence never changes), severity = max(stored, new) (info < warning < critical); title, message, position, related vessel, zone, method id and details follow the newest occurrence (an older, out-of-order one is counted and may only raise the severity); an acknowledged alert whose severity rises is reopened. A resolved alert never merges: the next occurrence opens a new inbox alert."
+    },
+    "formulaLatex": "n\\leftarrow n+1,\\quad t_{last}\\leftarrow\\max\\left(t_{last},t_{occ}\\right),\\quad s\\leftarrow\\max\\left(s,s_{occ}\\right),\\quad \\text{reopen}\\iff \\text{acknowledged}\\wedge s_{occ}>s",
+    "variables": [
+      {
+        "symbol": "n",
+        "name": {
+          "id": "Jumlah kejadian",
+          "en": "Number of occurrences"
+        },
+        "description": {
+          "id": "Jumlah kejadian",
+          "en": "Number of occurrences"
+        },
+        "unit": null,
+        "source": "alerts.occurrences"
+      },
+      {
+        "symbol": "s, s_{occ}",
+        "name": {
+          "id": "Severity tersimpan dan severity kejadian",
+          "en": "Stored and occurrence severity"
+        },
+        "description": {
+          "id": "Severity tersimpan dan severity kejadian",
+          "en": "Stored and occurrence severity"
+        },
+        "unit": null,
+        "source": "alert.raised.v1 severity"
+      }
+    ],
+    "constants": [],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "notification",
+      "module": "src/domain/alert-inbox.ts#mergeOccurrence"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan desain v2 (spesifikasi §13.9: alert dengan dedup_key sama selama terbuka digabung); \"selama terbuka\" diterapkan sebagai \"selama belum diselesaikan\" agar acknowledge tidak memecah satu insiden. alert.resolved.v1 (contracts 0.4.0) menyelesaikan alert yang belum diselesaikan untuk dedupKey-nya kecuali alert itu telah menggabung kejadian setelah resolvedAt.",
+      "en": "v2 design rule (spec 13.9: alerts with the same dedup_key while open are merged); \"while open\" is implemented as \"while unresolved\" so that acknowledging does not split one incident. alert.resolved.v1 (contracts 0.4.0) resolves the unresolved alert of its dedupKey unless that alert merged an occurrence later than resolvedAt."
+    }
+  },
+  {
+    "id": "notify.alert_lifecycle",
+    "domain": "notification",
+    "name": {
+      "id": "Siklus hidup alert inbox",
+      "en": "Inbox alert lifecycle"
+    },
+    "summary": {
+      "id": "open -> acknowledged -> resolved dan open -> resolved (POST /alerts/:id/ack dan /resolve, serta alert.resolved.v1 dari detektor); kedua aksi idempoten (acknowledge pada alert acknowledged atau resolve pada alert resolved tidak mengubah apa pun); alert resolved tidak dapat di-acknowledge; siapa dan kapan dicatat.",
+      "en": "open -> acknowledged -> resolved and open -> resolved (POST /alerts/:id/ack and /resolve, and alert.resolved.v1 from the detector); both actions are idempotent (acknowledging an acknowledged alert or resolving a resolved one changes nothing); a resolved alert cannot be acknowledged; who acted and when is recorded."
+    },
+    "formulaLatex": null,
+    "variables": [],
+    "constants": [],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "notification",
+      "module": "src/domain/alert-inbox.ts#transitionAlert"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan desain v2 (spesifikasi §13.9).",
+      "en": "v2 design rule (spec 13.9)."
+    }
+  },
+  {
+    "id": "notify.alert_rule_matching",
+    "domain": "notification",
+    "name": {
+      "id": "Pencocokan aturan alert",
+      "en": "Alert rule matching"
+    },
+    "summary": {
+      "id": "Sebuah aturan cocok dengan alert bila semua syarat terpenuhi (AND; daftar kosong tidak membatasi): aturan aktif; cakupan org hanya cocok dengan alert yang kapal atau kapal terkaitnya milik organisasi aturan (cakupan all cocok dengan kapal mana pun); jenis, domain, severity >= minSeverity (info < warning < critical), MMSI (kapal atau kapal terkait) dan zona termasuk dalam daftar aturan.",
+      "en": "A rule matches an alert when every condition holds (logical AND; an empty list does not restrict): the rule is enabled; scope org matches only alerts whose vessel or related vessel belongs to the rule's organization (scope all matches any vessel); the type, domain, severity >= minSeverity (info < warning < critical), MMSI (vessel or related vessel) and zone are in the rule's lists."
+    },
+    "formulaLatex": "\\text{match}(r,a)=e_r\\wedge O_r(a)\\wedge a.type\\in^{*}T_r\\wedge a.domain\\in^{*}D_r\\wedge a.severity\\ge s_{min}\\wedge\\{a.mmsi,a.related\\}\\cap^{*}M_r\\wedge a.zone\\in^{*}Z_r",
+    "variables": [
+      {
+        "symbol": "\\in^{*}",
+        "name": {
+          "id": "Keanggotaan yang selalu benar untuk daftar kosong",
+          "en": "Membership that always holds for an empty list"
+        },
+        "description": {
+          "id": "Keanggotaan yang selalu benar untuk daftar kosong",
+          "en": "Membership that always holds for an empty list"
+        },
+        "unit": null,
+        "source": "alert_rules"
+      }
+    ],
+    "constants": [],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "notification",
+      "module": "src/domain/alert-rules.ts#ruleMatchesAlert"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan desain v2 (spesifikasi §13.9 dan §8.5).",
+      "en": "v2 design rule (spec 13.9 and 8.5)."
+    }
+  },
+  {
+    "id": "notify.rule_quiet_period",
+    "domain": "notification",
+    "name": {
+      "id": "Periode tenang per aturan",
+      "en": "Per-rule quiet period"
+    },
+    "summary": {
+      "id": "Setelah sebuah aturan menotifikasi sebuah alert, kejadian berikutnya dari alert yang sama (dedupKey sama selama belum diselesaikan) tidak dinotifikasi lagi lewat aturan itu selama quietMinutes, kecuali severity naik di atas severity yang terakhir dinotifikasi (eskalasi selalu dinotifikasi). Alert lain tidak pernah ditahan; quietMinutes = 0 menonaktifkannya.",
+      "en": "After a rule notified an alert, further occurrences of the same alert (same dedupKey while unresolved) are not notified again through that rule for quietMinutes, unless the severity rose above the last notified severity (escalations always notify). Other alerts are never held back; quietMinutes = 0 disables it."
+    },
+    "formulaLatex": "\\text{suppress}\\iff q>0\\wedge s\\le s_{last}\\wedge t-t_{last}<q",
+    "variables": [
+      {
+        "symbol": "q",
+        "name": {
+          "id": "Periode tenang aturan (quiet_minutes)",
+          "en": "Quiet period of the rule (quiet_minutes)"
+        },
+        "description": {
+          "id": "Periode tenang aturan (quiet_minutes)",
+          "en": "Quiet period of the rule (quiet_minutes)"
+        },
+        "unit": "min",
+        "source": "alert_rules"
+      },
+      {
+        "symbol": "t_{last}, s_{last}",
+        "name": {
+          "id": "Waktu dan severity notifikasi terakhir aturan untuk alert ini",
+          "en": "Time and severity of the rule's last notification of this alert"
+        },
+        "description": {
+          "id": "Waktu dan severity notifikasi terakhir aturan untuk alert ini",
+          "en": "Time and severity of the rule's last notification of this alert"
+        },
+        "unit": null,
+        "source": "deliveries"
+      }
+    ],
+    "constants": [],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "notification",
+      "module": "src/domain/alert-rules.ts#isWithinQuietPeriod"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan desain v2 (spesifikasi §13.9: periode tenang per aturan).",
+      "en": "v2 design rule (spec 13.9: per-rule quiet period)."
+    }
+  },
+  {
+    "id": "notify.delivery_retry_backoff",
+    "domain": "notification",
+    "name": {
+      "id": "Backoff eksponensial pengiriman notifikasi",
+      "en": "Exponential backoff of notification deliveries"
+    },
+    "summary": {
+      "id": "Setelah percobaan gagal ke-n (mulai 1) dari sebuah pengiriman (e-mail, Telegram, webhook), percobaan berikutnya jatuh tempo setelah b x 2^(n-1) ms dibatasi maks, atau setelah jeda yang diminta pihak jauh bila lebih lama (retry_after Telegram, Retry-After HTTP); kegagalan permanen atau percobaan terakhir yang diizinkan menandai pengiriman gagal.",
+      "en": "After the n-th failed attempt (1-based) of a delivery (e-mail, Telegram, webhook) the next attempt is due after b x 2^(n-1) ms capped at max, or after the delay the remote side asked for when it is longer (Telegram retry_after, HTTP Retry-After); a permanent failure or the last allowed attempt marks the delivery failed."
+    },
+    "formulaLatex": "\\Delta t_n=\\min\\left(b\\cdot2^{\\,n-1},\\ \\Delta t_{max}\\right),\\qquad \\Delta t=\\max\\left(\\Delta t_n,\\ \\Delta t_{remote}\\right),\\qquad \\text{failed}\\iff \\text{permanent}\\vee n\\ge N_{max}",
+    "variables": [
+      {
+        "symbol": "n",
+        "name": {
+          "id": "Nomor percobaan yang gagal",
+          "en": "Number of the failed attempt"
+        },
+        "description": {
+          "id": "Nomor percobaan yang gagal",
+          "en": "Number of the failed attempt"
+        },
+        "unit": null,
+        "source": "deliveries.attempts"
+      },
+      {
+        "symbol": "\\Delta t_{remote}",
+        "name": {
+          "id": "Jeda yang diminta pihak jauh",
+          "en": "Delay asked for by the remote side"
+        },
+        "description": {
+          "id": "Jeda yang diminta pihak jauh",
+          "en": "Delay asked for by the remote side"
+        },
+        "unit": "ms",
+        "source": "retry_after / Retry-After"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "b",
+        "name": {
+          "id": "Jeda dasar (DELIVERY_RETRY_BASE_MS)",
+          "en": "Base delay (DELIVERY_RETRY_BASE_MS)"
+        },
+        "value": 30000,
+        "unit": "ms",
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "\\Delta t_{max}",
+        "name": {
+          "id": "Jeda maksimum (DELIVERY_RETRY_MAX_MS)",
+          "en": "Maximum delay (DELIVERY_RETRY_MAX_MS)"
+        },
+        "value": 3600000,
+        "unit": "ms",
+        "referenceIds": [],
+        "needsCitation": true
+      },
+      {
+        "symbol": "N_{max}",
+        "name": {
+          "id": "Jumlah percobaan maksimum (DELIVERY_MAX_ATTEMPTS)",
+          "en": "Maximum attempts (DELIVERY_MAX_ATTEMPTS)"
+        },
+        "value": 6,
+        "unit": null,
+        "referenceIds": [],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "platform-spec-v1-1",
+      "ietf-rfc-9110",
+      "telegram-bot-api"
+    ],
+    "implementedBy": {
+      "service": "notification",
+      "module": "src/domain/delivery-retry.ts#planRetry (backoff in retryDelayMs)"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Spesifikasi §13.9 meminta pengiriman \"dengan retry\"; nilai bawaan adalah nilai desain v2.",
+      "en": "Spec 13.9 asks for deliveries \"with retries\"; the defaults are v2 design defaults."
+    }
+  },
+  {
+    "id": "notify.webhook_signature",
+    "domain": "notification",
+    "name": {
+      "id": "Tanda tangan webhook (HMAC-SHA256)",
+      "en": "Webhook signature (HMAC-SHA256)"
+    },
+    "summary": {
+      "id": "Setiap permintaan webhook membawa X-AIS-ITS-Timestamp (detik Unix) dan X-AIS-ITS-Signature = \"sha256=\" + hex(HMAC-SHA256(rahasia, timestamp + \".\" + body mentah)); menandatangani timestamp memungkinkan penerima menolak permintaan yang diputar ulang.",
+      "en": "Every webhook request carries X-AIS-ITS-Timestamp (Unix seconds) and X-AIS-ITS-Signature = \"sha256=\" + hex(HMAC-SHA256(secret, timestamp + \".\" + raw body)); signing the timestamp lets receivers reject replayed requests."
+    },
+    "formulaLatex": "sig=\\texttt{sha256=}\\,\\mathrm{hex}\\left(\\mathrm{HMAC}_{SHA\\text{-}256}\\left(K,\\ ts\\,\\Vert\\,\\texttt{.}\\,\\Vert\\,body\\right)\\right)",
+    "variables": [
+      {
+        "symbol": "K",
+        "name": {
+          "id": "Rahasia penandatanganan bersama (WEBHOOK_SIGNING_SECRET)",
+          "en": "Shared signing secret (WEBHOOK_SIGNING_SECRET)"
+        },
+        "description": {
+          "id": "Rahasia penandatanganan bersama (WEBHOOK_SIGNING_SECRET)",
+          "en": "Shared signing secret (WEBHOOK_SIGNING_SECRET)"
+        },
+        "unit": null,
+        "source": "configuration"
+      },
+      {
+        "symbol": "ts",
+        "name": {
+          "id": "Timestamp yang dikirim (detik Unix)",
+          "en": "Timestamp as sent (Unix seconds)"
+        },
+        "description": {
+          "id": "Timestamp yang dikirim (detik Unix)",
+          "en": "Timestamp as sent (Unix seconds)"
+        },
+        "unit": "s",
+        "source": "X-AIS-ITS-Timestamp"
+      }
+    ],
+    "constants": [],
+    "referenceIds": [
+      "ietf-rfc-2104",
+      "nist-fips-180-4",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "notification",
+      "module": "src/domain/webhook-signature.ts#signWebhookPayload"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Mekanisme keamanan, bukan metode analitik; dicatat agar format tanda tangan dapat ditelusuri (spesifikasi §13.9). Penerima membandingkan dalam waktu konstan dan membatasi umur timestamp (verifyWebhookSignature).",
+      "en": "A security mechanism rather than an analytic method, listed so that the signature format is traceable (spec 13.9). Receivers compare in constant time and bound the timestamp age (verifyWebhookSignature)."
+    }
+  },
+  {
+    "id": "notify.realtime_viewport_rooms",
+    "domain": "notification",
+    "name": {
+      "id": "Room viewport realtime (tile zoom 6)",
+      "en": "Realtime viewport rooms (zoom 6 tiles)"
+    },
+    "summary": {
+      "id": "Viewport peta [minLon, minLat, maxLon, maxLat] bergabung ke room tile slippy-map Web Mercator pada zoom 6 yang menutupinya, atau tile:all bila lebih dari 64 tile diperlukan; room viewport sebelumnya yang tidak tercakup ditinggalkan, room yang sudah diikuti dipertahankan. Kotak terbalik atau yang melintasi antimeridian ditolak.",
+      "en": "A map viewport [minLon, minLat, maxLon, maxLat] joins the rooms of the Web Mercator slippy-map tiles at zoom 6 that cover it, or tile:all when more than 64 tiles would be needed; rooms of the previous viewport that the new one does not cover are left, rooms already joined are kept. Inverted or antimeridian-crossing boxes are refused."
+    },
+    "formulaLatex": "x=\\left\\lfloor 2^{z}\\,\\frac{\\lambda+180^{\\circ}}{360^{\\circ}}\\right\\rfloor,\\quad y=\\left\\lfloor 2^{z}\\,\\frac{1-\\ln\\left(\\tan\\varphi+\\sec\\varphi\\right)/\\pi}{2}\\right\\rfloor,\\qquad N>N_{max}\\Rightarrow \\texttt{tile:all}",
+    "variables": [
+      {
+        "symbol": "N",
+        "name": {
+          "id": "Jumlah tile yang menutupi viewport",
+          "en": "Number of tiles covering the viewport"
+        },
+        "description": {
+          "id": "Jumlah tile yang menutupi viewport",
+          "en": "Number of tiles covering the viewport"
+        },
+        "unit": null,
+        "source": "viewport:set"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "z",
+        "name": {
+          "id": "Zoom tile room (REALTIME_TILE_ZOOM)",
+          "en": "Room tile zoom (REALTIME_TILE_ZOOM)"
+        },
+        "value": 6,
+        "unit": null,
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      },
+      {
+        "symbol": "N_{max}",
+        "name": {
+          "id": "Jumlah tile maksimum sebelum tile:all (REALTIME_MAX_TILES)",
+          "en": "Maximum tiles before tile:all (REALTIME_MAX_TILES)"
+        },
+        "value": 64,
+        "unit": null,
+        "referenceIds": [],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "osm-slippy-map-tilenames",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "notification",
+      "module": "src/domain/realtime/viewport.ts#planViewport"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan desain v2 (spesifikasi §9, viewport:set); matematika tile dari contracts ./realtime.",
+      "en": "v2 design rule (spec 9, viewport:set); tile math from contracts ./realtime."
+    }
+  },
+  {
+    "id": "notify.realtime_batching",
+    "domain": "notification",
+    "name": {
+      "id": "Batching realtime (item terbaru per kapal)",
+      "en": "Realtime batching (latest item per vessel)"
+    },
+    "summary": {
+      "id": "Posisi dan status keselamatan dikumpulkan per room tile zoom 6 dan untuk tile:all; setiap 1 s (tile) dan 5 s (tile:all) jendela ditutup dan setiap batch hanya membawa item terbaru per kapal (waktu terbaru; untuk waktu sama, yang terakhir ditambahkan). Room tanpa anggota dilewati.",
+      "en": "Positions and safety states are collected per zoom 6 tile room and for tile:all; every 1 s (tiles) and 5 s (tile:all) the windows end and each batch carries only the latest item per vessel (newest time; for equal times the last one added). Rooms without members are skipped."
+    },
+    "formulaLatex": "B_{room,w}=\\left\\{\\arg\\max_{i\\in W_{room,w}:\\ mmsi_i=m}t_i\\ :\\ m\\right\\}",
+    "variables": [
+      {
+        "symbol": "W_{room,w}",
+        "name": {
+          "id": "Item room dalam jendela w",
+          "en": "Items of a room in window w"
+        },
+        "description": {
+          "id": "Item room dalam jendela w",
+          "en": "Items of a room in window w"
+        },
+        "unit": null,
+        "source": "ais.position.recorded.v1, safety.vessel_state.updated.v1"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "w_{tile}",
+        "name": {
+          "id": "Jendela room tile",
+          "en": "Window of the tile rooms"
+        },
+        "value": 1,
+        "unit": "s",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      },
+      {
+        "symbol": "w_{all}",
+        "name": {
+          "id": "Jendela room tile:all",
+          "en": "Window of the tile:all room"
+        },
+        "value": 5,
+        "unit": "s",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "notification",
+      "module": "src/domain/realtime/realtime-batcher.ts#RealtimeBatcher (latest item per vessel in LatestPerVesselBatch)"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan desain v2 (spesifikasi §9: positions / safety:states, jendela 1 s dan 5 s).",
+      "en": "v2 design rule (spec 9: positions / safety:states, 1 s and 5 s windows)."
     }
   }
 ]

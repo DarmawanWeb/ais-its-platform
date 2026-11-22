@@ -65,4 +65,23 @@ describe('UpdateNoteDto', () => {
       mmsi: ['whitelistValidation'],
     });
   });
+
+  it('rejects null for the NOT NULL columns instead of writing it', async () => {
+    expect(
+      await errorsOf(UpdateNoteDto, { title: null, body: null, tags: null }),
+    ).toEqual({
+      title: ['isLength', 'isString'],
+      body: ['isString', 'maxLength'],
+      tags: ['arrayMaxSize', 'arrayUnique', 'isArray', 'matches'],
+    });
+    expect(
+      await errorsOf(CreateNoteDto, {
+        mmsi: 525005223,
+        title: 'x',
+        body: null,
+      }),
+    ).toEqual({
+      body: ['isString', 'maxLength'],
+    });
+  });
 });

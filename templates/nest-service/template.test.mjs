@@ -172,6 +172,9 @@ describe('parseOptions', () => {
     assert.equal(options.kind, 'service');
     assert.equal(options.withExample, false);
     assert.match(options.out, /services[/\\]demo-svc$/);
+    assert.equal(options.routePrefix, 'demo-svc');
+    const prefixed = parseOptions([...REQUIRED, '--route-prefix', 'vessels']);
+    assert.equal(prefixed !== 'help' && prefixed.routePrefix, 'vessels');
     const service = parseOptions(['--name', 'x-service', ...REQUIRED.slice(2)]);
     assert.equal(
       service !== 'help' && service.packageName,
@@ -195,6 +198,8 @@ describe('parseOptions', () => {
           'd',
           '--domain',
           'safety',
+          '--route-prefix',
+          'api/v2',
         ]),
       (error) => {
         for (const expected of [
@@ -203,6 +208,7 @@ describe('parseOptions', () => {
           '--port',
           '--title',
           '--domain applies',
+          '--route-prefix "api/v2": one path segment',
         ]) {
           assert.match(error.message, new RegExp(expected));
         }
@@ -297,6 +303,30 @@ describe('generateService', () => {
     );
     assert.match(migration, /CREATE TABLE notes/);
     assert.match(migration, /CREATE TABLE events/);
+  });
+
+  it('puts the service routes under --route-prefix', async () => {
+    const { out, files } = await generate('prefixed', [
+      '--route-prefix',
+      'vessels',
+      '--with-example',
+    ]);
+    assert.ok(!files.includes('src/db/errors.ts'));
+    const methodology = await readFile(
+      path.join(out, 'src/modules/methodology/methodology.controller.ts'),
+      'utf8',
+    );
+    assert.match(methodology, /@Controller\('vessels\/methodology'\)/);
+    const notes = await readFile(
+      path.join(out, 'src/modules/notes/notes.controller.ts'),
+      'utf8',
+    );
+    assert.match(notes, /@Controller\('vessels\/notes'\)/);
+    const service = await readFile(path.join(out, 'src/service.ts'), 'utf8');
+    assert.match(service, /name: 'demo-svc',/);
+    assert.match(service, /routePrefix: 'vessels',/);
+    const readme = await readFile(path.join(out, 'README.md'), 'utf8');
+    assert.match(readme, /GET \/api\/v2\/vessels\/methodology/);
   });
 
   it('refuses a target that holds more than .git', async () => {

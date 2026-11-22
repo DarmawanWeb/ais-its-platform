@@ -8,7 +8,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('detectors')
-@Controller('__SERVICE_NAME__/detectors')
+@Controller('__ROUTE_PREFIX__/detectors')
 export class DetectorsController {
   constructor(private readonly registry: DetectorRegistry) {}
 

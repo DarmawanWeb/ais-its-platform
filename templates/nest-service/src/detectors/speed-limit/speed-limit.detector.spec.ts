@@ -92,6 +92,44 @@ describe('SpeedLimitDetector', () => {
     ]);
   });
 
+  it('publishes the resolution once the alert cooldown since the raise is over', async () => {
+    const harness = createHarness();
+    await harness.zone({ kind: 'port', geometry: square(104, 1) });
+
+    await harness.position({ mmsi: MMSI, lat: 1.05, lon: 104.05, sog: 11 });
+    harness.advance(60_000);
+    await harness.position({ mmsi: MMSI, lat: 1.2, lon: 104.2, sog: 11 });
+    // Resolved, but alert.resolved.v1 waits for the cooldown (10 min): a
+    // re-entry before then reopens the alert instead of notifying twice.
+    expect(harness.resolvedEvents).toEqual([]);
+
+    harness.advance(10 * 60_000);
+    await harness.maintain(); // the runner's housekeeping
+    expect(harness.resolvedEvents).toEqual([
+      expect.objectContaining({
+        alertId: harness.alerts[0]?.id,
+        reason: 'left the zone',
+        domain: '__DOMAIN__',
+      }),
+    ]);
+  });
+
+  it('takes over the open alerts after a failover', async () => {
+    const harness = createHarness();
+    await harness.zone({ kind: 'port', geometry: square(104, 1) });
+    await harness.position({ mmsi: MMSI, lat: 1.05, lon: 104.05, sog: 11 });
+
+    await harness.deactivate(); // another instance took over …
+    await harness.activate(); // … and this one is active again
+    expect(harness.logs).toContainEqual(
+      expect.stringContaining('Active with 1 open alert(s)'),
+    );
+
+    harness.advance(60_000);
+    await harness.position({ mmsi: MMSI, lat: 1.051, lon: 104.051, sog: 11 });
+    expect(harness.alerts).toHaveLength(1); // the same occurrence, not raised twice
+  });
+
   it('ignores other zone kinds and vessels within the limit', async () => {
     const harness = createHarness({ SPEED_LIMIT_ZONE_KINDS: 'port' });
     await harness.zone({ kind: 'fishing_ground', geometry: square(104, 1) });

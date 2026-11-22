@@ -20,7 +20,7 @@ spec is `docs/PLATFORM_SPEC.md` in the central repository
 ## Architecture
 
 ```text
-HTTP :__PORT__ (/api/v2/__SERVICE_NAME__/…)
+HTTP :__PORT__ (/api/v2/__ROUTE_PREFIX__/…)
   │  global default-deny guard (JWT from auth, API keys only on @AllowApiKey routes)
   ▼
 src/modules/<feature>/   controller → service → repository (drizzle) ──► PostgreSQL schema "__SCHEMA__"
@@ -100,7 +100,8 @@ service refuses to start on invalid values and prints every problem.
 | `NATS_URL` | `nats://localhost:4222` | comma separated list allowed |
 | `AUTH_JWKS_URL` | `http://localhost:3001/.well-known/jwks.json` | access tokens are verified locally |
 | `INTERNAL_TOKEN` | `dev-internal-token-change-me` | ≥ 16 characters in production |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | unset | tracing when set |
+| `TRUSTED_PROXIES` | `loopback,linklocal,uniquelocal` | production: the gateway's address or CIDR only (warning at boot otherwise) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | unset | traces (OTLP/HTTP) when set |
 <!-- @template:if detector -->
 | `DETECTORS` | all registered | comma separated subset per instance |
 | `SPEED_LIMIT_*` | see `.env.example` | thresholds of the `speed_limit` detector |
@@ -111,22 +112,25 @@ described in spec §4.
 
 ## API
 
-Routes live under `/api/v2` (OpenAPI: `/docs`, `/openapi.json`, committed as
-[`openapi.json`](openapi.json)); errors are RFC 9457 problem details. Outside the prefix:
-`/health/live`, `/health/ready`, `/metrics`.
+Routes live under `/api/v2/__ROUTE_PREFIX__` (OpenAPI: `/docs`, `/openapi.json`, committed as
+[`openapi.json`](openapi.json)); errors are RFC 9457 problem details. The gateway must route the
+prefix to this service (spec §12), otherwise the routes answer 404 there. Outside the prefix:
+`/health/live`, `/health/ready`, `/metrics`. CORS exposes `X-Request-Id`, `Retry-After`,
+`WWW-Authenticate`, `ETag` and `Location`; add service headers with
+`bootstrapService({ cors: { exposedHeaders } })`.
 
 | Method and path | Permission | What |
 |---|---|---|
-| `GET /api/v2/__SERVICE_NAME__/methodology` | any signed-in user | methods implemented here and their sources |
+| `GET /api/v2/__ROUTE_PREFIX__/methodology` | any signed-in user | methods implemented here and their sources |
 <!-- @template:if example -->
-| `GET /api/v2/__SERVICE_NAME__/notes?mmsi&tag&search&orgId&page&pageSize` | `vessel:read` | notes of the active organization (example) |
-| `GET /api/v2/__SERVICE_NAME__/notes/:id` | `vessel:read` | one note |
-| `POST /api/v2/__SERVICE_NAME__/notes` | `vessel:write` | create (`409 NOTE_TITLE_TAKEN` on a duplicate title) |
-| `PATCH /api/v2/__SERVICE_NAME__/notes/:id` | `vessel:write` | change title, body or tags |
-| `DELETE /api/v2/__SERVICE_NAME__/notes/:id` | `vessel:write` | delete |
+| `GET /api/v2/__ROUTE_PREFIX__/notes?mmsi&tag&search&orgId&page&pageSize` | `vessel:read` | notes of the active organization (example) |
+| `GET /api/v2/__ROUTE_PREFIX__/notes/:id` | `vessel:read` | one note |
+| `POST /api/v2/__ROUTE_PREFIX__/notes` | `vessel:write` | create (`409 NOTE_TITLE_TAKEN` on a duplicate title) |
+| `PATCH /api/v2/__ROUTE_PREFIX__/notes/:id` | `vessel:write` | change title, body or tags |
+| `DELETE /api/v2/__ROUTE_PREFIX__/notes/:id` | `vessel:write` | delete |
 <!-- @template:endif -->
 <!-- @template:if detector -->
-| `GET /api/v2/__SERVICE_NAME__/detectors` | `__DOMAIN__:read` | enabled detectors, method ids, active thresholds |
+| `GET /api/v2/__ROUTE_PREFIX__/detectors` | `__DOMAIN__:read` | enabled detectors, method ids, active thresholds |
 <!-- @template:endif -->
 
 ## Events
@@ -141,6 +145,7 @@ Routes live under `/api/v2` (OpenAPI: `/docs`, `/openapi.json`, committed as
 | consumes | `AIS_POSITION` (durable `__SERVICE_NAME__-positions`) | `ais.position.recorded.v1` | detector feed |
 | consumes | `GEO`, `FLEET` (ordered, last per subject) | `geo.zone.*`, `fleet.vessel.*` | in-memory projections |
 | produces | `ALERTS` / `alert.v1.<type>.<mmsi>` | `alert.raised.v1` | stored in `events` first |
+| produces | `ALERTS` / `alert.v1.<type>.<mmsi>` (the raise's subject) | `alert.resolved.v1` | once the alert cooldown since the last raise has passed |
 <!-- @template:endif -->
 
 <!-- @template:endif -->
@@ -169,7 +174,7 @@ forward-only and checksummed (never edit an applied file — add `NNNN_<change>.
 Every formula, constant, threshold and rule is traceable to its source (spec §17): the
 implementing function carries a `@method <id>` TSDoc tag, the id is listed in
 [`src/modules/methodology/implemented-methods.ts`](src/modules/methodology/implemented-methods.ts)
-(served by `GET /api/v2/__SERVICE_NAME__/methodology`) and described in the central catalog
+(served by `GET /api/v2/__ROUTE_PREFIX__/methodology`) and described in the central catalog
 `docs/references/methods.json` and `docs/METHODOLOGY.md`.
 
 <!-- @template:if example || detector -->
@@ -209,11 +214,23 @@ No methods yet.
     --secret id=ca,src=/path/to/ca-bundle.crt -t __PACKAGE_NAME__ .
   ```
 
-  `.pnpmfile.cjs` keeps compile-time-only optional peers (TypeScript for the Swagger CLI plugin)
-  out of the production install.
+  `.pnpmfile.cjs` keeps optional peers that only the dev tree satisfies (TypeScript for the
+  Swagger CLI plugin, gRPC for terminus) out of the production install; `testcontainers` and
+  `@nestjs/testing` (required by the kit's `./testing`) are devDependencies only.
 
 - Non-root (`node`), `NODE_ENV=production`, `HEALTHCHECK` on `/health/live`, readiness on
   `/health/ready` (database, NATS), Prometheus metrics on `/metrics` (`aisits_*`).
+- Migrations are read from the package's `migrations/` (`MIGRATIONS_DIR` in `src/service.ts`),
+  whatever the working directory of the process.
+<!-- @template:if detector -->
+- Detectors: one **active** instance (exclusive position consumer, NATS ≥ 2.11); further replicas
+  are hot standbys and rolling updates are fine. On a takeover the new active instance reloads
+  the open alerts from `events` (`loadOpen`) before its first position and calls each detector's
+  `onActivated`; a stopping instance publishes pending resolutions and releases its pin at once.
+  Ticks run only on the active instance. Resolutions are published as `alert.resolved.v1` once the
+  alert cooldown since the last raise has passed (a re-raise within it cancels the event), so the
+  notification inbox closes the alert.
+<!-- @template:endif -->
 - Release: move the `Unreleased` entries of [CHANGELOG.md](CHANGELOG.md) under the new version,
   bump `package.json`, tag `v<version>`.
 

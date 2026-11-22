@@ -36,7 +36,7 @@ describe('detectors (Detector SDK wiring)', () => {
   it('lists the detectors and their thresholds', async () => {
     const response = await service.app.inject({
       method: 'GET',
-      url: `/api/v2/${SERVICE.name}/detectors`,
+      url: `/api/v2/${SERVICE.routePrefix}/detectors`,
       headers: await service.authorization({ roles: ['viewer'] }),
     });
 
@@ -73,11 +73,12 @@ describe('detectors (Detector SDK wiring)', () => {
     await waitFor(() => service.app.get(ZoneIndex).has(zone.id));
 
     const mmsi = 200_000_000 + Math.floor(Math.random() * 700_000_000);
+    const first = new Date(Date.now() - 5 * 60_000);
     await publisher.publishEvent(
       EVENT_TYPES.AIS_POSITION_RECORDED,
       toPositionPayload({
         mmsi,
-        time: new Date(),
+        time: first,
         source: 'primary',
         lat: 1.05,
         lon: 104.05,
@@ -120,7 +121,40 @@ describe('detectors (Detector SDK wiring)', () => {
         severity: 'critical',
         zoneId: zone.id,
         methodId: 'speed_limit.max_sog_in_zone',
+        lastSeenAt: first,
       }),
     ]);
+
+    // Two minutes later (event time) the vessel is still speeding: no new
+    // alert, but onRepeated moves last_seen_at to the signal's event time.
+    const later = new Date(first.getTime() + 120_000);
+    await publisher.publishEvent(
+      EVENT_TYPES.AIS_POSITION_RECORDED,
+      toPositionPayload({
+        mmsi,
+        time: later,
+        source: 'primary',
+        lat: 1.051,
+        lon: 104.051,
+        sog: 15,
+        cog: 90,
+        hdg: 90,
+        navstatus: 0,
+        predictedNavstatus: 0,
+        coastDistanceM: null,
+        previous: null,
+      }),
+    );
+    const seen = await waitFor(
+      async () => {
+        const [row] = await db
+          .select()
+          .from(schema.events)
+          .where(eq(schema.events.mmsi, mmsi));
+        return row?.lastSeenAt.getTime() === later.getTime() ? row : undefined;
+      },
+      { timeoutMs: 15_000 },
+    );
+    expect(seen).toMatchObject({ status: 'open', openedAt: first });
   });
 });

@@ -71,6 +71,20 @@ export class SpeedLimitDetector implements Detector<SpeedLimitConfig> {
   readonly alertTypes = ['speeding'] as const;
   readonly configSchema = speedLimitConfigSchema;
 
+  /**
+   * This instance became the active one (its first position after the
+   * exclusive consumer pinned it, e.g. after a failover): the runner already
+   * reloaded the open alerts from `DetectorEventsRepository.loadOpen()`. A
+   * detector that keeps local state built from positions (streaks, pair
+   * trackers) drops it here and rebuilds it from the positions to come; this
+   * one keeps none. Ticks and timers run only while `context.isActive()`.
+   */
+  onActivated(context: DetectorContext<SpeedLimitConfig>): void {
+    context.logger.log(
+      `Active with ${String(context.alerts.open().length)} open alert(s)`,
+    );
+  }
+
   async onPosition(
     context: DetectorContext<SpeedLimitConfig>,
     position: VesselPosition,

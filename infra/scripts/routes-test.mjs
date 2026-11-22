@@ -93,7 +93,7 @@ const ROUTES = [
   ['/api/v2/api-keys', 'auth'], ['/api/v2/audit-logs?limit=5', 'auth'], ['/.well-known/jwks.json', 'auth'],
   ['/api/v2/vessels/by-mmsi/525005223', 'fleet'], ['/api/v2/vessel-types', 'fleet'], ['/api/v2/fuels', 'fleet'],
   ['/api/v2/engines?kind=main', 'fleet'], ['/api/v2/fuel-formulas', 'fleet'], ['/api/v2/ports', 'fleet'],
-  ['/api/v2/registry/search?q=x', 'fleet'],
+  ['/api/v2/registry/search?q=x', 'fleet'], ['/api/v2/fleet/methodology', 'fleet'],
   ['/api/v2/ingest/ais', 'ais-ingestor'], ['/api/v2/ingest/socket/?EIO=4&transport=polling', 'ais-ingestor'],
   ['/api/v2/ais/latest?bbox=104,1,105,2', 'ais-processor'],
   ['/api/v2/telemetry/vessels/525005223/readings', 'telemetry'],

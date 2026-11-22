@@ -7,10 +7,10 @@ import {
 } from '@darmawanweb/ais-its-nest';
 import { type AuditEntry, AuditService } from '@darmawanweb/ais-its-nest/audit';
 import { type Principal, UserPrincipal } from '@darmawanweb/ais-its-nest/auth';
+import { PG_SQLSTATES } from '@darmawanweb/ais-its-nest/db';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { PG_UNIQUE_VIOLATION } from '../../db/errors.js';
 import {
   type Note,
   type NoteChanges,
@@ -59,7 +59,7 @@ class InMemoryNotesRepository {
     if (duplicate) {
       return Promise.reject(
         Object.assign(new Error('duplicate key value'), {
-          code: PG_UNIQUE_VIOLATION,
+          code: PG_SQLSTATES.UNIQUE_VIOLATION,
           constraint: NOTE_TITLE_CONSTRAINT,
         }),
       );
