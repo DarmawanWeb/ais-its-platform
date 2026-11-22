@@ -59,3 +59,5 @@ Berikutnya (belum ada script): upgrade 9 service ke kit 0.3 / contracts 0.4 (pak
   6 service ter-push; di-resume 22:28 UTC.
 - 2026-11-21 23:47 UTC: limit kelima (review telemetry dan perbaikan review 6 service tertunda); di-resume
   2026-11-22 04:30 UTC setelah reset 03:20 UTC.
+- 2026-11-22 ~07:00 UTC: limit keenam (fitur web, hardening kit, migrator tertunda); di-resume 10:28 UTC setelah reset
+  09:20 UTC.
