@@ -25,7 +25,7 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK | ✅ selesai (digabung ke tahap 2) |
 | 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | ✅ 9/9 service selesai (build, review 75 temuan, perbaikan + test regresi), ter-push ke `main` masing-masing; migrator ✅ (tahap 5d) |
 | 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅, review ✅ (16 temuan) dan perbaikan ✅ ter-push (`feat/platform-v2`, klien API 10 service); fitur: persiapan ✅ (mock route per fitur + mock socket.io), 5 kelompok berjalan (ops & surv dulu) → integrasi → review 3 lensa → perbaikan |
-| 5b | Hardening platform: 45 laporan masalah kit/contracts dari 9 service → triage → perbaikan (nats, contracts, analytics, core) → rilis `ais-its-contracts` 0.4.0 + `ais-its-nest` 0.3.0 + template | 🔄 triage ✅, nats ✅, contracts ✅, analytics ✅, core berjalan, lalu rilis |
+| 5b | Hardening platform: 45 laporan masalah kit/contracts dari 9 service → triage → perbaikan (nats, contracts, analytics, core) → rilis `ais-its-contracts` 0.4.0 + `ais-its-nest` 0.3.0 + template | 🔄 triage ✅ (43 item diterima), nats ✅, contracts ✅, analytics ✅, core ✅; rilis berjalan |
 | 5c | Upgrade 9 service ke kit baru: hapus workaround lokal, event resolusi alert, celah API dari web | ⏳ setelah 5b (rilis) dan celah API dari kelompok fitur web |
 | 5d | Migrator MongoDB → v2 (`tools/mongo-migrator`, plan/run/verify/report, idempoten) | ✅ selesai: ledger fingerprint (edit di v2 tidak ditimpa), lock, retry penolakan sisi target; 14 temuan review diperbaiki; 191 unit test + 16 integration test; runbook `docs/migration/MONGO_TO_V2.md` |
 | 6 | Integrasi, E2E seluruh stack, dokumentasi, push semua repo | ⏳ |
@@ -66,3 +66,5 @@ Berikutnya (script sudah siap di scratchpad):
   2026-11-22 04:30 UTC setelah reset 03:20 UTC.
 - 2026-11-22 ~07:00 UTC: limit keenam (fitur web, hardening kit, migrator tertunda); di-resume 10:28 UTC setelah reset
   09:20 UTC.
+- 2026-11-22 ~12:20 UTC: limit ketujuh (rilis kit dan 5 kelompok fitur web tertunda; migrator sempat selesai);
+  di-resume 15:28 UTC setelah reset 15:20 UTC. Check-in otomatis kini tiap jam (menit :26).
