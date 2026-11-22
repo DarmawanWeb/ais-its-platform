@@ -23,8 +23,8 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | 2c | Quick fix MVP: BE `fix/phase-0-hardening` (242 test) dan FE `fix/phase-0` | ✅ selesai, ter-push |
 | 2d | Metodologi & referensi: `docs/METHODOLOGY.md`, 91 metode, 140 referensi (88 verified, 41 corrected, 11 unverified), 67 metode perlu sitasi tesis | ✅ selesai |
 | 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK | ✅ selesai (digabung ke tahap 2) |
-| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | 🔄 build 9/9 selesai dan ter-push ke `main`; review 8/9 selesai; perbaikan review selesai untuk auth, fleet, geo (ter-push); review telemetry dan perbaikan ais-pipeline, safety, emission, surveillance, notification dilanjutkan 2026-11-22 04:30 UTC; migrator Mongo menyusul |
-| 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅ + review ✅ (ter-push `feat/platform-v2`), perbaikan review menunggu limit |
+| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | ✅ 9/9 service selesai (build, review 75 temuan, perbaikan + test regresi), ter-push ke `main` masing-masing; 🔄 migrator Mongo menyusul |
+| 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅ + review ✅ (16 temuan); perbaikan review berjalan; fitur (5 kelompok) menyusul |
 | 6 | Integrasi, E2E seluruh stack, dokumentasi, push semua repo | ⏳ |
 
 ## Cara melanjutkan (untuk sesi berikutnya)
