@@ -23,7 +23,7 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | 2c | Quick fix MVP: BE `fix/phase-0-hardening` (242 test) dan FE `fix/phase-0` | ✅ selesai, ter-push |
 | 2d | Metodologi & referensi: `docs/METHODOLOGY.md`, 91 metode, 140 referensi (88 verified, 41 corrected, 11 unverified), 67 metode perlu sitasi tesis | ✅ selesai |
 | 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK | ✅ selesai (digabung ke tahap 2) |
-| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | 🔄 build 6/9 selesai dan ter-push ke `main` (auth, ais-pipeline, fleet, emission, geo, surveillance); telemetry, safety, notification WIP ter-push; review auth (9 temuan) dan geo (8 temuan) selesai; perbaikan + review sisanya dilanjutkan 22:28 UTC |
+| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | 🔄 build 9/9 selesai dan ter-push ke `main`; review 8/9 selesai; perbaikan review selesai untuk auth, fleet, geo (ter-push); review telemetry dan perbaikan ais-pipeline, safety, emission, surveillance, notification dilanjutkan 2026-11-22 04:30 UTC; migrator Mongo menyusul |
 | 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅ + review ✅ (ter-push `feat/platform-v2`), perbaikan review menunggu limit |
 | 6 | Integrasi, E2E seluruh stack, dokumentasi, push semua repo | ⏳ |
 
@@ -42,3 +42,5 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 - 2026-11-21 ~16:20 UTC: limit ketiga (build 9 service + perbaikan web tertunda); WIP ter-push 18:28 UTC; resume terjadwal 19:23 UTC.
 - 2026-11-21 20:27 UTC: limit keempat (build telemetry/safety/notification, review dan perbaikan tertunda); hasil build
   6 service ter-push; di-resume 22:28 UTC.
+- 2026-11-21 23:47 UTC: limit kelima (review telemetry dan perbaikan review 6 service tertunda); di-resume
+  2026-11-22 04:30 UTC setelah reset 03:20 UTC.
