@@ -73,3 +73,5 @@ Berikutnya (script sudah siap di scratchpad):
   09:20 UTC.
 - 2026-11-22 ~12:20 UTC: limit ketujuh (rilis kit dan 5 kelompok fitur web tertunda; migrator sempat selesai);
   di-resume 15:28 UTC setelah reset 15:20 UTC. Check-in otomatis kini tiap jam (menit :26).
+- 2026-11-22 ~17:15 UTC: limit kedelapan (review safety dan geo, upgrade surveillance, kelompok web fleet/emis/admin
+  tertunda; upgrade safety dan geo sempat selesai); di-resume 20:28 UTC setelah reset 20:20 UTC.
