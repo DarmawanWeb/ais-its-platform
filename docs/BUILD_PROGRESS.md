@@ -23,11 +23,11 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | 2c | Quick fix MVP: BE `fix/phase-0-hardening` (242 test) dan FE `fix/phase-0` | ✅ selesai, ter-push |
 | 2d | Metodologi & referensi: `docs/METHODOLOGY.md`, 91 metode, 140 referensi (88 verified, 41 corrected, 11 unverified), 67 metode perlu sitasi tesis | ✅ selesai |
 | 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK | ✅ selesai (digabung ke tahap 2) |
-| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | ✅ 9/9 service selesai (build, review 75 temuan, perbaikan + test regresi), ter-push ke `main` masing-masing; 🔄 migrator Mongo menyusul |
-| 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅, review ✅ (16 temuan) dan perbaikan ✅ ter-push (`feat/platform-v2`, klien API 10 service); fitur 5 kelompok → integrasi → review 3 lensa → perbaikan berjalan |
-| 5b | Hardening platform: 45 laporan masalah kit/contracts dari 9 service → triage → perbaikan (nats, contracts, analytics, core) → rilis `ais-its-contracts` 0.4.0 + `ais-its-nest` 0.3.0 + template | 🔄 berjalan |
-| 5c | Upgrade 9 service ke kit baru: hapus workaround lokal, event resolusi alert, celah API dari web | ⏳ setelah 5 (fitur) dan 5b |
-| 5d | Migrator MongoDB → v2 (`tools/mongo-migrator`, plan/run/verify, idempoten) | 🔄 build → review → perbaikan berjalan |
+| 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | ✅ 9/9 service selesai (build, review 75 temuan, perbaikan + test regresi), ter-push ke `main` masing-masing; migrator ✅ (tahap 5d) |
+| 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅, review ✅ (16 temuan) dan perbaikan ✅ ter-push (`feat/platform-v2`, klien API 10 service); fitur: persiapan ✅ (mock route per fitur + mock socket.io), 5 kelompok berjalan (ops & surv dulu) → integrasi → review 3 lensa → perbaikan |
+| 5b | Hardening platform: 45 laporan masalah kit/contracts dari 9 service → triage → perbaikan (nats, contracts, analytics, core) → rilis `ais-its-contracts` 0.4.0 + `ais-its-nest` 0.3.0 + template | 🔄 triage ✅, nats ✅, contracts ✅, analytics ✅, core berjalan, lalu rilis |
+| 5c | Upgrade 9 service ke kit baru: hapus workaround lokal, event resolusi alert, celah API dari web | ⏳ setelah 5b (rilis) dan celah API dari kelompok fitur web |
+| 5d | Migrator MongoDB → v2 (`tools/mongo-migrator`, plan/run/verify/report, idempoten) | ✅ selesai: ledger fingerprint (edit di v2 tidak ditimpa), lock, retry penolakan sisi target; 14 temuan review diperbaiki; 191 unit test + 16 integration test; runbook `docs/migration/MONGO_TO_V2.md` |
 | 6 | Integrasi, E2E seluruh stack, dokumentasi, push semua repo | ⏳ |
 
 ## Workflow aktif (sesi ini)
@@ -37,7 +37,7 @@ Resume bila terpotong limit: `Workflow({scriptPath: "<scratchpad>/<script>", res
 |---|---|---|
 | Fitur web (prep → 5 kelompok → integrasi → review → perbaikan) | `wf_e119b954-096` | `fe-features-workflow.js` |
 | Hardening kit (triage → nats/contracts/analytics/core → rilis) | `wf_f1f66318-c72` | `kit-hardening-workflow.js` |
-| Migrator Mongo (build → review → perbaikan) | `wf_8f7d6d22-70f` | `migrator-workflow.js` |
+| Migrator Mongo (build → review → perbaikan) — ✅ selesai 2026-11-22 11:55 UTC | `wf_8f7d6d22-70f` | `migrator-workflow.js` |
 
 Berikutnya (belum ada script): upgrade 9 service ke kit 0.3 / contracts 0.4 (pakai `serviceChanges` triage kit,
 `packages/nest/UPGRADING.md` dan `apiGaps` dari integrasi web), lalu tahap 6.
