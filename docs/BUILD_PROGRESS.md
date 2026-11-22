@@ -24,11 +24,23 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | 2d | Metodologi & referensi: `docs/METHODOLOGY.md`, 91 metode, 140 referensi (88 verified, 41 corrected, 11 unverified), 67 metode perlu sitasi tesis | ✅ selesai |
 | 3 | Rename `ais-its` + pemisahan safety/geo/surveillance + Detector SDK | ✅ selesai (digabung ke tahap 2) |
 | 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | ✅ 9/9 service selesai (build, review 75 temuan, perbaikan + test regresi), ter-push ke `main` masing-masing; 🔄 migrator Mongo menyusul |
-| 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅ + review ✅ (16 temuan), perbaikan review berjalan; berikutnya fitur dalam 5 kelompok (Operasi & Keselamatan, Pengawasan & Zona, Armada & Telemetri, Emisi & Metodologi, Pengaturan & Profil) → integrasi → review 3 lensa → perbaikan |
+| 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅, review ✅ (16 temuan) dan perbaikan ✅ ter-push (`feat/platform-v2`, klien API 10 service); fitur 5 kelompok → integrasi → review 3 lensa → perbaikan berjalan |
 | 5b | Hardening platform: 45 laporan masalah kit/contracts dari 9 service → triage → perbaikan (nats, contracts, analytics, core) → rilis `ais-its-contracts` 0.4.0 + `ais-its-nest` 0.3.0 + template | 🔄 berjalan |
 | 5c | Upgrade 9 service ke kit baru: hapus workaround lokal, event resolusi alert, celah API dari web | ⏳ setelah 5 (fitur) dan 5b |
 | 5d | Migrator MongoDB → v2 (`tools/mongo-migrator`, plan/run/verify, idempoten) | 🔄 build → review → perbaikan berjalan |
 | 6 | Integrasi, E2E seluruh stack, dokumentasi, push semua repo | ⏳ |
+
+## Workflow aktif (sesi ini)
+Resume bila terpotong limit: `Workflow({scriptPath: "<scratchpad>/<script>", resumeFromRunId: "<run id>"})`.
+
+| Workflow | Run ID | Script di scratchpad |
+|---|---|---|
+| Fitur web (prep → 5 kelompok → integrasi → review → perbaikan) | `wf_e119b954-096` | `fe-features-workflow.js` |
+| Hardening kit (triage → nats/contracts/analytics/core → rilis) | `wf_f1f66318-c72` | `kit-hardening-workflow.js` |
+| Migrator Mongo (build → review → perbaikan) | `wf_8f7d6d22-70f` | `migrator-workflow.js` |
+
+Berikutnya (belum ada script): upgrade 9 service ke kit 0.3 / contracts 0.4 (pakai `serviceChanges` triage kit,
+`packages/nest/UPGRADING.md` dan `apiGaps` dari integrasi web), lalu tahap 6.
 
 ## Cara melanjutkan (untuk sesi berikutnya)
 1. Clone `ais-its-platform` branch `feat/platform-v2` beserta repo `ais-its-*` lain yang sudah ter-push.
