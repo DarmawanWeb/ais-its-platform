@@ -63,4 +63,38 @@ describe('CheckpointStore', () => {
       kind: 'fresh',
     });
   });
+
+  it('does an entity with target-side rejections again, from scratch (regression: completed and skipped)', () => {
+    const dir = stateDir();
+    const store = CheckpointStore.open(dir);
+    store.begin('fuel_readings', 'p', { kind: 'fresh' });
+    store.begin('fuel_readings:fueldatas', 'p', { kind: 'fresh' });
+    store.complete('fuel_readings:fueldatas', {});
+    store.retryLater('fuel_readings', { rejected: 3 }, 2);
+    const point = CheckpointStore.open(dir).resumePoint(
+      'fuel_readings',
+      'p',
+      false,
+    );
+    expect(point).toMatchObject({ kind: 'retry', retryable: 2 });
+    store.begin('fuel_readings', 'p', point);
+    // The sub-checkpoints of the earlier pass are discarded with it.
+    expect(store.get('fuel_readings:fueldatas')).toBeUndefined();
+    expect(store.get('fuel_readings')).toMatchObject({ status: 'in_progress' });
+    expect(store.get('fuel_readings')?.lastId).toBeUndefined();
+  });
+
+  it('keeps the sub-checkpoints when it resumes', () => {
+    const dir = stateDir();
+    const store = CheckpointStore.open(dir);
+    store.begin('fuel_readings', 'p', { kind: 'fresh' });
+    store.begin('fuel_readings:fueldatas', 'p', { kind: 'fresh' });
+    store.complete('fuel_readings:fueldatas', {});
+    store.advance('fuel_readings', '683920b0dacd8ab59d2f0440');
+    store.begin('fuel_readings', 'p', {
+      kind: 'resume',
+      afterId: '683920b0dacd8ab59d2f0440',
+    });
+    expect(store.get('fuel_readings:fueldatas')?.status).toBe('completed');
+  });
 });

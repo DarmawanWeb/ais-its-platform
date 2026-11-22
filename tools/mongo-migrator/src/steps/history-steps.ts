@@ -1,8 +1,8 @@
 import type { Filter, Document } from 'mongodb';
 
 import type { EntityReport } from '../report/report.js';
-import { LEGACY_COLLECTIONS } from '../source/mongo.js';
-import type { HistoryDb } from '../target/history-db.js';
+import { LEGACY_COLLECTIONS, changedSince } from '../source/mongo.js';
+import type { HistoryDb, StoredReading } from '../target/history-db.js';
 import {
   samePosition,
   transformAisDocument,
@@ -113,7 +113,7 @@ export async function aisPositionsStep(
   const filter: Filter<Document> | undefined =
     options.since === undefined
       ? undefined
-      : { 'positions.timestamp': { $gte: options.since } };
+      : changedSince(options.since, 'positions.timestamp');
   const afterId =
     options.command === 'run' ? resumeAfter(context, entity.name) : undefined;
   const sample = new Set<string>();
@@ -122,10 +122,12 @@ export async function aisPositionsStep(
   let latestUpdated = 0;
   const docs = source.stream(collection, { filter, afterId, batchSize: 20 });
   if (options.command === 'verify') {
+    // The ids only: a legacy ais document can hold up to 16 MB of positions.
     const ids: string[] = [];
     for await (const doc of source.stream(collection, {
       filter,
-      batchSize: 200,
+      batchSize: 1000,
+      projection: { _id: 1 },
     }))
       ids.push(documentId(doc));
     for (const id of sampleKeys(ids, options.sampleSize)) sample.add(id);
@@ -134,16 +136,17 @@ export async function aisPositionsStep(
     throwIfInterrupted(context);
     const result = transformAisDocument(doc, {
       now: options.now,
-      since: options.since,
       maxAgeDays: config.env.MIGRATION_AIS_MAX_AGE_DAYS,
     });
     entity.add('documents');
-    entity.add('read', result.read - result.outsideSince);
+    entity.add('read', result.read);
     if (result.rejection !== undefined) {
-      entity.add('rejected', result.read - result.outsideSince);
+      entity.add('rejected', result.read);
       report.issuesOf(entity.name, 'rejected', collection, result.legacyId, [
         result.rejection,
       ]);
+      // Fully processed (reported): a resumed run continues after it.
+      context.checkpoints?.advance(entity.name, result.legacyId);
       continue;
     }
     entity.add('valid', result.rows.length);
@@ -159,8 +162,10 @@ export async function aisPositionsStep(
       history === undefined ||
       result.mmsi === undefined ||
       result.rows.length === 0
-    )
+    ) {
+      context.checkpoints?.advance(entity.name, result.legacyId);
       continue;
+    }
     const stored = await history.positionsAt(
       result.mmsi,
       result.rows.map((row) => row.time),
@@ -168,31 +173,45 @@ export async function aisPositionsStep(
     if (options.command === 'verify') {
       entity.add('expected', result.rows.length);
       let missing = 0;
-      let mismatched = 0;
+      let different = 0;
       for (const row of result.rows) {
         const have = stored.get(row.time.getTime());
         if (have === undefined) missing += 1;
-        else if (!samePosition(row, have)) mismatched += 1;
+        else if (!samePosition(row, have)) different += 1;
       }
       entity.add('present', result.rows.length - missing);
       entity.add('missing', missing);
-      entity.add('mismatched', mismatched);
-      if (missing + mismatched > 0)
+      if (missing > 0)
         report.issue({
           entity: entity.name,
           severity: 'mismatch',
           collection,
           legacyId: result.legacyId,
-          code: 'positions_differ',
-          message: `${missing} missing and ${mismatched} different of ${result.rows.length} positions of MMSI ${result.mmsi}`,
+          code: 'positions_missing',
+          message: `${missing} of ${result.rows.length} positions of MMSI ${result.mmsi} are not stored`,
         });
+      if (different > 0) {
+        // The run never overwrites a stored key (ON CONFLICT DO NOTHING): a key
+        // stored with other values was written first by another document or live.
+        entity.add('conflicts', different);
+        report.issue({
+          entity: entity.name,
+          severity: 'conflict',
+          collection,
+          legacyId: result.legacyId,
+          code: 'stored_with_other_values',
+          message: `${different} position(s) of MMSI ${result.mmsi} are stored with other values (kept; see the run report)`,
+        });
+      }
       if (sample.has(result.legacyId)) {
         entity.add('sampled');
-        expected.push(
-          `${result.legacyId}:${result.rows.map(positionKey).join(';')}`,
-        );
+        const keys = result.rows.filter((row) => {
+          const have = stored.get(row.time.getTime());
+          return have === undefined || samePosition(row, have);
+        });
+        expected.push(`${result.legacyId}:${keys.map(positionKey).join(';')}`);
         actual.push(
-          `${result.legacyId}:${result.rows
+          `${result.legacyId}:${keys
             .map((row) => {
               const have = stored.get(row.time.getTime());
               return have === undefined ? 'missing' : positionKey(have);
@@ -252,6 +271,110 @@ interface BufferedDoc {
   readonly result: FuelDocumentResult;
 }
 
+/** The newest legacy reading seen for a key `(mmsi, time)`. */
+interface SeenReading {
+  readonly legacyId: string;
+  readonly collection: string;
+  readonly fuelMeTon: number;
+  readonly fuelAeTon: number;
+}
+
+/**
+ * Keys of the readings already taken, so that a reading repeated by an
+ * older document (a device re-send, or an upload to both legacy
+ * collections) is recognised without a database lookup. Never evicted
+ * while a buffer is open; trimmed to {@link RECENT_READINGS} after each
+ * flush (a repeat beyond that window is recognised from the stored row).
+ */
+const RECENT_READINGS = 100_000;
+
+function trimRecent(recent: Map<string, SeenReading>): void {
+  for (const key of recent.keys()) {
+    if (recent.size <= RECENT_READINGS) break;
+    recent.delete(key);
+  }
+}
+
+const readingText = (row: { fuelMeTon: number; fuelAeTon: number }) =>
+  `ME ${row.fuelMeTon} t, AE ${row.fuelAeTon} t`;
+
+/**
+ * Takes the rows of one document that no newer document already gave
+ * (newest document first, `fueldatas` before `telemetries`): the same values
+ * again are skipped (`duplicate_reading`), other values are rejected
+ * (`conflicting_duplicate`, the newer document wins as in the MVP, whose
+ * CII read the newest `fueldatas` document). Both cases name the other
+ * document and the values.
+ */
+function takeNewest(
+  context: StepContext,
+  entity: EntityReport,
+  collection: string,
+  result: FuelDocumentResult,
+  recent: Map<string, SeenReading>,
+): ReadingRow[] {
+  const kept: ReadingRow[] = [];
+  const same: { row: ReadingRow; newer: SeenReading }[] = [];
+  const other: { row: ReadingRow; newer: SeenReading }[] = [];
+  for (const row of result.rows) {
+    const key = `${row.mmsi}:${row.time.getTime()}`;
+    const newer = recent.get(key);
+    if (newer !== undefined && newer.legacyId !== result.legacyId) {
+      if (
+        newer.fuelMeTon === row.fuelMeTon &&
+        newer.fuelAeTon === row.fuelAeTon
+      )
+        same.push({ row, newer });
+      else other.push({ row, newer });
+      continue;
+    }
+    recent.set(key, {
+      legacyId: result.legacyId,
+      collection,
+      fuelMeTon: row.fuelMeTon,
+      fuelAeTon: row.fuelAeTon,
+    });
+    kept.push(row);
+  }
+  const documents = (list: readonly { newer: SeenReading }[]) =>
+    [
+      ...new Set(
+        list.map(({ newer }) => `${newer.collection} ${newer.legacyId}`),
+      ),
+    ]
+      .slice(0, 3)
+      .join(', ');
+  if (same.length > 0) {
+    entity.add('skipped', same.length);
+    context.report.issue({
+      entity: entity.name,
+      severity: 'skipped',
+      collection,
+      legacyId: result.legacyId,
+      code: 'duplicate_reading',
+      message: `${same.length} reading(s) of MMSI ${String(result.mmsi)} repeat ${documents(same)} with the same values (e.g. ${same[0]?.row.time.toISOString() ?? ''})`,
+    });
+  }
+  if (other.length > 0) {
+    entity.add('rejected', other.length);
+    const example = other[0];
+    context.report.issue({
+      entity: entity.name,
+      severity: 'rejected',
+      collection,
+      legacyId: result.legacyId,
+      code: 'conflicting_duplicate',
+      message:
+        `${other.length} reading(s) of MMSI ${String(result.mmsi)} are superseded by ${documents(other)}, which has other values at the same time` +
+        (example === undefined
+          ? ''
+          : ` (e.g. ${example.row.time.toISOString()}: ${readingText(example.row)} here, ${readingText(example.newer)} there)`) +
+        '; the newer document (fueldatas before telemetries) wins, as the MVP read the newest document',
+    });
+  }
+  return kept;
+}
+
 /**
  * Fuel readings (legacy `fueldatas` — the telemetry the legacy CII used —
  * and `telemetries`) → `telemetry.fuel_readings` with `source = 'import'`
@@ -259,7 +382,9 @@ interface BufferedDoc {
  * publishes only readings queued in `fuel_readings_unpublished`, so years of
  * history never reach the FUEL stream (no emission recomputation, no live
  * telemetry state). Readings are tenant-private: only MMSIs of vessels
- * migrated into the target organization are written.
+ * migrated into the target organization are written. Each collection is
+ * read newest document first, so that of several documents holding the same
+ * `(mmsi, time)` the newest one is stored (see {@link takeNewest}).
  */
 export async function fuelReadingsStep(
   context: StepContext,
@@ -270,19 +395,20 @@ export async function fuelReadingsStep(
     options.command === 'plan' ? undefined : requireHistory(context);
   const migrated =
     options.command === 'plan' ? undefined : await migratedMmsis(context);
+  const intended = (await context.legacy.ships()).intendedMmsis;
   const limits = {
     maxMeTon: config.env.MIGRATION_FUEL_MAX_ME_TON,
     maxAeTon: config.env.MIGRATION_FUEL_MAX_AE_TON,
   };
   const historyOptions = {
     now: options.now,
-    since: options.since,
     maxAgeDays: config.env.MIGRATION_FUEL_MAX_AGE_DAYS,
     limits,
   };
   const expected: string[] = [];
   const actual: string[] = [];
   const verifiedMmsis = new Set<number>();
+  const recent = new Map<string, SeenReading>();
   for (const [collection, transform, timeField] of [
     [
       LEGACY_COLLECTIONS.fuelData,
@@ -299,12 +425,7 @@ export async function fuelReadingsStep(
     const filter: Filter<Document> | undefined =
       options.since === undefined
         ? undefined
-        : {
-            $or: [
-              { [timeField]: { $gte: options.since } },
-              { updatedAt: { $gte: options.since } },
-            ],
-          };
+        : changedSince(options.since, timeField);
     let afterId: string | undefined;
     if (options.command === 'run' && context.checkpoints !== undefined) {
       // Sub-checkpoint per collection, tied to the pass of the entity.
@@ -326,43 +447,42 @@ export async function fuelReadingsStep(
     let buffer: BufferedDoc[] = [];
     let buffered = 0;
     const flush = async () => {
-      if (history === undefined || buffer.length === 0) {
-        buffer = [];
-        buffered = 0;
-        return;
+      if (history !== undefined && buffer.length > 0) {
+        await writeReadings(
+          context,
+          entity,
+          history,
+          collection,
+          buffer,
+          expected,
+          actual,
+          verifiedMmsis,
+        );
+        const last = buffer[buffer.length - 1];
+        if (last !== undefined && options.command === 'run')
+          context.checkpoints?.advance(key, last.result.legacyId);
+        strictCheck(context, entity);
+        context.output.progress(
+          entity.name,
+          `${entity.name}: ${entity.counters.documents} documents, ${entity.counters.created} readings inserted, ${entity.counters.unchanged} already present`,
+        );
       }
-      await writeReadings(
-        context,
-        entity,
-        history,
-        collection,
-        buffer,
-        expected,
-        actual,
-        verifiedMmsis,
-      );
-      const last = buffer[buffer.length - 1];
-      if (last !== undefined && options.command === 'run')
-        context.checkpoints?.advance(key, last.result.legacyId);
       buffer = [];
       buffered = 0;
-      strictCheck(context, entity);
-      context.output.progress(
-        entity.name,
-        `${entity.name}: ${entity.counters.documents} documents, ${entity.counters.created} readings inserted, ${entity.counters.unchanged} already present`,
-      );
+      trimRecent(recent);
     };
     for await (const doc of context.source.stream(collection, {
       filter,
       afterId,
       batchSize: 200,
+      descending: true,
     })) {
       throwIfInterrupted(context);
       const result = transform(doc, historyOptions);
       entity.add('documents');
-      entity.add('read', result.read - result.outsideSince);
+      entity.add('read', result.read);
       if (result.rejection !== undefined) {
-        entity.add('rejected', result.read - result.outsideSince);
+        entity.add('rejected', result.read);
         context.report.issuesOf(
           entity.name,
           'rejected',
@@ -377,23 +497,27 @@ export async function fuelReadingsStep(
         result.mmsi !== undefined &&
         !migrated.has(result.mmsi)
       ) {
-        entity.add(
-          'rejected',
+        const amount =
           result.rows.length +
-            result.tally.rejectedCount +
-            result.tally.skippedCount,
-        );
+          result.tally.rejectedCount +
+          result.tally.skippedCount;
+        const waiting = intended.has(result.mmsi);
+        // A valid legacy ship whose vessel is not in the target (yet): the
+        // next run tries again. Without one, the readings never get a vessel.
+        if (waiting) entity.rejectRetryable(amount);
+        else entity.add('rejected', amount);
         context.report.issue({
           entity: entity.name,
           severity: 'rejected',
           collection,
           legacyId: result.legacyId,
-          code: 'vessel_not_migrated',
-          message: `MMSI ${result.mmsi} is not a migrated vessel of the target organization; ${result.rows.length} readings not migrated (telemetry is tenant-private)`,
+          code: waiting ? 'vessel_not_migrated' : 'vessel_not_in_migration',
+          message: waiting
+            ? `MMSI ${result.mmsi} is not (yet) a migrated vessel of the target organization (see the vessels entity); ${result.rows.length} readings not migrated, the next run tries again`
+            : `MMSI ${result.mmsi} has no Ship document the migration creates a vessel from; ${result.rows.length} readings not migrated (telemetry is tenant-private)`,
         });
         continue;
       }
-      entity.add('valid', result.rows.length);
       recordTally(
         context,
         entity,
@@ -402,8 +526,10 @@ export async function fuelReadingsStep(
         result.tally,
         'reading',
       );
-      buffer.push({ result });
-      buffered += result.rows.length;
+      const rows = takeNewest(context, entity, collection, result, recent);
+      entity.add('valid', rows.length);
+      buffer.push({ result: { ...result, rows } });
+      buffered += rows.length;
       if (buffered >= options.batchSize || buffer.length >= 500) await flush();
     }
     await flush();
@@ -419,11 +545,11 @@ export async function fuelReadingsStep(
         collection: 'telemetry.fuel_readings_unpublished',
         legacyId: '-',
         code: 'queued_for_publication',
-        message: `${queued} imported readings are queued for publication (must be 0)`,
+        message: `${queued} readings written by the migration are queued for publication (must be 0)`,
       });
     } else
       entity.note(
-        'No imported reading is queued for publication (fuel_readings_unpublished).',
+        'No reading written by the migration is queued for publication (fuel_readings_unpublished).',
       );
     const sums = {
       expected: checksum(expected.sort()),
@@ -449,6 +575,7 @@ async function writeReadings(
   verifiedMmsis: Set<number>,
 ): Promise<void> {
   const { report, options } = context;
+  // Keys are unique within a buffer: takeNewest() kept one row per key.
   const fresh: ReadingRow[] = [];
   const sampled = new Set(
     options.command === 'verify'
@@ -464,84 +591,94 @@ async function writeReadings(
       result.mmsi,
       result.rows.map((row) => row.time),
     );
-    if (options.command === 'verify') {
-      verifiedMmsis.add(result.mmsi);
-      entity.add('expected', result.rows.length);
-      let missing = 0;
-      let mismatched = 0;
-      for (const row of result.rows) {
-        const have = stored.get(row.time.getTime());
-        if (have === undefined) missing += 1;
-        else if (
-          have.fuelMeTon !== row.fuelMeTon ||
-          have.fuelAeTon !== row.fuelAeTon ||
-          !have.published
-        )
-          mismatched += 1;
-      }
-      entity.add('present', result.rows.length - missing);
-      entity.add('missing', missing);
-      entity.add('mismatched', mismatched);
-      if (missing + mismatched > 0)
-        report.issue({
-          entity: entity.name,
-          severity: 'mismatch',
-          collection,
-          legacyId: result.legacyId,
-          code: 'readings_differ',
-          message: `${missing} missing and ${mismatched} different (or unpublished-marked) of ${result.rows.length} readings of MMSI ${result.mmsi}`,
-        });
-      if (sampled.has(result.legacyId)) {
-        entity.add('sampled');
-        expected.push(
-          `${result.legacyId}:${result.rows.map((row) => readingKey(row, row.time.getTime())).join(';')}`,
-        );
-        actual.push(
-          `${result.legacyId}:${result.rows
-            .map((row) => {
-              const have = stored.get(row.time.getTime());
-              return have === undefined ? 'missing' : readingKey(have, have.ms);
-            })
-            .join(';')}`,
-        );
-      }
-      continue;
-    }
-    let conflicts = 0;
+    // Stored with other values: by the migration from a newer legacy
+    // document (this one is superseded), or by v2 (kept).
+    let superseded = 0;
+    let fromV2 = 0;
+    let example: { row: ReadingRow; have: StoredReading } | undefined;
+    const comparable: ReadingRow[] = [];
+    let missing = 0;
+    let unpublished = 0;
     for (const row of result.rows) {
       const have = stored.get(row.time.getTime());
-      if (have === undefined) fresh.push(row);
-      else if (
+      if (have === undefined) {
+        missing += 1;
+        comparable.push(row);
+        if (options.command === 'run') fresh.push(row);
+      } else if (
         have.fuelMeTon === row.fuelMeTon &&
         have.fuelAeTon === row.fuelAeTon
-      )
-        entity.add('unchanged');
-      else conflicts += 1;
+      ) {
+        comparable.push(row);
+        if (options.command === 'run') entity.add('unchanged');
+        else if (have.source === 'import' && !have.published) unpublished += 1;
+      } else {
+        if (have.migrated) superseded += 1;
+        else fromV2 += 1;
+        example ??= { row, have };
+      }
     }
-    if (conflicts > 0) {
-      entity.add('conflicts', conflicts);
+    if (superseded > 0) {
+      entity.add('rejected', superseded);
+      if (options.command === 'run')
+        report.issue({
+          entity: entity.name,
+          severity: 'rejected',
+          collection,
+          legacyId: result.legacyId,
+          code: 'conflicting_duplicate',
+          message: `${superseded} reading(s) of MMSI ${result.mmsi} were already migrated with other values (from another legacy document, or by an earlier run of changed legacy data; e.g. ${example?.row.time.toISOString() ?? ''}: ${example === undefined ? '' : `${readingText(example.row)} here, ${readingText(example.have)} stored`}); the stored reading is kept (the newer document, fueldatas before telemetries, wins)`,
+        });
+    }
+    if (fromV2 > 0) {
+      // The run never overwrites a stored key (ON CONFLICT DO NOTHING).
+      entity.add('conflicts', fromV2);
       report.issue({
         entity: entity.name,
         severity: 'conflict',
         collection,
         legacyId: result.legacyId,
-        code: 'reading_exists',
-        message: `${conflicts} reading(s) of MMSI ${result.mmsi} already stored at the same time with other values (other legacy collection or a v2 device); the stored ones are kept`,
+        code:
+          options.command === 'run'
+            ? 'reading_exists'
+            : 'stored_with_other_values',
+        message: `${fromV2} reading(s) of MMSI ${result.mmsi} are stored at the same time with other values by v2 (a device or the telemetry API); the stored ones are kept`,
       });
+    }
+    if (options.command !== 'verify') continue;
+    verifiedMmsis.add(result.mmsi);
+    entity.add('expected', comparable.length);
+    entity.add('present', comparable.length - missing);
+    entity.add('missing', missing);
+    entity.add('mismatched', unpublished);
+    if (missing + unpublished > 0)
+      report.issue({
+        entity: entity.name,
+        severity: 'mismatch',
+        collection,
+        legacyId: result.legacyId,
+        code: 'readings_differ',
+        message: `${missing} missing and ${unpublished} imported without published_at of ${comparable.length} readings of MMSI ${result.mmsi}`,
+      });
+    if (sampled.has(result.legacyId)) {
+      entity.add('sampled');
+      expected.push(
+        `${result.legacyId}:${comparable.map((row) => readingKey(row, row.time.getTime())).join(';')}`,
+      );
+      actual.push(
+        `${result.legacyId}:${comparable
+          .map((row) => {
+            const have = stored.get(row.time.getTime());
+            return have === undefined ? 'missing' : readingKey(have, have.ms);
+          })
+          .join(';')}`,
+      );
     }
   }
   if (options.command !== 'run' || fresh.length === 0) return;
-  // Two legacy documents may hold the same (mmsi, time): keep the first.
-  const unique = new Map<string, ReadingRow>();
-  for (const row of fresh) {
-    const key = `${row.mmsi}:${row.time.getTime()}`;
-    if (!unique.has(key)) unique.set(key, row);
-    else entity.add('conflicts');
-  }
-  const rows = [...unique.values()];
-  const inserted = await history.insertReadings(rows);
+  const inserted = await history.insertReadings(fresh);
   entity.add('created', inserted.size);
-  entity.add('unchanged', rows.length - inserted.size);
+  entity.add('unchanged', fresh.length - inserted.size);
 }
 
 /**
@@ -564,7 +701,7 @@ export async function transhipmentsStep(
   const filter: Filter<Document> | undefined =
     options.since === undefined
       ? undefined
-      : { detectedAt: { $gte: options.since } };
+      : changedSince(options.since, 'detectedAt');
   let batch: TranshipmentRows[] = [];
   const expected: string[] = [];
   const actual: string[] = [];
@@ -644,16 +781,12 @@ export async function transhipmentsStep(
     entity.add('read');
     const transformed = transformTranshipmentResult(doc, {
       now: options.now,
-      since: options.since,
       criticalAccuracy: config.env.MIGRATION_TRANSHIPMENT_CRITICAL_ACCURACY,
       maxAgeDays: config.env.MIGRATION_TRANSHIPMENT_MAX_AGE_DAYS,
     });
     if (isSkip(transformed)) {
       entity.add('skipped');
-      if (
-        transformed.skipped.code !== 'negative_result' &&
-        transformed.skipped.code !== 'outside_since'
-      )
+      if (transformed.skipped.code !== 'negative_result')
         report.issuesOf(entity.name, 'skipped', collection, legacyId, [
           transformed.skipped,
         ]);
@@ -688,7 +821,7 @@ export async function transhipmentsStep(
   await flush();
   if (entity.counters.skipped > 0)
     entity.note(
-      `${entity.counters.skipped} result(s) skipped: negative analyses (isIllegal = false) are not stored by v2, plus any outside --since or the 2-year retention`,
+      `${entity.counters.skipped} result(s) skipped: negative analyses (isIllegal = false) are not stored by v2, plus any beyond the 2-year retention`,
     );
   if (options.command === 'verify') {
     const sample = new Set(sampleKeys(all, options.sampleSize));

@@ -45,7 +45,24 @@ export interface StoredReading {
   readonly fuelAeTon: number;
   readonly source: string;
   readonly published: boolean;
+  /**
+   * Written by the migration: `source = 'import'`, no device and
+   * `published_at = received_at` (both `now()` of the inserting
+   * transaction). Readings a signed-in user posts with `?source=import`
+   * are published by the telemetry relay after their commit, so their
+   * `published_at` is later (or still NULL).
+   */
+  readonly migrated: boolean;
 }
+
+/**
+ * SQL predicate of the readings written by the migration (alias `r`); the
+ * rollback of docs/migration/MONGO_TO_V2.md §10 uses the same one.
+ */
+export const MIGRATED_READING_SQL = `r.source = 'import' AND r.device_id IS NULL AND r.published_at = r.received_at`;
+
+/** Key of the advisory lock a run holds while it writes history. */
+export const HISTORY_LOCK_KEY = 0x6d6967_7231; // "migr1"
 
 interface PositionDbRow {
   ms: string;
@@ -66,6 +83,8 @@ interface PositionDbRow {
  * publication queues, so no migrated row is ever published as a live event.
  */
 export class HistoryDb {
+  private lockClient: pg.PoolClient | undefined;
+
   private constructor(private readonly pool: pg.Pool) {}
 
   static connect(url: string, statementTimeoutMs: number): HistoryDb {
@@ -80,7 +99,39 @@ export class HistoryDb {
   }
 
   async close(): Promise<void> {
+    if (this.lockClient !== undefined) {
+      await this.lockClient
+        .query('SELECT pg_advisory_unlock($1)', [HISTORY_LOCK_KEY])
+        .catch(() => undefined);
+      this.lockClient.release();
+      this.lockClient = undefined;
+    }
     await this.pool.end();
+  }
+
+  /**
+   * Takes the session advisory lock of history writes on a connection held
+   * until {@link close}: `false` when another run (of any state directory)
+   * holds it. Ends with the session, so a killed run never leaves it behind.
+   */
+  async lockHistory(): Promise<boolean> {
+    if (this.lockClient !== undefined) return true;
+    const client = await this.pool.connect();
+    try {
+      const { rows } = await client.query<{ locked: boolean }>(
+        'SELECT pg_try_advisory_lock($1) AS locked',
+        [HISTORY_LOCK_KEY],
+      );
+      if (rows[0]?.locked !== true) {
+        client.release();
+        return false;
+      }
+      this.lockClient = client;
+      return true;
+    } catch (error) {
+      client.release();
+      throw error;
+    }
   }
 
   /** Missing privileges for the given entities, as `table PRIVILEGE` strings. */
@@ -255,10 +306,11 @@ export class HistoryDb {
         fuel_ae_ton: number;
         source: string;
         published: boolean;
+        migrated: boolean;
       }>(
         `SELECT floor(extract(epoch FROM time) * 1000)::bigint AS ms, fuel_me_ton, fuel_ae_ton, source,
-                published_at IS NOT NULL AS published
-           FROM telemetry.fuel_readings
+                published_at IS NOT NULL AS published, (${MIGRATED_READING_SQL}) AS migrated
+           FROM telemetry.fuel_readings r
           WHERE mmsi = $1 AND time = ANY($2::timestamptz[])`,
         [
           mmsi,
@@ -272,6 +324,7 @@ export class HistoryDb {
           fuelAeTon: row.fuel_ae_ton,
           source: row.source,
           published: row.published,
+          migrated: row.migrated,
         });
     }
     return stored;
@@ -315,13 +368,18 @@ export class HistoryDb {
     return inserted;
   }
 
-  /** Imported readings of these vessels still waiting in the publication queue (must be 0). */
+  /**
+   * Readings of these vessels written by the migration that wait in the
+   * publication queue (must be 0). Readings posted through the telemetry
+   * API with `?source=import` are queued and published by design and are
+   * not counted.
+   */
   async queuedImportedReadings(mmsis: readonly number[]): Promise<number> {
     const { rows } = await this.pool.query<{ count: string }>(
       `SELECT count(*) AS count
          FROM telemetry.fuel_readings_unpublished u
          JOIN telemetry.fuel_readings r ON r.mmsi = u.mmsi AND r.time = u.time
-        WHERE r.source = 'import' AND u.mmsi = ANY($1::int[])`,
+        WHERE ${MIGRATED_READING_SQL} AND u.mmsi = ANY($1::int[])`,
       [mmsis],
     );
     return Number(rows[0]?.count ?? 0);

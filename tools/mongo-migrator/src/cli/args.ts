@@ -17,6 +17,7 @@ export interface CliArguments {
   readonly fresh: boolean;
   readonly includeUnreferenced: boolean;
   readonly overwriteReductionFactors: boolean;
+  readonly overwriteV2Edits: boolean;
   readonly quiet: boolean;
   readonly stateDir: string | undefined;
   readonly reportDir: string | undefined;
@@ -38,7 +39,10 @@ Commands:
 Options:
   --only <list>              entities or groups, comma separated (groups:
                              reference, master, history, all)
-  --since <ISO-8601>         history entities: only items at or after this time
+  --since <ISO-8601>         history entities: only documents created or changed
+                             at or after this time (updatedAt, createdAt,
+                             ObjectId time or an item timestamp), with all
+                             their items (incremental top-up)
   --org <uuid>               target organization (MIGRATION_TARGET_ORG_ID)
   --batch-size <n>           rows per history batch (MIGRATION_BATCH_SIZE)
   --sample <n>               verify: sampled records per entity (MIGRATION_SAMPLE_SIZE)
@@ -48,6 +52,9 @@ Options:
   --include-unreferenced     also import reference rows no migrated ship uses
   --overwrite-reduction-factors
                              replace v2 Z values that differ from the legacy ones
+  --overwrite-v2-edits       run: converge migrated records edited in v2 (or of
+                             unknown origin) back to the legacy data; without
+                             it they are kept and reported as conflicts
   --state-dir <dir>          checkpoints, exports, reports (MIGRATION_STATE_DIR)
   --report-dir <dir>         reports (default <state-dir>/reports)
   --input <file>             report: the report JSON to print
@@ -95,6 +102,7 @@ export function parseArguments(argv: readonly string[]): CliArguments {
         fresh: { type: 'boolean', default: false },
         'include-unreferenced': { type: 'boolean', default: false },
         'overwrite-reduction-factors': { type: 'boolean', default: false },
+        'overwrite-v2-edits': { type: 'boolean', default: false },
         quiet: { type: 'boolean', default: false },
         'state-dir': { type: 'string' },
         'report-dir': { type: 'string' },
@@ -115,6 +123,7 @@ export function parseArguments(argv: readonly string[]): CliArguments {
     fresh: values.fresh,
     includeUnreferenced: values['include-unreferenced'],
     overwriteReductionFactors: values['overwrite-reduction-factors'],
+    overwriteV2Edits: values['overwrite-v2-edits'],
     quiet: values.quiet,
     stateDir: values['state-dir'],
     reportDir: values['report-dir'],

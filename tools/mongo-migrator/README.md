@@ -50,6 +50,12 @@ signs in one admin configured by environment variables. Early builds had self-re
 migrated: bcrypt hashes cannot become argon2id hashes and v2 attaches nobody to an
 organization without consent. Invite people with `POST /api/v2/organizations/:id/members`.
 
+Bundled MVP data files (not MongoDB) already belong to a v2 service and are out of scope here:
+`be/data/pipeline.json` and `be/data/batam.json` become the global geo zones `mvp-pipeline` and
+`mvp-batam-transhipment` (geo `pnpm seed`), `be/data/indonesia.json` is the ais-pipeline's bundled
+`data/coastline.geojson`, and the web app's `src/data/ilegal.json` is the surveillance
+`fishing_violations` seed (surveillance `pnpm seed`). The runbook's pre-checks include those seeds.
+
 ## Prerequisites
 
 - Node.js 24 (`.nvmrc`; `engines` ≥ 22.12) and pnpm 10.28.0. `@darmawanweb/*` packages come from
@@ -91,7 +97,7 @@ arguments. [`.env.example`](.env.example) documents every variable with placehol
 | `V2_AUTH_URL`, `V2_FLEET_URL`, `V2_EMISSION_URL`          | the gateway        | run, verify      | per-service base URLs (override the gateway)                                              |
 | `MIGRATION_ADMIN_EMAIL`, `MIGRATION_ADMIN_PASSWORD`       | —                  | run, verify      | platform admin, signed in with `POST /api/v2/auth/login`                                  |
 | `MIGRATION_TARGET_ORG_ID`                                 | —                  | run, verify      | target organization (`--org` overrides it)                                                |
-| `DATABASE_URL`                                            | —                  | history entities | `postgres://mongo_migrator:…@host:5432/aisits`                                            |
+| `DATABASE_URL`, `PGPASSWORD`                              | —                  | history entities | `postgres://mongo_migrator@host:5432/aisits`; the password from `PGPASSWORD` (or the URL) |
 | `DATABASE_STATEMENT_TIMEOUT_MS`                           | 120000             | history          | per statement                                                                             |
 | `FLEET_REGISTRY_IMPORT_CMD`                               | —                  | registry         | command of the fleet importer; `{file}` = NDJSON export. Unset: export only (manual step) |
 | `MIGRATION_STATE_DIR`                                     | `.migration-state` | all              | checkpoints, exports, reports                                                             |
@@ -110,8 +116,8 @@ arguments. [`.env.example`](.env.example) documents every variable with placehol
 ```text
 ais-its-mongo-migrator plan    [--only <list>] [--since <iso>] [--strict]
 ais-its-mongo-migrator run     [--only <list>] [--since <iso>] [--org <uuid>] [--batch-size <n>] [--strict] [--fresh]
-                               [--include-unreferenced] [--overwrite-reduction-factors]
-ais-its-mongo-migrator verify  [--only <list>] [--org <uuid>] [--sample <n>]
+                               [--include-unreferenced] [--overwrite-reduction-factors] [--overwrite-v2-edits]
+ais-its-mongo-migrator verify  [--only <list>] [--since <iso>] [--org <uuid>] [--sample <n>]
 ais-its-mongo-migrator report  [--input <report.json>] [--format md|json]
 ```
 
@@ -122,21 +128,46 @@ ais-its-mongo-migrator report  [--input <report.json>] [--format md|json]
   registry → reduction factors → annual CII → AIS positions → fuel readings → transhipments). It
   is idempotent (natural keys), resumable (checkpoints) and bounded in memory (one document at a
   time for history, batches of `--batch-size` rows). `--since` limits the history entities to
-  items at or after the given time (incremental top-up after a first full run). `--strict` first
-  checks the whole source and writes nothing if any document would be rejected; during the run the
-  first target-side rejection or conflict stops it.
+  the documents created or changed at or after the given time (`updatedAt`, `createdAt`, the
+  ObjectId time or an item timestamp) and writes **all** their items (idempotently), so a device
+  backlog uploaded late or a position stored as `timestamp − utc` is not lost (incremental top-up
+  after a first full run: use the first run's `startedAt` minus a generous overlap, e.g. 24 h).
+  `--strict` first checks the whole source and writes nothing if any document would be rejected;
+  during the run the first target-side rejection or conflict stops it. Only one `run` at a time
+  works on a state directory (`<state>/run.lock`) and, for history, on a database (a PostgreSQL
+  advisory lock): a second one exits with `2`.
+- **Records edited in v2.** A record the migration wrote (vessel, `legacy_<id>` reference row,
+  imported manual CII) that differs from the legacy data is converged only when the target still
+  holds exactly what the migration wrote and the legacy data changed since (fingerprints in
+  `<state>/ledger.ndjson`); a record edited in v2 after the migration wrote it (`changed_in_v2`),
+  or one the state directory has no record of writing (`differs_from_legacy`), is **kept** and
+  reported as a conflict. `--overwrite-v2-edits` sets such records back to the legacy values.
 - **verify** — compares source and target per entity: expected vs present records, field-level
   mismatches, and a SHA-256 checksum over a deterministic sample (`--sample`, ordered by the hash
   of the legacy id, so every run checks the same records). History is compared row by row (every
   expected `(mmsi, time)` must be stored with the same values), master data through the APIs.
+  `mismatched`/`missing` mean a run would still change the target (exit `4`); what the run
+  deliberately keeps — `mmsi_taken`, `other_organization`, `manual_record_exists`, `value_differs`
+  (Z), `changed_in_v2`, `differs_from_legacy`, history keys stored with other values by v2 — is
+  counted as `conflicts` (outcome `conflicts`, exit `0`) for the data owner to sign off. Run it
+  with the state directory of the run (it reads the ledger).
 - **report** — prints a stored report (default: the latest run) as Markdown or JSON.
 
 `--only` takes entity names and groups: `reference` (the five fleet reference kinds), `master`
 (reference + vessels, registry, reduction factors, annual CII), `history` (AIS positions, fuel
 readings, transhipments), `all`.
 
-Exit codes: `0` success, `1` failure (unexpected error, a service down after retries), `2` usage or
-configuration error (also: wrong credentials, unknown organization, missing database privileges),
+Outcome of a report: `ok`; `rejected` (documents rejected or conflicts kept, all reported);
+`incomplete` — an entity is `manual` (registry import pending) or `incomplete` (documents rejected
+for a reason on the v2 side that can go away: `vessel_not_migrated`, `vessel_unknown_to_emission`,
+`refused_by_service`); neither is completed in the checkpoints, so the next plain `run` does it
+again; `conflicts` (verify); `mismatch` (verify); `failed`; `interrupted`. A failing registry
+importer marks that entity `failed` and the run continues with the others (exit `1` at the end).
+
+Exit codes: `0` success, `1` failure (unexpected error, a service down after retries, a failed
+registry import), `2` usage or
+configuration error (also: wrong credentials, unknown organization, missing database privileges,
+another run holding the state directory or the history advisory lock),
 `3` rejected documents with `--strict`, `4` verification mismatch, `130` interrupted (Ctrl+C or
 SIGTERM: the current batch commits, the checkpoint is saved; run the same command again to
 resume).
@@ -191,10 +222,10 @@ Reused when kind, name (case-insensitive), rpm, power and SFOC are equal (the ca
 
 ### Fuel formulas (`firstfuelformulas` → fleet `fuel_formulas`)
 
-| Legacy                                        | v2                                                                          | Rule                                                                                                                                                                                                                                    |
-| --------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `_id`                                         | `code` = `legacy_<id>`, `name` = `Legacy first fuel formula <last 6 of id>` |                                                                                                                                                                                                                                         |
-| `mainEngineFormula`, `auxiliaryEngineFormula` | same                                                                        | pre-checked against the safe grammar (numbers, `speedKnot`, `Math.<fn>`/`<fn>` of exp, log, ln, sqrt, pow, abs, min, max, `+ - * / ** ^ ( ) ,`); the fleet API validates again and stays the authority. `^` is power in v2 (spec §15.4) |
+| Legacy                                        | v2                                                                          | Rule                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `_id`                                         | `code` = `legacy_<id>`, `name` = `Legacy first fuel formula <last 6 of id>` |                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `mainEngineFormula`, `auxiliaryEngineFormula` | same                                                                        | pre-checked against the safe grammar (numbers, `speedKnot`, `Math.<fn>`/`<fn>` of exp, log, ln, sqrt, pow, abs, min, max, `+ - * / ** ^ ( ) ,`); the fleet API validates again and stays the authority. `^` is power in v2 but bitwise XOR in the MVP's JavaScript (spec §15.4): a formula with `^` is migrated as written and reported as `caret_semantics_changed` (adjusted) with the MVP and v2 values at 5/10/15 kn |
 
 Reused when both formulas are equal ignoring blanks (seed `dharma_ferry_viii`).
 
@@ -243,10 +274,14 @@ Ships of one MMSI: the newest document whose data transforms wins, the others ar
 type/fuel is rejected (v2 requires them). ShipGeneral/ShipSize documents no ship refers to are
 listed as orphans.
 
-On a re-run, the vessel of that MMSI is compared with the legacy data: a vessel created by the
-migration (same `legacyId`) is converged with `PATCH /vessels/:id` and `PUT …/dimensions`,
-`…/engines`, `…/ports`; a vessel of that MMSI that the migration did not create, or that belongs to
-another organization, is a conflict and is never modified.
+On a re-run, the vessel of that MMSI is compared with the legacy data. A vessel created by the
+migration (same `legacyId`) that differs is converged with `PATCH /vessels/:id` and
+`PUT …/dimensions`, `…/engines`, `…/ports` only when it still holds what the migration wrote and
+the legacy data changed (`converged`); edited in v2 since, it is kept as a `changed_in_v2` conflict
+(`--overwrite-v2-edits` restores the legacy values). A vessel of that MMSI that the migration did
+not create (`mmsi_taken`), or that belongs to another organization (`other_organization`), is a
+conflict and is never modified. A 400/403 refusal of the fleet service rejects the ship for now
+(`refused_by_service`, retried by the next run).
 
 ### Registry particulars (`secondaryships` → fleet `registry_particulars`)
 
@@ -254,8 +289,13 @@ The fleet service owns this mapping (`mapLegacySecondaryShip`: numbers parsed le
 prefix stripped, the document kept in `raw`, the last document of a duplicated MMSI wins) and has
 no write API for it. The migration pre-checks each document with the same rules (MMSI, `NAME`),
 exports the valid ones as NDJSON (`<state>/exports/secondaryships.ndjson`, ObjectIds as hex,
-dates ISO) and runs `FLEET_REGISTRY_IMPORT_CMD`. An export identical to the last imported one is
-not imported again (the importer rewrites unchanged rows).
+dates ISO) and runs `FLEET_REGISTRY_IMPORT_CMD` through `/bin/sh` in the current directory (`{file}`
+is the absolute path of the export). Without the command the entity stays `manual` (not
+completed: a later `run` with the command imports it); a failing importer marks it `failed` and
+the run goes on. An export identical to the one last imported **into the same fleet URL** is not
+handed over again (the importer rewrites unchanged rows), once a deterministic sample of it is
+found with `GET /registry/:mmsi`; a restored snapshot or another target gets it again, and
+`--fresh` always hands it over. The marker is `<state>/exports/secondaryships.imported.json`.
 
 ### Reduction factors (`zvalues` → emission `reduction_factors`)
 
@@ -284,7 +324,11 @@ A year missing in v2 is added; an equal value is left alone; a different value k
 | —                                                     | `note`                           | "Imported from the legacy MVP (annualciis <id>, entry <id>) on <date>" — the ownership marker |
 
 Per spec §15.3 these values only fill years without segment data. A record entered in v2 (note
-without the marker) is never replaced.
+without the marker) is never replaced (`manual_record_exists`); an imported record edited in v2 is
+kept (`changed_in_v2`) unless `--overwrite-v2-edits`. An entry of a valid legacy ship whose vessel
+is not in the target organization (yet) is rejected as `vessel_not_migrated` and retried by the
+next run (as is `vessel_unknown_to_emission`); an MMSI without a migratable Ship document is
+`vessel_not_in_migration` (final).
 
 ### AIS positions (`ais` → `ais.positions`, `ais.vessel_latest`)
 
@@ -301,9 +345,9 @@ without the marker) is never replaced.
 | —                               | `coast_dist_m`          | `NULL` ("no coast geometry", allowed by the column)                                                         |
 | newest position of the document | `ais.vessel_latest`     | inserted, or moved forward only when newer than the stored one (the processor's rule)                       |
 
-Positions in the future (> 5 min), older than the raw retention (180 days) or before `--since` are
-not written (reported, except `--since`). Duplicates in a document keep the first; the same time
-with other values is a conflict. Rows go in with `INSERT … ON CONFLICT (mmsi, time) DO NOTHING`
+Positions in the future (> 5 min) or older than the raw retention (180 days) are not written
+(reported). `--since` selects documents, never items. Duplicates in a document keep the first;
+the same time with other values is rejected (`conflicting_duplicate`). Rows go in with `INSERT … ON CONFLICT (mmsi, time) DO NOTHING`
 after checking which keys exist (a key stored with other values — e.g. received live by v2 — is a
 conflict and is kept). **Nothing is written to `ais.outbox`**, so no `ais.position.recorded.v1`
 event is published.
@@ -322,9 +366,15 @@ event is published.
 | —                                                        | `published_at`                | `now()` — the rows are never queued in `fuel_readings_unpublished`, so the relay never publishes them |
 
 Negative values, values above the API limits (500 t ME / 100 t AE per reading), future readings
-and readings older than the 5-year retention are not written (reported). The same `(mmsi, time)`
-in both collections keeps the first (`fueldatas`) and reports the other as a conflict. One
-transaction per UTC day, like the service, so the continuous aggregates invalidate only those days.
+and readings older than the 5-year retention are not written (reported). Each collection is read
+**newest document first**, and of several documents holding the same `(mmsi, time)` the newest
+wins (the MVP's CII read the newest `fueldatas` document), `fueldatas` before `telemetries`: the
+same values again are skipped (`duplicate_reading`), other values are rejected
+(`conflicting_duplicate`); both name the other document and the values. A key stored with other
+values by v2 (a device, the telemetry API) is a conflict and is kept (`reading_exists`). Migrated
+rows are recognisable as `source = 'import' AND device_id IS NULL AND published_at = received_at`
+(readings a user posts with `?source=import` are published by the relay later). One transaction
+per UTC day, like the service, so the continuous aggregates invalidate only those days.
 
 ### Transhipment results (`illegaltranshipmentresults` → `surveillance.events` + `transhipment_results`)
 
@@ -361,6 +411,8 @@ skipped or conflicting document is in the report.
 | duplicate ships per MMSI                                             | newest valid wins                                   | `duplicate_mmsi`                                               |
 | duplicate ports per code                                             | merged                                              | `merged_duplicate_code`                                        |
 | duplicate years (Z, annual CII)                                      | first wins (legacy `find`)                          | `duplicate_year`                                               |
+| the same reading in several fuel documents                           | newest document wins                                | `duplicate_reading` (skipped) / `conflicting_duplicate`        |
+| `^` in a fuel formula (XOR in the MVP, power in v2)                  | migrated, values compared at 5/10/15 kn             | `caret_semantics_changed` (adjusted)                           |
 | lat 91 / lon 181                                                     | position rejected                                   | `position_not_available`                                       |
 | out-of-range kinematics / navstatus                                  | position rejected                                   | `invalid_kinematics` / `invalid_navstatus`                     |
 | `utc` offset rule                                                    | timestamps stored as is (already `timestamp − utc`) | —                                                              |
@@ -397,12 +449,30 @@ skipped or conflicting document is in the report.
 - Natural keys: `code` (`legacy_<id>`) for reference data, port `code`, vessel `mmsi` +
   `legacyId`, `(mmsi, year)` for annual CII, `year` for Z, `(mmsi, time)` for positions and
   readings, deterministic UUIDs for transhipment events/results. A second run creates nothing; a
-  run with `--fresh` (ignoring checkpoints) re-reads everything and reports it `unchanged`.
+  run with `--fresh` (ignoring checkpoints) re-reads everything and reports it `unchanged` (the
+  registry export is handed to the fleet importer again, which counts its rows as updated).
+- Ledger (`<state>/ledger.ndjson`, append-only): per vessel, reference row and imported CII
+  record the SHA-256 of the legacy record wanted and of the target record after the run's
+  decision (`written` or `kept`). It tells a legacy change (converge) from a v2 edit (keep) for
+  `run` and `verify`; a lost or foreign state directory errs on the safe side (`differs_from_legacy`,
+  kept).
 - Checkpoints (`<state>/checkpoints.json`, atomic rewrite) record per entity the last source
-  `_id` whose writes committed; an interrupted run continues after it. Completed entities are
-  skipped until `--fresh`, or until another pass key (`--org`, `--since`, options) is used.
-- Streaming: history collections are read with server cursors in `_id` order (small cursor
-  batches), one document at a time; small reference collections are loaded once.
+  `_id` fully processed (its writes committed, or its rejection reported); an interrupted run
+  continues after it. Batched entities (fuel readings, transhipments) checkpoint per committed
+  batch, so the uncommitted rest of a batch is read again. Completed entities are skipped until
+  `--fresh`, or until another pass key (`--org`, `--since`, options) is used. An entity that ran
+  to its end with rejections for a reason on the v2 side is checkpointed as `retry` and done again
+  (from scratch, idempotently) by the next plain `run`; a `manual` or `failed` entity stays in
+  progress and is done again too.
+- Locks: `<state>/run.lock` (O_EXCL, pid and host; the lock of a process that no longer exists on
+  this host is taken over) and, while history is written, the PostgreSQL session advisory lock
+  `HISTORY_LOCK_KEY` (released with the session). `verify` warns when a run holds the state
+  directory. The integration
+  test interrupts a run with SIGTERM after its first committed document (exit `130`) and checks
+  that the same command continues after the checkpoint, writing every row exactly once.
+- Streaming: history collections are read with server cursors in `_id` order (fuel collections
+  newest first; small cursor batches), one document at a time; small reference collections are
+  loaded once. The verify sample of `ais` reads the ids only (projection).
 
 ## Reports
 
@@ -410,8 +480,9 @@ Every command writes `<state>/reports/<command>-<time>.json` and `.md`, `latest-
 and `<command>-<time>.issues.ndjson` (one line per rejected/adjusted/skipped/conflicting/mismatching
 document, never truncated; the JSON report embeds the first 20 000). Counters per entity:
 `documents`, `read`, `valid`, `created`, `updated`, `unchanged`, `matched`, `rejected`, `skipped`,
-`adjusted`, `conflicts` (run/plan) and `expected`, `present`, `missing`, `mismatched`, `sampled` +
-sample checksum (verify). History issues are summarized per legacy document (count and first
+`adjusted`, `conflicts` (run/plan) and `expected`, `present`, `missing`, `mismatched`,
+`conflicts`, `sampled` + sample checksum (verify); `retryable` per entity (rejections for a reason
+on the v2 side). History issues are summarized per legacy document (count and first
 example per code), so a vessel with 8 000 positions is one line per issue code.
 
 ## Testing
@@ -430,7 +501,21 @@ written), `run --strict` (exit 3, nothing written), `run`, `run` again (no-op by
 target (`verify` exit 4, repaired by a targeted run) and `report`, and asserts the v2 data through
 the services' own APIs (vessels, registry, reduction factors, manual and annual CII, AIS track and
 latest position, telemetry readings, transhipments) plus the absence of any message in
-`AIS_POSITION`, `FUEL` and `ALERTS`.
+`AIS_POSITION`, `FUEL` and `ALERTS`. It then renews the admin session against the real auth
+service (two refreshes with the rotating `aisits_rt` cookie, one login) and interrupts a run with
+SIGTERM after its first committed document (exit `130`, entity `interrupted`, checkpoint kept):
+the same command resumes after the checkpoint, every new row is written exactly once and `verify`
+passes. `MIGRATOR_INT_TRANSCRIPT=<file> pnpm test:int` records every CLI call with its full output
+(summaries, progress, exit codes).
+
+`test/regressions.int.test.ts` (same stack) reproduces the failures of the second review: CII
+migrated before the vessels (retried), a registry without importer (`manual`, imported later,
+imported again after the rows were deleted), pre-existing v2 vessels holding an IMO and an MMSI
+(`verify` exit 0 with the conflicts), a vessel, a vessel type and a CII record edited in v2 (kept
+by `--fresh`, restored by `--overwrite-v2-edits`, a later legacy change converges), the same fuel
+reading in several documents (newest wins, both reported), a `--since` top-up with a late upload
+and a `timestamp − utc` position, a queued `?source=import` reading (ignored by `verify`), and a
+second run refused by the state-directory lock and by the advisory lock.
 
 ## Limitations
 
@@ -446,3 +531,7 @@ latest position, telemetry readings, transhipments) plus the absence of any mess
 - The legacy units of engine `power` are not documented (kept as kW); SFOC/density/carbon unit
   heuristics are recorded as adjustments for review.
 - `run` is single-process; vessel creation is sequential (low volume), history is batched.
+- Repeated fuel readings are recognised in memory within a window of 100 000 keys (the `--strict`
+  preflight sees only those); a repeat beyond it is recognised from the stored row at run time.
+- `verify` needs the run's state directory: without its ledger a legacy change cannot be told
+  from a v2 edit and is counted as a conflict.

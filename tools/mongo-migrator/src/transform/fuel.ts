@@ -27,7 +27,6 @@ export interface FuelDocumentResult {
   /** Valid rows, oldest first. */
   readonly rows: ReadingRow[];
   readonly read: number;
-  readonly outsideSince: number;
   readonly tally: ItemTally;
   readonly rejection: Issue | undefined;
 }
@@ -56,7 +55,6 @@ function collect(
       mmsi,
       rows: [],
       read: entries.length,
-      outsideSince: 0,
       tally,
       rejection: {
         code: 'invalid_mmsi',
@@ -68,7 +66,6 @@ function collect(
     options.now.getTime() + (options.futureSkewMs ?? 5 * 60_000);
   const oldest = options.now.getTime() - options.maxAgeDays * 86_400_000;
   const byTime = new Map<number, ReadingRow>();
-  let outsideSince = 0;
   for (const entry of entries) {
     let time = readDate(entry.time);
     const example = `${time?.value.toISOString() ?? JSON.stringify(entry.time ?? null)} ME=${String(entry.me)} AE=${String(entry.ae)}`;
@@ -88,10 +85,6 @@ function collect(
       time = created;
     } else if (time.adjusted) tally.adjust('date_from_value', example);
     const ms = time.value.getTime();
-    if (options.since !== undefined && ms < options.since.getTime()) {
-      outsideSince += 1;
-      continue;
-    }
     if (ms > futureLimit) {
       tally.reject('future_timestamp', example);
       continue;
@@ -169,7 +162,6 @@ function collect(
     mmsi,
     rows,
     read: entries.length,
-    outsideSince,
     tally,
     rejection: undefined,
   };

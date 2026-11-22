@@ -10,6 +10,8 @@ import {
 import { Report, renderMarkdown, type ReportJson } from '../report/report.js';
 import { LegacySource } from '../source/mongo.js';
 import { CheckpointStore } from '../state/checkpoints.js';
+import { Ledger } from '../state/ledger.js';
+import { StateLock } from '../state/lock.js';
 import { AuthSession } from '../target/auth-session.js';
 import { EmissionClient } from '../target/emission-client.js';
 import { FleetClient } from '../target/fleet-client.js';
@@ -188,6 +190,13 @@ async function connect(
             'Run infra/postgres/bootstrap.sql again with -v migrator_password=… after the services applied their migrations (it grants exactly these privileges to mongo_migrator).',
           ],
         );
+      if (command === 'run' && !(await history.lockHistory()))
+        throw new UsageError(
+          'another migrator run is writing history to this database (PostgreSQL advisory lock held)',
+          [
+            'Wait until it ends: two runs (even with different state directories) race on the same keys.',
+          ],
+        );
     }
     return {
       source,
@@ -229,7 +238,14 @@ function printReport(
 function summary(report: Report, output: Output): void {
   const verify = report.meta.command === 'verify';
   const columns = verify
-    ? (['expected', 'present', 'missing', 'mismatched', 'sampled'] as const)
+    ? ([
+        'expected',
+        'present',
+        'missing',
+        'mismatched',
+        'conflicts',
+        'sampled',
+      ] as const)
     : ([
         'read',
         'valid',
@@ -330,6 +346,7 @@ export async function execute(
     fresh: args.fresh,
     includeUnreferenced: args.includeUnreferenced,
     overwriteReductionFactors: args.overwriteReductionFactors,
+    overwriteV2Edits: args.overwriteV2Edits,
     sampleSize: args.sample ?? config.env.MIGRATION_SAMPLE_SIZE,
     now,
   };
@@ -348,6 +365,7 @@ export async function execute(
         fresh: options.fresh,
         includeUnreferenced: options.includeUnreferenced,
         overwriteReductionFactors: options.overwriteReductionFactors,
+        overwriteV2Edits: options.overwriteV2Edits,
         sampleSize: options.sampleSize,
       },
     },
@@ -355,8 +373,25 @@ export async function execute(
     `${command}-${timestamp(now)}`,
   );
   let connections: Connections | undefined;
+  let lock: StateLock | undefined;
+  const releaseLock = () => lock?.release();
   let exitCode: ExitCode = EXIT_CODES.ok;
   try {
+    if (command === 'run') {
+      lock = StateLock.acquire(stateDir, command, (stale) => {
+        output.warn(
+          `took over the lock of an ended run (pid ${stale.pid}, since ${stale.startedAt})`,
+        );
+      });
+      // A second Ctrl+C exits at once: the lock goes with the process.
+      process.once('exit', releaseLock);
+    } else {
+      const holder = StateLock.holder(stateDir);
+      if (holder !== undefined)
+        output.warn(
+          `a migrator ${holder.command} (pid ${holder.pid} on ${holder.host}, since ${holder.startedAt}) is running on this state directory: ${command} sees its work half done`,
+        );
+    }
     connections = await connect(config, command, entities, orgId, output);
     const legacy = new LegacyData(connections.source, now);
     const checkpoints =
@@ -369,6 +404,10 @@ export async function execute(
       report,
       output,
       checkpoints,
+      ledger:
+        command === 'plan'
+          ? undefined
+          : Ledger.open(stateDir, command === 'run'),
       targets: connections.targets,
       signal,
       stateDir,
@@ -398,6 +437,7 @@ export async function execute(
         options: { ...options, command: 'plan' },
         report: preflight,
         checkpoints: undefined,
+        ledger: undefined,
         targets: undefined,
       };
       for (const name of entities)
@@ -426,11 +466,14 @@ export async function execute(
       if (checkpoints !== undefined) {
         const passKey = sha256(
           canonical({
+            // 2: newest-first fuel documents, document-level --since.
+            layout: 2,
             entity: name,
             orgId,
             since: options.since?.toISOString() ?? null,
             unreferenced: options.includeUnreferenced,
             overwriteZ: options.overwriteReductionFactors,
+            overwriteV2: options.overwriteV2Edits,
           }),
         );
         const point = checkpoints.resumePoint(name, passKey, options.fresh);
@@ -446,21 +489,50 @@ export async function execute(
         }
         if (point.kind === 'resume')
           output.info(`${name}: resuming after ${point.afterId}`);
+        if (point.kind === 'retry') {
+          output.info(
+            `${name}: the run at ${point.completedAt} rejected ${point.retryable} document(s) for a reason on the v2 side; doing it again`,
+          );
+          entity.note(
+            `done again: the run at ${point.completedAt} rejected ${point.retryable} document(s) for a reason on the v2 side`,
+          );
+        }
         checkpoints.begin(name, passKey, point);
       }
       output.info(`${command} ${name} …`);
       try {
         await runEntity(context, name, referenceIndex);
-        entity.status = 'completed';
-        checkpoints?.complete(name, entity.counters);
+        // A step may have set `manual` (operator step pending) or `failed`
+        // (an error that does not stop the other entities).
+        if (entity.status === 'pending')
+          entity.status =
+            command === 'run' && entity.retryable > 0
+              ? 'incomplete'
+              : 'completed';
+        if (entity.status === 'completed')
+          checkpoints?.complete(name, entity.counters);
+        else if (entity.status === 'incomplete') {
+          checkpoints?.retryLater(name, entity.counters, entity.retryable);
+          if (command === 'run')
+            entity.note(
+              `${entity.retryable} document(s) rejected for a reason on the v2 side (see the issues): the next run does this entity again`,
+            );
+        }
+        // `manual` and `failed`: the checkpoint stays in progress, so the
+        // next run does the entity again.
       } catch (error) {
-        entity.status = 'failed';
+        // Interrupted: the checkpoint is kept and the same command resumes.
+        entity.status =
+          error instanceof InterruptedError ? 'interrupted' : 'failed';
         throw error;
       } finally {
         entity.durationMs = Date.now() - started;
       }
     }
 
+    const statuses = [...report.entities.values()].map(
+      (entity) => entity.status,
+    );
     if (command === 'verify') {
       const mismatches = report.total('missing') + report.total('mismatched');
       const badChecksums = [...report.entities.values()].filter(
@@ -469,7 +541,18 @@ export async function execute(
       if (mismatches > 0 || badChecksums > 0) {
         report.outcome = 'mismatch';
         exitCode = EXIT_CODES.verifyMismatch;
+      } else if (report.total('conflicts') > 0) {
+        // v2 keeps its own record for these keys, as the run decided: the
+        // data owner signs them off (runbook §9).
+        report.outcome = 'conflicts';
       }
+    } else if (statuses.includes('failed')) {
+      report.outcome = 'failed';
+      exitCode = EXIT_CODES.failed;
+    } else if (statuses.includes('manual') || statuses.includes('incomplete')) {
+      report.outcome = 'incomplete';
+      if (options.strict && report.total('rejected') > 0)
+        exitCode = EXIT_CODES.rejected;
     } else if (report.total('rejected') > 0 || report.total('conflicts') > 0) {
       report.outcome = 'rejected';
       if (options.strict) exitCode = EXIT_CODES.rejected;
@@ -500,6 +583,8 @@ export async function execute(
     }
   } finally {
     await connections?.close();
+    releaseLock();
+    process.removeListener('exit', releaseLock);
   }
   report.finishedAt = new Date();
   const files = report.write();
@@ -507,6 +592,15 @@ export async function execute(
   output.result(
     `outcome: ${report.outcome}; ${report.issueTotal} issue(s) recorded`,
   );
+  for (const entity of report.entities.values())
+    if (entity.status === 'manual' || entity.status === 'incomplete')
+      output.warn(
+        `${entity.name}: ${entity.status}: ${entity.notes[entity.notes.length - 1] ?? 'see the report'}`,
+      );
+    else if (entity.status === 'failed' && report.outcome === 'failed')
+      output.warn(
+        `${entity.name}: failed: ${entity.notes[entity.notes.length - 1] ?? 'see the report'}`,
+      );
   if (files !== undefined)
     output.result(`report: ${files.markdown}\n        ${files.json}`);
   return exitCode;

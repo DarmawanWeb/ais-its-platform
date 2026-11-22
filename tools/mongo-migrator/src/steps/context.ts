@@ -3,6 +3,7 @@ import type { Output } from '../cli/output.js';
 import type { Report, EntityReport } from '../report/report.js';
 import type { LegacySource } from '../source/mongo.js';
 import type { CheckpointStore } from '../state/checkpoints.js';
+import type { Ledger } from '../state/ledger.js';
 import type { AuthSession } from '../target/auth-session.js';
 import type { EmissionClient } from '../target/emission-client.js';
 import type { FleetClient } from '../target/fleet-client.js';
@@ -23,6 +24,12 @@ export interface RunOptions {
   readonly fresh: boolean;
   readonly includeUnreferenced: boolean;
   readonly overwriteReductionFactors: boolean;
+  /**
+   * Converge records the migration wrote that were edited in v2 since (or
+   * whose origin is unknown) back to the legacy data; without it they are
+   * kept and reported as conflicts.
+   */
+  readonly overwriteV2Edits: boolean;
   readonly sampleSize: number;
   readonly now: Date;
 }
@@ -44,6 +51,8 @@ export interface StepContext {
   readonly report: Report;
   readonly output: Output;
   readonly checkpoints: CheckpointStore | undefined;
+  /** Fingerprints of what the migration wrote (run: read and written; verify: read). */
+  readonly ledger: Ledger | undefined;
   readonly targets: Targets | undefined;
   readonly signal: AbortSignal;
   readonly stateDir: string;

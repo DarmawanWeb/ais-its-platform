@@ -40,6 +40,43 @@ export const LEGACY_COLLECTIONS = {
 export type LegacyCollection =
   (typeof LEGACY_COLLECTIONS)[keyof typeof LEGACY_COLLECTIONS];
 
+/** Options of {@link LegacySource.stream}. */
+export interface StreamOptions {
+  readonly filter?: Filter<Document> | undefined;
+  readonly afterId?: string | undefined;
+  readonly batchSize?: number;
+  readonly descending?: boolean;
+  readonly projection?: Document | undefined;
+}
+
+/**
+ * Documents created or changed at or after `since` (incremental top-up):
+ * `updatedAt` or `createdAt` (Mongoose timestamps of the MVP models), the
+ * creation time inside the ObjectId, or an item timestamp at or after it
+ * (`itemTimeField`, e.g. `positions.timestamp`). Every item of a selected
+ * document is migrated again (idempotently), so late uploads and items
+ * timestamped before `since` are not lost.
+ */
+export function changedSince(
+  since: Date,
+  itemTimeField?: string,
+): Filter<Document> {
+  return {
+    $or: [
+      { updatedAt: { $gte: since } },
+      { createdAt: { $gte: since } },
+      {
+        _id: {
+          $gte: ObjectId.createFromTime(Math.floor(since.getTime() / 1000)),
+        },
+      },
+      ...(itemTimeField === undefined
+        ? []
+        : [{ [itemTimeField]: { $gte: since } }]),
+    ],
+  };
+}
+
 /** Read-only access to the legacy database. */
 export class LegacySource {
   private constructor(
@@ -99,21 +136,25 @@ export class LegacySource {
   }
 
   /**
-   * Streams a collection in `_id` order with a server cursor (bounded
-   * memory), starting after `afterId` when resuming from a checkpoint.
+   * Streams a collection in `_id` order (newest first with `descending`)
+   * with a server cursor (bounded memory), starting after `afterId` (in that
+   * order) when resuming from a checkpoint. `projection` limits the fields
+   * read (e.g. `{ _id: 1 }` for a pass over the ids only).
    */
   async *stream(
     collection: string,
-    options: {
-      readonly filter?: Filter<Document> | undefined;
-      readonly afterId?: string | undefined;
-      readonly batchSize?: number;
-    } = {},
+    options: StreamOptions = {},
   ): AsyncGenerator<LegacyDocument> {
     const conditions: Filter<Document>[] = [];
     if (options.filter !== undefined) conditions.push(options.filter);
     if (options.afterId !== undefined && ObjectId.isValid(options.afterId))
-      conditions.push({ _id: { $gt: new ObjectId(options.afterId) } });
+      conditions.push({
+        _id: {
+          [options.descending === true ? '$lt' : '$gt']: new ObjectId(
+            options.afterId,
+          ),
+        },
+      });
     const filter: Filter<Document> =
       conditions.length === 0
         ? {}
@@ -122,8 +163,13 @@ export class LegacySource {
           : { $and: conditions };
     const cursor = this.db
       .collection(collection)
-      .find(filter)
-      .sort({ _id: 1 })
+      .find(
+        filter,
+        options.projection === undefined
+          ? {}
+          : { projection: options.projection },
+      )
+      .sort({ _id: options.descending === true ? -1 : 1 })
       .batchSize(options.batchSize ?? 100);
     try {
       for await (const doc of cursor) yield doc;

@@ -26,8 +26,11 @@ export interface ReportIssue {
  *   mapped onto an existing v2 record the migration did not create (seeds);
  * - `rejected` not migrated because invalid, `skipped` not migrated by design,
  *   `adjusted` migrated with a converted, defaulted or dropped value,
- *   `conflicts` the target already holds a different record under the key;
- * - verify: `expected`, `present`, `missing`, `mismatched`, `sampled`.
+ *   `conflicts` the target already holds a different record under the key
+ *   (v2 data, a v2 edit of a migrated record): it is kept;
+ * - verify: `expected`, `present`, `missing`, `mismatched` (a run would
+ *   change the target), `conflicts` (the target keeps its own record, as
+ *   the run decided), `sampled`.
  */
 export const COUNTER_NAMES = [
   'documents',
@@ -57,7 +60,23 @@ export class EntityReport {
   ) as Record<CounterName, number>;
   readonly issueCounts = new Map<string, number>();
   readonly notes: string[] = [];
-  status: 'pending' | 'completed' | 'failed' | 'skipped' | 'manual' = 'pending';
+  /**
+   * `completed`; `incomplete`: ran to its end, but `retryable` documents were
+   * rejected for a reason on the v2 side (the next run does the entity
+   * again); `manual`: an operator step is pending (registry import);
+   * `failed`: stopped by an error (a step may fail without stopping the
+   * run); `interrupted`; `skipped` (completed by an earlier run).
+   */
+  status:
+    | 'pending'
+    | 'completed'
+    | 'incomplete'
+    | 'failed'
+    | 'interrupted'
+    | 'skipped'
+    | 'manual' = 'pending';
+  /** Documents rejected for a reason on the v2 side that can go away (vessel not migrated yet, projection lag, service refusal). */
+  retryable = 0;
   durationMs = 0;
   checksum?:
     | {
@@ -76,6 +95,12 @@ export class EntityReport {
 
   add(counter: CounterName, amount = 1): void {
     this.counters[counter] += amount;
+  }
+
+  /** Counts a rejection whose reason is on the v2 side (also counted as `rejected`). */
+  rejectRetryable(amount = 1): void {
+    this.counters.rejected += amount;
+    this.retryable += amount;
   }
 
   note(text: string): void {
@@ -107,7 +132,20 @@ export class Report {
   readonly notes: string[] = [];
   issueTotal = 0;
   finishedAt: Date | undefined;
-  outcome: 'ok' | 'rejected' | 'failed' | 'interrupted' | 'mismatch' = 'ok';
+  /**
+   * `ok`; `rejected`: documents were rejected or kept as conflicts (reported);
+   * `incomplete`: an entity needs a retry or a manual step; `conflicts`
+   * (verify): no mismatch, but v2 keeps its own record for some keys;
+   * `mismatch` (verify); `failed`; `interrupted`.
+   */
+  outcome:
+    | 'ok'
+    | 'rejected'
+    | 'incomplete'
+    | 'conflicts'
+    | 'failed'
+    | 'interrupted'
+    | 'mismatch' = 'ok';
   private readonly issuesFile: string | undefined;
 
   constructor(
@@ -196,6 +234,7 @@ export class Report {
         writePath: entity.writePath,
         sources: entity.sources,
         status: entity.status,
+        retryable: entity.retryable,
         durationMs: entity.durationMs,
         counters: entity.counters,
         issues: Object.fromEntries(entity.issueCounts),
@@ -254,6 +293,7 @@ export interface ReportJson {
     readonly writePath: string;
     readonly sources: readonly string[];
     readonly status: string;
+    readonly retryable?: number;
     readonly durationMs: number;
     readonly counters: Readonly<Record<string, number>>;
     readonly issues: Readonly<Record<string, number>>;
@@ -288,6 +328,7 @@ const VERIFY_COLUMNS: readonly CounterName[] = [
   'present',
   'missing',
   'mismatched',
+  'conflicts',
   'sampled',
 ];
 

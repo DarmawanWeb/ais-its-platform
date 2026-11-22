@@ -51,7 +51,6 @@ export interface TranshipmentRows {
 
 export interface TranshipmentOptions {
   readonly now: Date;
-  readonly since?: Date | undefined;
   /** `TRANSHIPMENT_CRITICAL_ACCURACY` of the surveillance service (90). */
   readonly criticalAccuracy: number;
   /** Retention of events and results (2 years). */
@@ -140,16 +139,6 @@ export function transformTranshipmentResult(
       'detectedAt',
     );
   }
-  if (
-    options.since !== undefined &&
-    detectedAt.getTime() < options.since.getTime()
-  )
-    return {
-      skipped: {
-        code: 'outside_since',
-        message: `detected before --since ${options.since.toISOString()}`,
-      },
-    };
   if (
     !issues.rejected &&
     start.getTime() < options.now.getTime() - options.maxAgeDays * 86_400_000

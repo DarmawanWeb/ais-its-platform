@@ -1,4 +1,10 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -12,8 +18,10 @@ import {
   legacyCollections,
 } from '../src/__fixtures__/legacy-documents.js';
 import type { ReportJson } from '../src/report/report.js';
+import { AuthSession } from '../src/target/auth-session.js';
 import { run } from './support/processes.js';
 import {
+  ADMIN,
   Api,
   MIGRATOR_PASSWORD,
   MONGO_DB,
@@ -25,6 +33,11 @@ import {
 const CLI = resolve(import.meta.dirname, '../dist/main.js');
 const NOW = new Date();
 const HOUR = 3_600_000;
+/**
+ * Optional file that receives every CLI call with its full output (progress
+ * included), e.g. `MIGRATOR_INT_TRANSCRIPT=/tmp/migrator-int.txt pnpm test:int`.
+ */
+const TRANSCRIPT = process.env.MIGRATOR_INT_TRANSCRIPT;
 
 let stack: Stack;
 let api: Api;
@@ -71,10 +84,16 @@ function migratorEnv(): Record<string, string> {
 }
 
 async function cli(...args: string[]) {
-  const result = await run(process.execPath, [CLI, ...args, '--quiet'], {
+  const quiet = TRANSCRIPT === undefined ? ['--quiet'] : [];
+  const result = await run(process.execPath, [CLI, ...args, ...quiet], {
     env: migratorEnv(),
     timeoutMs: 600_000,
   });
+  if (TRANSCRIPT !== undefined)
+    appendFileSync(
+      TRANSCRIPT,
+      `$ ais-its-mongo-migrator ${args.join(' ')}\n${result.stdout}${result.stderr}[exit code ${String(result.code)}]\n\n`,
+    );
   return {
     ...result,
     report: (kind: string) =>
@@ -256,10 +275,25 @@ describe('mongo-migrator against the v2 services', () => {
     expect(entity(report, 'ais_positions').counters).toMatchObject({
       created: 8,
     });
+    // The telemetries reading at the time of a fueldatas log, with other
+    // values, is superseded by fueldatas (the source of the MVP's CII).
     expect(entity(report, 'fuel_readings').counters).toMatchObject({
       created: 4,
-      conflicts: 1,
+      conflicts: 0,
     });
+    expect(
+      report.issues.filter(
+        (issue) =>
+          issue.entity === 'fuel_readings' &&
+          issue.code === 'conflicting_duplicate',
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        collection: 'telemetries',
+        legacyId: '6840b0000000000000000001',
+        severity: 'rejected',
+      }),
+    ]);
     expect(entity(report, 'transhipments').counters).toMatchObject({
       created: 1,
     });
@@ -348,12 +382,13 @@ describe('mongo-migrator against the v2 services', () => {
       `/api/v2/cii/vessels/${MMSI.dharma}/annual-manual/2024`,
     );
     expect(manual).toMatchObject({ attained: 60.40916223, grade: 'C' });
-    const annual = await api.get<
-      { year: number }[] | { data: { year: number }[] }
-    >(stack.services.emission.url, `/api/v2/cii/vessels/${MMSI.dharma}/annual`);
-    const years = (Array.isArray(annual) ? annual : annual.data).map(
-      (entry) => entry.year,
+    const annual = await api.get<{
+      years: { year: number; source?: string }[];
+    }>(
+      stack.services.emission.url,
+      `/api/v2/cii/vessels/${MMSI.dharma}/annual`,
     );
+    const years = annual.years.map((entry) => entry.year);
     expect(years).toEqual(expect.arrayContaining([2023, 2024]));
 
     const from = new Date(NOW.getTime() - 2 * HOUR).toISOString();
@@ -413,8 +448,10 @@ describe('mongo-migrator against the v2 services', () => {
     const fresh = await cli('run', '--fresh');
     expect(fresh.code).toBe(0);
     const report = fresh.report('run');
+    // --fresh hands the registry export to the fleet importer again, which
+    // rewrites its rows (counted as updated); every other entity is a no-op.
     for (const entry of report.entities.filter(
-      (row) => row.name !== 'inventory',
+      (row) => row.name !== 'inventory' && row.name !== 'registry',
     )) {
       expect({
         entity: entry.name,
@@ -422,6 +459,7 @@ describe('mongo-migrator against the v2 services', () => {
         updated: entry.counters.updated,
       }).toEqual({ entity: entry.name, created: 0, updated: 0 });
     }
+    expect(entity(report, 'registry').counters.created).toBe(0);
     expect(entity(report, 'vessels').counters.unchanged).toBe(2);
     expect(entity(report, 'ais_positions').counters.unchanged).toBe(8);
     expect(await streamMessages('AIS_POSITION')).toBe(0);
@@ -447,7 +485,17 @@ describe('mongo-migrator against the v2 services', () => {
       }));
     expect(problems).toEqual([]);
     expect(verify.code).toBe(0);
-    expect(report.outcome).toBe('ok');
+    // A seeded Z value differs from the legacy one and is kept by v2
+    // (value_differs): a conflict to sign off, not a mismatch.
+    expect(report.outcome).toBe('conflicts');
+    expect(
+      report.issues.filter((issue) => issue.severity === 'conflict'),
+    ).toEqual([
+      expect.objectContaining({
+        entity: 'reduction_factors',
+        code: 'value_differs',
+      }),
+    ]);
     for (const name of [
       'vessels',
       'ais_positions',
@@ -482,5 +530,132 @@ describe('mongo-migrator against the v2 services', () => {
     const printed = await cli('report');
     expect(printed.code).toBe(0);
     expect(printed.stdout).toContain('# Mongo → v2 migration: run report');
+  });
+
+  it('auth session: renews the access token with the rotating refresh cookie', async () => {
+    // A run outlives the 15-minute access token: prove against the real auth
+    // service that renewal uses POST /auth/refresh (no Origin header, rotated
+    // aisits_rt cookie) instead of silently signing in again.
+    const calls: string[] = [];
+    const recording: typeof fetch = (input, init) => {
+      calls.push(
+        new URL(input instanceof Request ? input.url : input).pathname,
+      );
+      return fetch(input, init);
+    };
+    const session = new AuthSession(stack.services.auth.url, ADMIN, {
+      timeoutMs: 10_000,
+      retries: 0,
+      fetch: recording,
+    });
+    await session.login();
+    expect(await session.renew()).toBe(true);
+    expect(await session.renew()).toBe(true); // the rotated cookie works too
+    expect((await session.organization(orgId)).id).toBe(orgId);
+    expect(calls.filter((path) => path === '/api/v2/auth/login')).toHaveLength(
+      1,
+    );
+    expect(
+      calls.filter((path) => path === '/api/v2/auth/refresh'),
+    ).toHaveLength(2);
+  });
+
+  it('an interrupted run (SIGTERM) resumes after its checkpoint', async () => {
+    // 300 more AIS documents, so that the signal sent after the first
+    // committed document lands inside the entity.
+    const EXTRA = 300;
+    const client = new MongoClient(stack.mongoUrl);
+    await client.connect();
+    await client
+      .db(MONGO_DB)
+      .collection('ais')
+      .insertMany(
+        Array.from({ length: EXTRA }, (_, index) => ({
+          mmsi: String(525_100_000 + index),
+          isBatam: false,
+          positions: [
+            {
+              navstatus: 0,
+              predictedNavStatus: 0,
+              ewsStatus: 3,
+              lat: -7.2 + index / 10_000,
+              lon: 112.7,
+              sog: 8,
+              cog: 90,
+              hdg: 90,
+              timestamp: new Date(NOW.getTime() - 20 * 60_000),
+            },
+          ],
+        })),
+      );
+    await client.close();
+    const latest = () =>
+      entity(
+        JSON.parse(
+          readFileSync(join(stateDir, 'reports', 'latest-run.json'), 'utf8'),
+        ) as ReportJson,
+        'ais_positions',
+      );
+
+    // --fresh: the entity was completed by the runs above.
+    const interrupted = await run(
+      process.execPath,
+      [CLI, 'run', '--only', 'ais_positions', '--fresh'],
+      {
+        env: migratorEnv(),
+        timeoutMs: 600_000,
+        signalWhen: { stderr: /ais_positions: \d+ vessels/, signal: 'SIGTERM' },
+      },
+    );
+    if (TRANSCRIPT !== undefined)
+      appendFileSync(
+        TRANSCRIPT,
+        `$ ais-its-mongo-migrator run --only ais_positions --fresh   (SIGTERM after the first committed document)\n${interrupted.stdout}${interrupted.stderr}[exit code ${String(interrupted.code)}]\n\n`,
+      );
+    expect(interrupted.signalled).toBe(true);
+    expect(interrupted.code).toBe(130);
+    expect(latest().status).toBe('interrupted');
+    const first = latest().counters;
+    expect(first.documents).toBeLessThan(EXTRA);
+    const checkpoint = (
+      JSON.parse(readFileSync(join(stateDir, 'checkpoints.json'), 'utf8')) as {
+        entities: Record<string, { status: string; lastId?: string }>;
+      }
+    ).entities.ais_positions;
+    expect(checkpoint?.status).toBe('in_progress');
+    expect(checkpoint?.lastId).toMatch(/^[0-9a-f]{24}$/);
+
+    // The same command without --fresh continues after the checkpoint.
+    const resumed = await run(
+      process.execPath,
+      [CLI, 'run', '--only', 'ais_positions'],
+      { env: migratorEnv(), timeoutMs: 600_000 },
+    );
+    if (TRANSCRIPT !== undefined)
+      appendFileSync(
+        TRANSCRIPT,
+        `$ ais-its-mongo-migrator run --only ais_positions   (resume)\n${resumed.stdout}${resumed.stderr}[exit code ${String(resumed.code)}]\n\n`,
+      );
+    expect(resumed.code).toBe(0);
+    expect(resumed.stderr).toContain(
+      `ais_positions: resuming after ${String(checkpoint?.lastId)}`,
+    );
+    expect(latest().status).toBe('completed');
+    const second = latest().counters;
+    // Every new position written exactly once over both runs, none re-read
+    // from before the checkpoint (the 8 positions of the earlier runs are
+    // "unchanged" in whichever run read their documents).
+    const both = (name: string) => (first[name] ?? 0) + (second[name] ?? 0);
+    expect(both('created')).toBe(EXTRA);
+    expect(both('documents')).toBe(EXTRA + 4);
+    expect(both('unchanged')).toBe(8);
+
+    const verify = await cli('verify', '--only', 'ais_positions');
+    expect(verify.code).toBe(0);
+    expect(
+      entity(verify.report('verify'), 'ais_positions').counters,
+    ).toMatchObject({ expected: EXTRA + 8, present: EXTRA + 8, missing: 0 });
+    // Still no live event from history.
+    expect(await streamMessages('AIS_POSITION')).toBe(0);
   });
 });

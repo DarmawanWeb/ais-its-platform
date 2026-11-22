@@ -59,12 +59,17 @@ describe('transformAisDocument', () => {
     expect(result.rows).toEqual([]);
   });
 
-  it('honours --since without reporting the older positions', () => {
-    const since = new Date(NOW.getTime() - 10 * 60_000);
-    const result = transformAisDocument(docs[1] ?? {}, { ...options, since });
-    expect(result.rows).toHaveLength(1);
-    expect(result.outsideSince).toBe(3);
-    expect(result.tally.skippedCount).toBe(0);
+  it('keeps every position of a document (--since selects documents, not items)', () => {
+    // A top-up must not drop positions stored as timestamp − utc or uploaded
+    // late: the transform has no time cut-off besides retention and future.
+    const result = transformAisDocument(docs[1] ?? {}, options);
+    expect(
+      result.rows.length +
+        result.tally.rejectedCount +
+        result.tally.skippedCount,
+    ).toBe(result.read);
+    expect(result.rows.length).toBe(3);
+    expect('outsideSince' in result).toBe(false);
   });
 
   it('rejects a position with the same time but other values', () => {

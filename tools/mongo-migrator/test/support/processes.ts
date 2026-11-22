@@ -105,7 +105,11 @@ export async function startService(
   };
 }
 
-/** Runs a command; resolves with its exit code and output (never rejects on a non-zero exit). */
+/**
+ * Runs a command; resolves with its exit code and output (never rejects on a
+ * non-zero exit). `signalWhen` sends a signal once stderr matches a pattern
+ * (an operator pressing Ctrl+C at a known point of the run).
+ */
 export async function run(
   command: string,
   args: readonly string[],
@@ -113,8 +117,17 @@ export async function run(
     readonly cwd?: string;
     readonly env?: Record<string, string>;
     readonly timeoutMs?: number;
+    readonly signalWhen?: {
+      readonly stderr: RegExp;
+      readonly signal: NodeJS.Signals;
+    };
   } = {},
-): Promise<{ code: number | null; stdout: string; stderr: string }> {
+): Promise<{
+  code: number | null;
+  stdout: string;
+  stderr: string;
+  signalled: boolean;
+}> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
@@ -128,15 +141,21 @@ export async function run(
     });
     let stdout = '';
     let stderr = '';
+    let signalled = false;
     child.stdout
       .setEncoding('utf8')
       .on('data', (chunk: string) => (stdout += chunk));
-    child.stderr
-      .setEncoding('utf8')
-      .on('data', (chunk: string) => (stderr += chunk));
+    child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
+      stderr += chunk;
+      const trigger = options.signalWhen;
+      if (trigger !== undefined && !signalled && trigger.stderr.test(stderr)) {
+        signalled = true;
+        child.kill(trigger.signal);
+      }
+    });
     child.on('error', reject);
     child.on('close', (code) => {
-      resolve({ code, stdout, stderr });
+      resolve({ code, stdout, stderr, signalled });
     });
   });
 }

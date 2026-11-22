@@ -11,6 +11,7 @@ import type {
 } from '../target/dto.js';
 import { legacyCode } from '../util/ids.js';
 import { optionalString, requiredNumber, requiredString } from './fields.js';
+import { caretChange } from './formula.js';
 import { IssueCollector, type Transformed } from './issues.js';
 import { asRecord, documentId, readNumber, readString } from './values.js';
 
@@ -364,6 +365,13 @@ export function transformFuelFormula(
         `${field} is not in the safe formula grammar: ${problem}`,
         field,
       );
+    else {
+      // `^` is the one construct whose meaning changes (XOR → power):
+      // migrated as written, for the data owner to review.
+      const change = caretChange(formula);
+      if (change !== undefined)
+        issues.adjust('caret_semantics_changed', `${field} ${change}`, field);
+    }
   }
   return issues.result(() => ({
     legacyId,

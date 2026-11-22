@@ -3,18 +3,25 @@ import { dirname, join } from 'node:path';
 
 /** Progress of one entity. */
 export interface EntityCheckpoint {
-  readonly status: 'in_progress' | 'completed';
+  /**
+   * `retry`: the entity ran to its end, but documents were rejected for a
+   * reason on the v2 side that can go away (vessel not migrated yet, FLEET
+   * projection lag, a refusal of the service): the next run does it again.
+   */
+  readonly status: 'in_progress' | 'completed' | 'retry';
   /**
    * Identifies the pass (target organization, `--since`, entity options): a
    * checkpoint of another pass is ignored.
    */
   readonly passKey: string;
-  /** `_id` (hex) of the last source document fully written. */
+  /** `_id` (hex) of the last source document fully processed (written, or reported as rejected). */
   readonly lastId?: string | undefined;
   readonly startedAt: string;
   readonly updatedAt: string;
   readonly completedAt?: string | undefined;
   readonly counters?: Readonly<Record<string, number>> | undefined;
+  /** `retry`: how many documents were rejected for a reason on the v2 side. */
+  readonly retryable?: number | undefined;
 }
 
 interface CheckpointFile {
@@ -26,6 +33,11 @@ interface CheckpointFile {
 export type ResumePoint =
   | { readonly kind: 'fresh' }
   | { readonly kind: 'resume'; readonly afterId: string }
+  | {
+      readonly kind: 'retry';
+      readonly completedAt: string;
+      readonly retryable: number;
+    }
   | { readonly kind: 'completed'; readonly completedAt: string };
 
 /**
@@ -77,14 +89,30 @@ export class CheckpointStore {
         kind: 'completed',
         completedAt: checkpoint.completedAt ?? checkpoint.updatedAt,
       };
+    if (checkpoint.status === 'retry')
+      return {
+        kind: 'retry',
+        completedAt: checkpoint.completedAt ?? checkpoint.updatedAt,
+        retryable: checkpoint.retryable ?? 0,
+      };
     return checkpoint.lastId === undefined
       ? { kind: 'fresh' }
       : { kind: 'resume', afterId: checkpoint.lastId };
   }
 
+  /**
+   * Starts (or resumes) an entity. A start from scratch also discards the
+   * sub-checkpoints of the entity (`<entity>:<collection>`).
+   */
   begin(entity: string, passKey: string, resume: ResumePoint): void {
     const now = new Date().toISOString();
     const previous = this.get(entity);
+    if (resume.kind !== 'resume')
+      this.data.entities = Object.fromEntries(
+        Object.entries(this.data.entities).filter(
+          ([key]) => !key.startsWith(`${entity}:`),
+        ),
+      );
     this.data.entities[entity] = {
       status: 'in_progress',
       passKey,
@@ -119,6 +147,30 @@ export class CheckpointStore {
       updatedAt: now,
       completedAt: now,
       counters,
+    };
+    this.save();
+  }
+
+  /**
+   * The entity ran to its end with `retryable` documents rejected for a
+   * reason on the v2 side: the next run (without `--fresh`) does it again.
+   */
+  retryLater(
+    entity: string,
+    counters: Readonly<Record<string, number>>,
+    retryable: number,
+  ): void {
+    const current = this.get(entity);
+    if (current === undefined) return;
+    const now = new Date().toISOString();
+    this.data.entities[entity] = {
+      ...current,
+      status: 'retry',
+      lastId: undefined,
+      updatedAt: now,
+      completedAt: now,
+      counters,
+      retryable,
     };
     this.save();
   }

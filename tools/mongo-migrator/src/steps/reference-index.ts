@@ -115,6 +115,64 @@ export function referenceDifferences(
   return differences;
 }
 
+/**
+ * The members {@link referenceDifferences} compares, of a create DTO or a
+ * stored row alike: the canonical input of the ledger fingerprints.
+ */
+export function referenceView(
+  kind: ReferenceKind,
+  value: AnyCreate | AnyRow,
+): Record<string, unknown> {
+  switch (kind) {
+    case 'vessel_types': {
+      const v = value as CreateVesselTypeDto;
+      return {
+        name: v.name,
+        capacityUnit: v.capacityUnit,
+        a: v.a,
+        c: v.c,
+        capacityFixed: v.capacityFixed,
+        d: v.d,
+      };
+    }
+    case 'fuels': {
+      const v = value as CreateFuelDto;
+      return {
+        name: v.name,
+        carbonContent: v.carbonContent,
+        conversionFactor: v.conversionFactor,
+        density: v.density,
+      };
+    }
+    case 'engines': {
+      const v = value as CreateEngineDto;
+      return {
+        kind: v.kind,
+        name: v.name,
+        rpm: v.rpm,
+        powerKw: v.powerKw,
+        sfoc: v.sfoc,
+      };
+    }
+    case 'fuel_formulas': {
+      const v = value as CreateFuelFormulaDto;
+      return {
+        mainEngineFormula: v.mainEngineFormula,
+        auxiliaryEngineFormula: v.auxiliaryEngineFormula,
+      };
+    }
+    case 'ports': {
+      const v = value as CreatePortDto;
+      return {
+        name: v.name,
+        administrativeLocation: v.administrativeLocation,
+        lon: v.location.coordinates[0],
+        lat: v.location.coordinates[1],
+      };
+    }
+  }
+}
+
 /** `true` when an existing v2 row is the same reference as the legacy one (seed reuse). */
 function equivalent(
   kind: ReferenceKind,

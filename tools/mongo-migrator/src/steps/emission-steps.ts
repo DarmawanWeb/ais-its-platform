@@ -2,6 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import type { EntityReport } from '../report/report.js';
 import { LEGACY_COLLECTIONS } from '../source/mongo.js';
+import { divergence } from '../state/ledger.js';
 import type {
   AnnualManualDto,
   PutAnnualManualDto,
@@ -17,6 +18,7 @@ import {
   type ReductionFactorRow,
 } from '../transform/cii.js';
 import { documentId, nearlyEqual } from '../transform/values.js';
+import { sha256 } from '../util/ids.js';
 import {
   canonical,
   checksum,
@@ -102,11 +104,18 @@ export async function reductionFactorsStep(
         if (
           !nearlyEqual(stored.zPercent, row.zPercent) &&
           !options.overwriteReductionFactors
-        )
-          entity.note(
-            `${row.year}: v2 keeps Z = ${stored.zPercent} % (legacy ${row.zPercent} %), see the run report conflict`,
-          );
-        else if (!nearlyEqual(stored.zPercent, row.zPercent)) {
+        ) {
+          // The run keeps the v2 value (value_differs): a conflict, not a mismatch.
+          entity.add('conflicts');
+          report.issue({
+            entity: entity.name,
+            severity: 'conflict',
+            collection,
+            legacyId: row.legacyId,
+            code: 'value_differs',
+            message: `v2 keeps Z ${row.year} = ${stored.zPercent} % (${stored.source}); legacy ${row.zPercent} %`,
+          });
+        } else if (!nearlyEqual(stored.zPercent, row.zPercent)) {
           entity.add('mismatched');
           report.issue({
             entity: entity.name,
@@ -159,6 +168,39 @@ function requireEmission(context: StepContext): EmissionClient {
   return emission;
 }
 
+/** Fingerprint of the values wanted from a legacy annual CII entry (ledger). */
+function bodyFingerprint(body: PutAnnualManualDto): string {
+  return sha256(
+    canonical({
+      attained: body.attained,
+      distanceNm: body.distanceNm,
+      fuelMeTon: body.fuelMeTon,
+      fuelAeTon: body.fuelAeTon,
+      required: body.required ?? null,
+      rating: body.rating ?? null,
+      grade: body.grade ?? null,
+      co2Ton: body.co2Ton ?? null,
+    }),
+  );
+}
+
+/** Fingerprint of a stored manual record, note included (ledger). */
+function recordFingerprint(record: AnnualManualDto): string {
+  return sha256(
+    canonical({
+      attained: record.attained,
+      distanceNm: record.distanceNm,
+      fuelMeTon: record.fuelMeTon,
+      fuelAeTon: record.fuelAeTon,
+      required: record.required,
+      rating: record.rating,
+      grade: record.grade,
+      co2Ton: record.co2Ton,
+      note: record.note,
+    }),
+  );
+}
+
 function sameRecord(want: PutAnnualManualDto, have: AnnualManualDto): boolean {
   const same = (a: number | undefined, b: number | null) =>
     a === undefined ? true : b !== null && nearlyEqual(a, b);
@@ -194,16 +236,21 @@ async function lookupWithProjectionWait(
  * Legacy annual CII (`annualciis`) → manual annual records
  * (`PUT /cii/vessels/:mmsi/annual-manual/:year`, `vessel:write`, audited).
  * Spec §15.3: they only fill years without segment data. Records of vessels
- * that were not migrated are rejected (tenancy: they would have no owner).
+ * that were not migrated are rejected (tenancy: they would have no owner);
+ * when the legacy ship is valid, the vessel may just not exist yet and the
+ * next run tries again. A record entered in v2 (no import note) is never
+ * replaced; an imported record edited in v2 is kept (ledger) unless
+ * `--overwrite-v2-edits`.
  */
 export async function annualCiiStep(
   context: StepContext,
   entity: EntityReport,
 ): Promise<void> {
-  const { report, options, source } = context;
+  const { report, options, source, ledger } = context;
   const collection = LEGACY_COLLECTIONS.annualCii;
   const migrated =
     options.command === 'plan' ? undefined : await migratedMmsis(context);
+  const intended = (await context.legacy.ships()).intendedMmsis;
   const emission =
     options.command === 'plan' ? undefined : requireEmission(context);
   const sampleSet = new Set<string>();
@@ -247,14 +294,18 @@ export async function annualCiiStep(
       }
       const row = entry.result.value;
       if (migrated !== undefined && !migrated.has(row.mmsi)) {
-        entity.add('rejected');
+        const waiting = intended.has(row.mmsi);
+        if (waiting) entity.rejectRetryable();
+        else entity.add('rejected');
         report.issue({
           entity: entity.name,
           severity: 'rejected',
           collection,
           legacyId: id,
-          code: 'vessel_not_migrated',
-          message: `MMSI ${row.mmsi} is not a migrated vessel of the target organization`,
+          code: waiting ? 'vessel_not_migrated' : 'vessel_not_in_migration',
+          message: waiting
+            ? `MMSI ${row.mmsi} is not (yet) a migrated vessel of the target organization (see the vessels entity); the next run tries again`
+            : `MMSI ${row.mmsi} has no Ship document the migration creates a vessel from`,
         });
         continue;
       }
@@ -294,7 +345,8 @@ export async function annualCiiStep(
       entry.year,
     );
     if (lookup.kind === 'vessel_unknown') {
-      entity.add(options.command === 'verify' ? 'missing' : 'rejected');
+      if (options.command === 'verify') entity.add('missing');
+      else entity.rejectRetryable();
       report.issue({
         entity: entity.name,
         severity: options.command === 'verify' ? 'mismatch' : 'rejected',
@@ -320,18 +372,43 @@ export async function annualCiiStep(
         continue;
       }
       entity.add('present');
-      if (!sameRecord(entry.body, lookup.record)) {
-        entity.add('mismatched');
-        report.issue({
-          entity: entity.name,
-          severity: 'mismatch',
-          collection,
-          legacyId: entry.legacyId,
-          code: 'different',
-          message: `manual record ${entry.mmsi}/${entry.year} differs`,
-        });
+      const same = sameRecord(entry.body, lookup.record);
+      if (!same) {
+        const verdict = (lookup.record.note ?? '').startsWith(
+          IMPORT_NOTE_PREFIX,
+        )
+          ? divergence(
+              ledger?.get(entity.name, entry.legacyId),
+              bodyFingerprint(entry.body),
+              recordFingerprint(lookup.record),
+            )
+          : ({ kind: 'kept', code: 'manual_record_exists' } as const);
+        if (verdict.kind === 'legacy_changed') {
+          entity.add('mismatched');
+          report.issue({
+            entity: entity.name,
+            severity: 'mismatch',
+            collection,
+            legacyId: entry.legacyId,
+            code: 'legacy_changed',
+            message: `the legacy entry changed after the migration wrote manual record ${entry.mmsi}/${entry.year}; a run converges it`,
+          });
+        } else if (verdict.kind === 'kept') {
+          entity.add('conflicts');
+          report.issue({
+            entity: entity.name,
+            severity: 'conflict',
+            collection,
+            legacyId: entry.legacyId,
+            code: verdict.code,
+            message:
+              verdict.code === 'manual_record_exists'
+                ? `manual record ${entry.mmsi}/${entry.year} was entered in v2; the migration keeps it`
+                : `manual record ${entry.mmsi}/${entry.year} differs (${verdict.code === 'changed_in_v2' ? 'changed in v2 after the migration wrote it' : 'origin unknown'}); the migration keeps it`,
+          });
+        }
       }
-      if (sampleSet.has(entry.legacyId)) {
+      if (same && sampleSet.has(entry.legacyId)) {
         entity.add('sampled');
         const pick = (record: {
           attained: number;
@@ -351,9 +428,17 @@ export async function annualCiiStep(
       }
       continue;
     }
+    const source = bodyFingerprint(entry.body);
     if (lookup.kind === 'found') {
+      const target = recordFingerprint(lookup.record);
       if (sameRecord(entry.body, lookup.record)) {
         entity.add('unchanged');
+        if (lookup.record.note?.startsWith(IMPORT_NOTE_PREFIX) === true)
+          ledger?.record(entity.name, entry.legacyId, {
+            source,
+            target,
+            outcome: 'written',
+          });
         continue;
       }
       if (!(lookup.record.note ?? '').startsWith(IMPORT_NOTE_PREFIX)) {
@@ -369,12 +454,70 @@ export async function annualCiiStep(
         strictCheck(context, entity);
         continue;
       }
-      await emission.putAnnualManual(entry.mmsi, entry.year, entry.body);
+      const verdict = divergence(
+        ledger?.get(entity.name, entry.legacyId),
+        source,
+        target,
+      );
+      if (verdict.kind === 'deliberate') {
+        entity.add('unchanged');
+        continue;
+      }
+      if (verdict.kind === 'kept' && !options.overwriteV2Edits) {
+        entity.add('conflicts');
+        report.issue({
+          entity: entity.name,
+          severity: 'conflict',
+          collection,
+          legacyId: entry.legacyId,
+          code: verdict.code,
+          message: `imported manual record ${entry.mmsi}/${entry.year} differs from the legacy entry (${verdict.code === 'changed_in_v2' ? 'changed in v2 after the migration wrote it' : 'no ledger record of the migration writing it'}); kept (--overwrite-v2-edits restores the legacy values)`,
+        });
+        ledger?.record(entity.name, entry.legacyId, {
+          source,
+          target,
+          outcome: 'kept',
+          code: verdict.code,
+        });
+        strictCheck(context, entity);
+        continue;
+      }
+      const written = await emission.putAnnualManual(
+        entry.mmsi,
+        entry.year,
+        entry.body,
+      );
       entity.add('updated');
+      report.issue({
+        entity: entity.name,
+        severity: 'adjusted',
+        collection,
+        legacyId: entry.legacyId,
+        code:
+          verdict.kind === 'legacy_changed' ? 'converged' : 'overwrote_v2_edit',
+        message:
+          verdict.kind === 'legacy_changed'
+            ? `the legacy entry changed since the migration wrote manual record ${entry.mmsi}/${entry.year}: replaced`
+            : `manual record ${entry.mmsi}/${entry.year} (${verdict.code}) set back to the legacy values (--overwrite-v2-edits)`,
+      });
+      ledger?.record(entity.name, entry.legacyId, {
+        source,
+        target: recordFingerprint(written),
+        outcome: 'written',
+      });
       continue;
     }
-    await emission.putAnnualManual(entry.mmsi, entry.year, entry.body);
+    const written = await emission.putAnnualManual(
+      entry.mmsi,
+      entry.year,
+      entry.body,
+    );
     entity.add('created');
+    ledger?.record(entity.name, entry.legacyId, {
+      source,
+      target: recordFingerprint(written),
+      outcome: 'written',
+    });
     context.output.progress(
       entity.name,
       `${entity.name}: ${entity.counters.created} created, ${entity.counters.unchanged} unchanged`,

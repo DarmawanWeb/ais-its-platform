@@ -1,9 +1,12 @@
 import type { EntityReport } from '../report/report.js';
+import { divergence } from '../state/ledger.js';
 import type { CreatePortDto } from '../target/dto.js';
 import { isHttpError } from '../target/http.js';
 import { REFERENCE_KINDS, type ReferenceKind } from '../transform/reference.js';
 import { documentId } from '../transform/values.js';
+import { sha256 } from '../util/ids.js';
 import {
+  canonical,
   requireTargets,
   strictCheck,
   throwIfInterrupted,
@@ -12,8 +15,14 @@ import {
 import {
   RESOURCE_OF,
   referenceDifferences,
+  referenceView,
   type ReferenceIndex,
 } from './reference-index.js';
+
+const fingerprint = (
+  kind: ReferenceKind,
+  value: Parameters<typeof referenceView>[1],
+) => sha256(canonical(referenceView(kind, value)));
 
 /** Reference entities in dependency order. */
 export { REFERENCE_KINDS };
@@ -23,7 +32,11 @@ export { REFERENCE_KINDS };
  * (`reference:write`): legacy rows used by a migrated ship (all rows with
  * `--include-unreferenced`) become `legacy_<ObjectId>` rows, unless the v2
  * catalog already holds the same reference (IMO seeds, case-study samples,
- * a port of the same code), which is then reused.
+ * a port of the same code), which is then reused. A `legacy_<ObjectId>` row
+ * that differs from its legacy document is converged only when it still
+ * holds what the migration wrote (ledger) and the legacy document changed;
+ * a row edited in v2 is kept and reported as a conflict unless
+ * `--overwrite-v2-edits`.
  */
 export async function referenceStep(
   context: StepContext,
@@ -120,15 +133,33 @@ export async function referenceStep(
           match.kind === 'owned'
             ? referenceDifferences(kind, dto, match.row)
             : [];
-        if (differences.length > 0) {
+        const verdict =
+          differences.length === 0
+            ? undefined
+            : divergence(
+                context.ledger?.get(entity.name, legacyId),
+                fingerprint(kind, dto),
+                fingerprint(kind, match.row),
+              );
+        if (verdict?.kind === 'legacy_changed') {
           entity.add('mismatched');
           report.issue({
             entity: entity.name,
             severity: 'mismatch',
             collection: entry.collection,
             legacyId,
-            code: 'different',
-            message: `v2 row ${match.row.id} differs in ${differences.join(', ')}`,
+            code: 'legacy_changed',
+            message: `the legacy document changed after the migration wrote v2 row ${match.row.id} (${differences.join(', ')}); a run converges it`,
+          });
+        } else if (verdict?.kind === 'kept') {
+          entity.add('conflicts');
+          report.issue({
+            entity: entity.name,
+            severity: 'conflict',
+            collection: entry.collection,
+            legacyId,
+            code: verdict.code,
+            message: `v2 row ${match.row.id} differs in ${differences.join(', ')} (${verdict.code === 'changed_in_v2' ? 'changed in v2 after the migration wrote it' : 'origin unknown'}); the migration keeps it`,
           });
         }
       }
@@ -155,10 +186,46 @@ export async function referenceStep(
       continue;
     }
     if (match.kind === 'owned') {
+      const source = fingerprint(kind, dto);
+      const target = fingerprint(kind, match.row);
       const differences = referenceDifferences(kind, dto, match.row);
+      index.remember(kind, legacyId, match.row);
       if (differences.length === 0) {
         entity.add('unchanged');
-        index.remember(kind, legacyId, match.row);
+        context.ledger?.record(entity.name, legacyId, {
+          source,
+          target,
+          outcome: 'written',
+        });
+        continue;
+      }
+      const verdict = divergence(
+        context.ledger?.get(entity.name, legacyId),
+        source,
+        target,
+      );
+      if (verdict.kind === 'deliberate') {
+        entity.add('unchanged');
+        continue;
+      }
+      if (verdict.kind === 'kept' && !options.overwriteV2Edits) {
+        // The vessels keep using the row, with its v2 values.
+        entity.add('conflicts');
+        report.issue({
+          entity: entity.name,
+          severity: 'conflict',
+          collection: entry.collection,
+          legacyId,
+          code: verdict.code,
+          message: `v2 row ${match.row.id} differs from the legacy document in ${differences.join(', ')} (${verdict.code === 'changed_in_v2' ? 'changed in v2 after the migration wrote it' : 'no ledger record of the migration writing it'}); kept (--overwrite-v2-edits restores the legacy values)`,
+        });
+        context.ledger?.record(entity.name, legacyId, {
+          source,
+          target,
+          outcome: 'kept',
+          code: verdict.code,
+        });
+        strictCheck(context, entity);
         continue;
       }
       const patch = Object.fromEntries(
@@ -170,16 +237,39 @@ export async function referenceStep(
       );
       const updated = await fleet.patch(resource, match.row.id, patch);
       entity.add('updated');
+      report.issue({
+        entity: entity.name,
+        severity: 'adjusted',
+        collection: entry.collection,
+        legacyId,
+        code:
+          verdict.kind === 'legacy_changed' ? 'converged' : 'overwrote_v2_edit',
+        message:
+          verdict.kind === 'legacy_changed'
+            ? `the legacy document changed since the migration wrote v2 row ${match.row.id}: updated (${differences.join(', ')})`
+            : `v2 row ${match.row.id} (${verdict.code}) set back to the legacy values (--overwrite-v2-edits): ${differences.join(', ')}`,
+      });
       index.remember(kind, legacyId, updated);
+      context.ledger?.record(entity.name, legacyId, {
+        source,
+        target: fingerprint(kind, updated),
+        outcome: 'written',
+      });
       continue;
     }
     try {
       const created = await fleet.create(resource, dto);
       entity.add('created');
       index.remember(kind, legacyId, created);
+      context.ledger?.record(entity.name, legacyId, {
+        source: fingerprint(kind, dto),
+        target: fingerprint(kind, created),
+        outcome: 'written',
+      });
     } catch (error) {
       if (isHttpError(error, 400)) {
-        entity.add('rejected');
+        // A refusal of the service: the next run tries again.
+        entity.rejectRetryable();
         report.issue({
           entity: entity.name,
           severity: 'rejected',

@@ -36,8 +36,6 @@ export interface PositionRow {
 /** Options of the history transforms. */
 export interface HistoryOptions {
   readonly now: Date;
-  /** Only items at or after this time (incremental runs, `--since`). */
-  readonly since?: Date | undefined;
   /** Items older than this many days are outside the target retention. */
   readonly maxAgeDays: number;
   /** Future tolerance (receiver clock skew), ms. */
@@ -53,8 +51,6 @@ export interface AisDocumentResult {
   readonly rows: PositionRow[];
   /** Positions in the document. */
   readonly read: number;
-  /** Positions before `--since` (not counted as issues). */
-  readonly outsideSince: number;
   readonly tally: ItemTally;
   /** Set when the whole document is rejected (invalid MMSI). */
   readonly rejection: Issue | undefined;
@@ -108,7 +104,6 @@ export function transformAisDocument(
       source,
       rows: [],
       read: positions.length,
-      outsideSince: 0,
       tally,
       rejection: {
         code: 'invalid_mmsi',
@@ -120,7 +115,6 @@ export function transformAisDocument(
     options.now.getTime() + (options.futureSkewMs ?? 5 * 60_000);
   const oldest = options.now.getTime() - options.maxAgeDays * 86_400_000;
   const byTime = new Map<number, PositionRow>();
-  let outsideSince = 0;
   for (const raw of positions) {
     const position = asRecord(raw);
     if (position === undefined) {
@@ -135,10 +129,6 @@ export function transformAisDocument(
     }
     if (time.adjusted) tally.adjust('date_from_value', example);
     const ms = time.value.getTime();
-    if (options.since !== undefined && ms < options.since.getTime()) {
-      outsideSince += 1;
-      continue;
-    }
     if (ms > futureLimit) {
       tally.reject('future_timestamp', example);
       continue;
@@ -261,7 +251,6 @@ export function transformAisDocument(
     source,
     rows,
     read: positions.length,
-    outsideSince,
     tally,
     rejection: undefined,
   };

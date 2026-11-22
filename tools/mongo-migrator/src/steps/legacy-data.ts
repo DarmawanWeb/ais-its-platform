@@ -40,6 +40,12 @@ export interface ShipSelection {
   }[];
   /** IMO numbers dropped because an earlier selected ship holds the same IMO. */
   readonly imoDropped: ReadonlyMap<string, string>;
+  /**
+   * MMSIs whose selected ship transforms against the legacy references: the
+   * vessels the migration means to create. A record of another MMSI can
+   * never get a vessel; a record of one of these waits for its vessel.
+   */
+  readonly intendedMmsis: ReadonlySet<number>;
 }
 
 /**
@@ -215,21 +221,19 @@ export class LegacyData {
       else list.push(doc);
     }
     const winners: LegacyDocument[] = [];
+    const intendedMmsis = new Set<number>();
     for (const [mmsi, docs] of byMmsi) {
       const newestFirst = [...docs].sort((a, b) =>
         documentId(a) < documentId(b) ? 1 : -1,
       );
-      const winner =
-        newestFirst.find(
-          (doc) =>
-            transformShip(
-              doc,
-              sub,
-              refs,
-              '00000000-0000-7000-8000-000000000000',
-            ).ok,
-        ) ?? newestFirst[0];
+      const valid = newestFirst.find(
+        (doc) =>
+          transformShip(doc, sub, refs, '00000000-0000-7000-8000-000000000000')
+            .ok,
+      );
+      const winner = valid ?? newestFirst[0];
       if (winner === undefined) continue;
+      if (valid !== undefined) intendedMmsis.add(mmsi);
       winners.push(winner);
       for (const doc of newestFirst)
         if (doc !== winner)
@@ -261,7 +265,7 @@ export class LegacyData {
           `IMO ${imo} is also used by Ship ${owner} (vessels.imo is unique); dropped`,
         );
     }
-    return { winners, rejected, imoDropped };
+    return { winners, rejected, imoDropped, intendedMmsis };
   }
 
   /** Legacy reference ids used by the selected ships, per kind. */

@@ -14,6 +14,7 @@ import { LEGACY_COLLECTIONS } from '../source/mongo.js';
 import { runRegistryImport } from '../target/registry-import.js';
 import { checkSecondaryShip, toImportJson } from '../transform/registry.js';
 import { documentId } from '../transform/values.js';
+import { errorMessage } from '../util/errors.js';
 import {
   canonical,
   checksum,
@@ -32,7 +33,9 @@ const COLLECTION = LEGACY_COLLECTIONS.secondaryShips;
  * migration exports the valid documents as NDJSON and hands them to the
  * service's own importer (`pnpm registry:import`, run through
  * `FLEET_REGISTRY_IMPORT_CMD`); without that command the step stops at the
- * export and reports the manual command.
+ * export, reports the manual command and stays `manual` (its checkpoint is
+ * not completed, so a later run with the command imports it). A failing
+ * importer marks the entity `failed` without stopping the other entities.
  */
 export async function registryStep(
   context: StepContext,
@@ -139,30 +142,67 @@ export async function registryStep(
   }
   const command = context.config.env.FLEET_REGISTRY_IMPORT_CMD;
   // The fleet importer rewrites every existing row (updated_at bumps) even when
-  // nothing changed, so an identical export is not handed to it again.
+  // nothing changed, so an export identical to the one imported into this
+  // target is not handed to it again, once a sample of it is verified there
+  // (a restored snapshot or another target gets it again).
   const digest = createHash('sha256').update(readFileSync(file)).digest('hex');
   const marker = join(exportDir, 'secondaryships.imported.json');
+  const target = context.config.urls.fleet ?? '';
   const previous = existsSync(marker)
     ? (JSON.parse(readFileSync(marker, 'utf8')) as {
         sha256?: string;
         importedAt?: string;
+        target?: string;
       })
     : undefined;
-  if (previous?.sha256 === digest) {
-    entity.add('unchanged', valid.length);
-    entity.note(
-      `export identical to the one imported at ${previous.importedAt ?? '?'}; not imported again (delete ${marker} to force it)`,
+  if (
+    !options.fresh &&
+    previous?.sha256 === digest &&
+    previous.target === target
+  ) {
+    const lastByMmsi = new Map(valid.map((row) => [row.mmsi, row]));
+    const sample = sampleKeys(
+      lastByMmsi.keys(),
+      Math.min(lastByMmsi.size, Math.max(5, Math.ceil(options.sampleSize / 5))),
     );
-    return;
+    let verified = 0;
+    for (const mmsi of sample) {
+      const stored = await fleet.registryEntry(mmsi);
+      const want = lastByMmsi.get(mmsi);
+      if (stored === undefined || want === undefined) break;
+      if (stored.name !== want.name.slice(0, 200)) break;
+      verified += 1;
+    }
+    if (verified === sample.length) {
+      entity.add('unchanged', verified);
+      entity.add('skipped', valid.length - verified);
+      entity.note(
+        `export identical to the one imported into ${target} at ${previous.importedAt ?? '?'} and ${verified} sampled row(s) present: not imported again (${valid.length - verified} row(s) not checked one by one; --fresh imports it again)`,
+      );
+      return;
+    }
+    entity.note(
+      `export identical to the one imported at ${previous.importedAt ?? '?'}, but a sampled row is missing or different in ${target}: imported again`,
+    );
   }
   if (command === undefined) {
     entity.status = 'manual';
     entity.note(
-      `Exported ${valid.length} documents to ${file}. Import them with the fleet service: pnpm registry:import ${file}`,
+      `Exported ${valid.length} documents to ${file}; not imported (FLEET_REGISTRY_IMPORT_CMD is empty). Import them with the fleet service (pnpm registry:import ${file}), or set FLEET_REGISTRY_IMPORT_CMD and run again`,
     );
     return;
   }
-  const result = await runRegistryImport(command, file);
+  let result: Awaited<ReturnType<typeof runRegistryImport>>;
+  try {
+    result = await runRegistryImport(command, file);
+  } catch (error) {
+    // The other entities do not depend on the registry: report and go on.
+    entity.status = 'failed';
+    entity.note(
+      `fleet importer failed: ${errorMessage(error)} (FLEET_REGISTRY_IMPORT_CMD runs through /bin/sh in the current directory)`,
+    );
+    return;
+  }
   entity.add('created', result.inserted);
   entity.add('updated', result.updated);
   entity.add(
@@ -189,7 +229,7 @@ export async function registryStep(
   );
   writeFileSync(
     marker,
-    `${JSON.stringify({ sha256: digest, importedAt: new Date().toISOString(), report: result }, null, 2)}\n`,
+    `${JSON.stringify({ sha256: digest, importedAt: new Date().toISOString(), target, report: result }, null, 2)}\n`,
   );
   strictCheck(context, entity);
 }
