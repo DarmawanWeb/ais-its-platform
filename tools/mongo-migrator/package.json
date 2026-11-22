@@ -1,0 +1,50 @@
+{
+  "name": "@darmawanweb/ais-its-mongo-migrator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "One-off migration of the AIS-ITS MVP MongoDB data into the v2 services (fleet, emission, ais, telemetry, surveillance) through their APIs and, for history, least-privilege SQL",
+  "license": "UNLICENSED",
+  "author": "DarmawanWeb",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "bin": {
+    "ais-its-mongo-migrator": "dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --enable-source-maps dist/main.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:int": "vitest run --config vitest.int.config.ts",
+    "test:all": "pnpm run test && pnpm run test:int",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "clean": "node -e \"for (const p of ['dist', 'coverage']) require('node:fs').rmSync(p, { recursive: true, force: true })\""
+  },
+  "dependencies": {
+    "@darmawanweb/ais-its-contracts": "^0.3.0",
+    "mongodb": "^7.9.1",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@darmawanweb/ais-its-nest": "^0.2.0",
+    "@eslint/js": "^9.39.5",
+    "@nestjs/testing": "^12.6.0",
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "testcontainers": "^12.2.2",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^4.1.12"
+  }
+}

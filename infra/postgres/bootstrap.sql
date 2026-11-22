@@ -16,6 +16,9 @@
 --     -f infra/postgres/bootstrap.sql
 --
 -- Optional: -v db_name=<name> (default "aisits").
+-- Optional: -v migrator_password='…' enables the LOGIN of the role mongo_migrator
+-- (one-off MongoDB → v2 migration, tools/mongo-migrator); every run without it
+-- (or with an empty value) converges that role to NOLOGIN. See step 5b.
 --
 -- Guarantees
 --   * Idempotent: every statement is create-if-missing or converging, so the
@@ -45,6 +48,10 @@ SET client_min_messages = warning;   -- hide "already exists, skipping" notices 
 \if :{?db_name}
 \else
   \set db_name aisits
+\endif
+\if :{?migrator_password}
+\else
+  \set migrator_password ''
 \endif
 
 -- -----------------------------------------------------------------------------
@@ -114,7 +121,8 @@ SELECT set_config('aisits.auth_svc_password',         :'auth_svc_password',     
        set_config('aisits.safety_svc_password',       :'safety_svc_password',       false),
        set_config('aisits.surveillance_svc_password', :'surveillance_svc_password', false),
        set_config('aisits.notify_svc_password',       :'notify_svc_password',       false),
-       set_config('aisits.tiles_ro_password',         :'tiles_ro_password',         false) \gset bootstrap_
+       set_config('aisits.tiles_ro_password',         :'tiles_ro_password',         false),
+       set_config('aisits.migrator_password',         :'migrator_password',         false) \gset bootstrap_
 
 -- Steps 2–5 commit together or not at all (psql stops at the first error and
 -- the open transaction is rolled back when it disconnects).
@@ -246,6 +254,69 @@ BEGIN
   END LOOP;
 END
 $services$;
+
+-- -----------------------------------------------------------------------------
+-- 5b. mongo_migrator — least-privilege role of the one-off MongoDB → v2
+--     migration (tools/mongo-migrator, docs/migration/MONGO_TO_V2.md). It writes
+--     only the history that the services must not replay as live events:
+--     ais.positions (+ ais.vessel_latest), telemetry.fuel_readings and the
+--     legacy transhipment results (surveillance.events, transhipment_results).
+--     No outbox, no publication queue, no DDL, no other table or schema; master
+--     data goes through the service APIs. NOLOGIN unless -v migrator_password
+--     is given, so the role is disabled outside the migration window. The table
+--     grants need the service tables: run this script again after the services
+--     have applied their migrations (tables that do not exist yet are skipped).
+-- -----------------------------------------------------------------------------
+DO $migrator$
+DECLARE
+  migrator_password text := current_setting('aisits.migrator_password');
+  admin_is_superuser boolean := (SELECT rolsuper FROM pg_roles WHERE rolname = current_user);
+  existing record;
+  g record;
+BEGIN
+  SELECT rolsuper, rolreplication, rolbypassrls, rolcreatedb, rolcreaterole
+    INTO existing FROM pg_roles WHERE rolname = 'mongo_migrator';
+  IF NOT FOUND THEN
+    CREATE ROLE mongo_migrator NOLOGIN NOINHERIT;
+  ELSE
+    IF existing.rolsuper OR existing.rolreplication OR existing.rolbypassrls THEN
+      IF NOT admin_is_superuser THEN
+        RAISE EXCEPTION 'bootstrap.sql: role mongo_migrator has SUPERUSER, REPLICATION or BYPASSRLS'
+          USING HINT = 'Only a superuser can remove them: ALTER ROLE mongo_migrator NOSUPERUSER NOREPLICATION NOBYPASSRLS;';
+      END IF;
+      ALTER ROLE mongo_migrator NOSUPERUSER NOREPLICATION NOBYPASSRLS;
+    END IF;
+    IF existing.rolcreatedb THEN ALTER ROLE mongo_migrator NOCREATEDB; END IF;
+    IF existing.rolcreaterole THEN ALTER ROLE mongo_migrator NOCREATEROLE; END IF;
+  END IF;
+  IF migrator_password <> '' THEN
+    EXECUTE format('ALTER ROLE mongo_migrator LOGIN NOINHERIT PASSWORD %L', migrator_password);
+  ELSE
+    ALTER ROLE mongo_migrator NOLOGIN NOINHERIT PASSWORD NULL;
+  END IF;
+  ALTER ROLE mongo_migrator SET search_path = public;
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO mongo_migrator', current_database());
+  GRANT USAGE ON SCHEMA public TO mongo_migrator;   -- PostGIS / TimescaleDB functions
+  FOR g IN
+    SELECT * FROM (VALUES
+      ('ais',          'positions',                 'SELECT, INSERT'),
+      ('ais',          'vessel_latest',             'SELECT, INSERT, UPDATE'),
+      ('telemetry',    'fuel_readings',             'SELECT, INSERT'),
+      ('telemetry',    'fuel_readings_unpublished', 'SELECT'),
+      ('surveillance', 'events',                    'SELECT, INSERT'),
+      ('surveillance', 'transhipment_results',      'SELECT, INSERT')) AS t(schema_name, table_name, privileges)
+  LOOP
+    EXECUTE format('GRANT USAGE ON SCHEMA %I TO mongo_migrator', g.schema_name);
+    CONTINUE WHEN to_regclass(format('%I.%I', g.schema_name, g.table_name)) IS NULL;   -- not migrated yet
+    BEGIN
+      EXECUTE format('GRANT %s ON TABLE %I.%I TO mongo_migrator', g.privileges, g.schema_name, g.table_name);
+    EXCEPTION WHEN insufficient_privilege THEN
+      RAISE WARNING 'bootstrap.sql: % cannot grant % on %.% to mongo_migrator; grant it as the table owner',
+        current_user, g.privileges, g.schema_name, g.table_name;
+    END;
+  END LOOP;
+END
+$migrator$;
 
 COMMIT;
 

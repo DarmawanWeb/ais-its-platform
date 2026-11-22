@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Test output
+coverage/
+
+# Migration state, checkpoints, exports and reports (may contain legacy data)
+.migration-state/
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# Environment (only the example is committed)
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.swp

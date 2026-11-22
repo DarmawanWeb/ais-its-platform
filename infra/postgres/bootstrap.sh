@@ -7,7 +7,10 @@
 #                                    committed (database + 9 owned schemas)
 #
 # Feeds the role passwords of the container environment (AUTH_SVC_PASSWORD …,
-# from infra/compose/.env) into bootstrap.sql. bootstrap.sql is idempotent and
+# from infra/compose/.env) into bootstrap.sql. MIGRATOR_PASSWORD is optional:
+# set it only for the MongoDB → v2 migration window (role mongo_migrator, see
+# docs/migration/MONGO_TO_V2.md); unset, the role stays NOLOGIN.
+# bootstrap.sql is idempotent and
 # transactional, so running it on every start is safe and applies password
 # changes; a failure makes `docker compose up` fail with psql's error.
 #
@@ -46,4 +49,5 @@ exec "${PSQL[@]}" -d postgres \
   -v surveillance_svc_password="$SURVEILLANCE_SVC_PASSWORD" \
   -v notify_svc_password="$NOTIFY_SVC_PASSWORD" \
   -v tiles_ro_password="$TILES_RO_PASSWORD" \
+  -v migrator_password="${MIGRATOR_PASSWORD:-}" \
   -f /opt/aisits/postgres/bootstrap.sql
