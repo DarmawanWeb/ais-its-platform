@@ -40,8 +40,11 @@ Resume bila terpotong limit: `Workflow({scriptPath: "<scratchpad>/<script>", res
 | Upgrade service U1a: safety (upgrade → review → perbaikan) | `wf_f4672787-a28` | `services-upgrade-workflow.js` + args `{"services":["safety"]}` |
 | Upgrade service U1b: surveillance, geo | `wf_80e5fe76-b42` | `services-upgrade-workflow.js` + args `{"services":["surveillance","geo"]}` |
 
-Rencana sisa 5c: U2a `["ais-pipeline","telemetry","emission"]` setelah kelompok web fleet + emis selesai; U2b
-`["notification","fleet","auth"]` setelah kelompok admin selesai (regenerasi catatan dulu dengan `gen-upgrade-notes.mjs`).
+| Upgrade service U2a: ais-pipeline, telemetry, emission | `wf_eb10a1b6-993` | `services-upgrade-workflow.js` + args `{"services":["ais-pipeline","telemetry","emission"]}` |
+
+Rencana sisa 5c: U2b `["notification","fleet","auth"]` setelah kelompok web admin selesai (regenerasi catatan dulu
+dengan `gen-upgrade-notes.mjs`). Celah API susulan untuk service yang sudah di-upgrade lebih dulu (mis. safety
+`GET /safety/stats` dari kelompok fleet) dikerjakan dalam satu putaran "late gaps" setelah integrasi web.
 | Migrator Mongo (build → review → perbaikan) — ✅ selesai 2026-11-22 11:55 UTC | `wf_8f7d6d22-70f` | `migrator-workflow.js` |
 
 Berikutnya (script sudah siap di scratchpad):
