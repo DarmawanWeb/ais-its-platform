@@ -39,8 +39,13 @@ Resume bila terpotong limit: `Workflow({scriptPath: "<scratchpad>/<script>", res
 | Hardening kit (triage → nats/contracts/analytics/core → rilis) | `wf_f1f66318-c72` | `kit-hardening-workflow.js` |
 | Migrator Mongo (build → review → perbaikan) — ✅ selesai 2026-11-22 11:55 UTC | `wf_8f7d6d22-70f` | `migrator-workflow.js` |
 
-Berikutnya (belum ada script): upgrade 9 service ke kit 0.3 / contracts 0.4 (pakai `serviceChanges` triage kit,
-`packages/nest/UPGRADING.md` dan `apiGaps` dari integrasi web), lalu tahap 6.
+Berikutnya (script sudah siap di scratchpad):
+- Tahap 5c: `node gen-upgrade-notes.mjs` (catatan per service di `seemp-ref/notes/upgrade/` dari triage kit, panduan
+  rilis dan `apiGaps` web), lalu `services-upgrade-workflow.js` dengan `args.services`: U1 safety, surveillance, geo
+  (setelah kelompok web ops & surv), U2 auth, fleet, ais-pipeline, telemetry, emission, notification (setelah kelompok
+  fleet, emis, admin).
+- Tahap 6: `integration-workflow.js`: sinkronisasi web → workspace/submodule/mode stack → E2E API + UI → review 2 lensa
+  → perbaikan per kluster + dokumentasi → verifikasi akhir (clone baru).
 
 ## Cara melanjutkan (untuk sesi berikutnya)
 1. Clone `ais-its-platform` branch `feat/platform-v2` beserta repo `ais-its-*` lain yang sudah ter-push.
