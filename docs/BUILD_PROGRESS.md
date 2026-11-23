@@ -41,6 +41,7 @@ Resume bila terpotong limit: `Workflow({scriptPath: "<scratchpad>/<script>", res
 | Upgrade service U1b: surveillance, geo — ✅ selesai 01:50 UTC | `wf_80e5fe76-b42` | `services-upgrade-workflow.js` + args `{"services":["surveillance","geo"]}` |
 
 | Upgrade service U2a: ais-pipeline, telemetry, emission — ✅ selesai 03:10 UTC | `wf_eb10a1b6-993` | `services-upgrade-workflow.js` + args `{"services":["ais-pipeline","telemetry","emission"]}` |
+| Celah API susulan putaran 1: safety (`GET /safety/stats`), telemetry (detail koneksi perangkat, nama kapal + status perangkat) | `wf_eb9aca3c-305` | `late-gaps-workflow.js` + args dari `late-gaps-round1.json` |
 | Upgrade service U2b: notification, fleet, auth | `wf_febac7a1-56d` | `services-upgrade-workflow.js` + args `{"services":["notification","fleet","auth"]}` |
 
 Rencana sisa 5c: Celah API susulan untuk service yang sudah di-upgrade lebih dulu (mis. safety
@@ -85,3 +86,5 @@ Berikutnya (script sudah siap di scratchpad):
 - 2026-11-22 ~21:53 UTC: limit kesembilan (perbaikan surveillance, review ais-pipeline/telemetry, upgrade emission,
   kelompok web admin tertunda); di-resume 2026-11-23 01:30 UTC setelah reset 01:20 UTC (dockerd perlu `containerd.pid`
   basi dihapus: `rm -f /var/run/docker/containerd/containerd.pid`).
+- 2026-11-23 ~03:28 UTC: limit kesepuluh (review notification/fleet, upgrade auth, integrasi web tertunda; telemetry dan
+  emission sempat selesai); di-resume 06:28 UTC setelah reset 06:20 UTC.
