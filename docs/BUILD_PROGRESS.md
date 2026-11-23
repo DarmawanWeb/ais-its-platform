@@ -26,7 +26,7 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | ✅ 9/9 service selesai (build, review 75 temuan, perbaikan + test regresi), ter-push ke `main` masing-masing; migrator ✅ (tahap 5d) |
 | 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅, review ✅ (16 temuan) dan perbaikan ✅ ter-push (`feat/platform-v2`, klien API 10 service); fitur: persiapan ✅ (mock route per fitur + mock socket.io), 5 kelompok berjalan (ops & surv dulu) → integrasi → review 3 lensa → perbaikan |
 | 5b | Hardening platform: 45 laporan masalah kit/contracts dari 9 service → triage → perbaikan (nats, contracts, analytics, core) → rilis `ais-its-contracts` 0.4.0 + `ais-its-nest` 0.3.0 + template | ✅ 43 item diterima dan dikerjakan; contracts 0.4.0 + nest 0.3.0 dirilis (435 + 247 unit, 132 integration test), `UPGRADING.md`, template + spec 1.1.2 + gateway diperbarui; ter-push (kit `d426ff2`, pusat `ddbc50c`) |
-| 5c | Upgrade 9 service ke kit baru: hapus workaround lokal, event resolusi alert, celah API dari web | 🔄 safety ✅ 0.2.0 (`dda0d2c`); surveillance, geo, ais-pipeline, telemetry, emission berjalan; notification, fleet, auth setelah kelompok web admin |
+| 5c | Upgrade 9 service ke kit baru: hapus workaround lokal, event resolusi alert, celah API dari web | 🔄 safety ✅ 0.2.0 (`dda0d2c`), geo ✅ 0.2.0 (`f7102d0`); surveillance (perbaikan), ais-pipeline + telemetry (review), emission (upgrade) berjalan; notification, fleet, auth setelah kelompok web admin |
 | 5d | Migrator MongoDB → v2 (`tools/mongo-migrator`, plan/run/verify/report, idempoten) | ✅ selesai: ledger fingerprint (edit di v2 tidak ditimpa), lock, retry penolakan sisi target; 14 temuan review diperbaiki; 191 unit test + 16 integration test; runbook `docs/migration/MONGO_TO_V2.md` |
 | 6 | Integrasi, E2E seluruh stack, dokumentasi, push semua repo | ⏳ |
 
@@ -38,7 +38,7 @@ Resume bila terpotong limit: `Workflow({scriptPath: "<scratchpad>/<script>", res
 | Fitur web (prep → 5 kelompok → integrasi → review → perbaikan) | `wf_e119b954-096` | `fe-features-workflow.js` |
 | Hardening kit (triage → nats/contracts/analytics/core → rilis) — ✅ selesai 2026-11-22 16:10 UTC | `wf_f1f66318-c72` | `kit-hardening-workflow.js` |
 | Upgrade service U1a: safety (upgrade → review → perbaikan) — ✅ selesai 21:50 UTC | `wf_f4672787-a28` | `services-upgrade-workflow.js` + args `{"services":["safety"]}` |
-| Upgrade service U1b: surveillance, geo | `wf_80e5fe76-b42` | `services-upgrade-workflow.js` + args `{"services":["surveillance","geo"]}` |
+| Upgrade service U1b: surveillance, geo (geo ✅) | `wf_80e5fe76-b42` | `services-upgrade-workflow.js` + args `{"services":["surveillance","geo"]}` |
 
 | Upgrade service U2a: ais-pipeline, telemetry, emission | `wf_eb10a1b6-993` | `services-upgrade-workflow.js` + args `{"services":["ais-pipeline","telemetry","emission"]}` |
 
@@ -80,3 +80,6 @@ Berikutnya (script sudah siap di scratchpad):
   di-resume 15:28 UTC setelah reset 15:20 UTC. Check-in otomatis kini tiap jam (menit :26).
 - 2026-11-22 ~17:15 UTC: limit kedelapan (review safety dan geo, upgrade surveillance, kelompok web fleet/emis/admin
   tertunda; upgrade safety dan geo sempat selesai); di-resume 20:28 UTC setelah reset 20:20 UTC.
+- 2026-11-22 ~21:53 UTC: limit kesembilan (perbaikan surveillance, review ais-pipeline/telemetry, upgrade emission,
+  kelompok web admin tertunda); di-resume 2026-11-23 01:30 UTC setelah reset 01:20 UTC (dockerd perlu `containerd.pid`
+  basi dihapus: `rm -f /var/run/docker/containerd/containerd.pid`).
