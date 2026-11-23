@@ -26,7 +26,7 @@ tahap selesai supaya pekerjaan bisa dilanjutkan kapan saja, termasuk dari sesi b
 | 4 | 9 service backend: auth, pipeline, fleet, telemetry, emission, geo, safety, surveillance, notification (build → review → fix) + migrator Mongo | ✅ 9/9 service selesai (build, review 75 temuan, perbaikan + test regresi), ter-push ke `main` masing-masing; migrator ✅ (tahap 5d) |
 | 5 | Web v2 (foundation → fitur → integrasi) | 🔄 foundation ✅, review ✅ (16 temuan) dan perbaikan ✅ ter-push (`feat/platform-v2`, klien API 10 service); fitur: persiapan ✅ (mock route per fitur + mock socket.io), 5 kelompok berjalan (ops & surv dulu) → integrasi → review 3 lensa → perbaikan |
 | 5b | Hardening platform: 45 laporan masalah kit/contracts dari 9 service → triage → perbaikan (nats, contracts, analytics, core) → rilis `ais-its-contracts` 0.4.0 + `ais-its-nest` 0.3.0 + template | ✅ 43 item diterima dan dikerjakan; contracts 0.4.0 + nest 0.3.0 dirilis (435 + 247 unit, 132 integration test), `UPGRADING.md`, template + spec 1.1.2 + gateway diperbarui; ter-push (kit `d426ff2`, pusat `ddbc50c`) |
-| 5c | Upgrade 9 service ke kit baru: hapus workaround lokal, event resolusi alert, celah API dari web | 🔄 safety ✅ 0.2.0 (`dda0d2c`), geo ✅ 0.2.0 (`f7102d0`), surveillance ✅ 0.2.0 (`c35e7b8`), ais-pipeline ✅ 0.2.0 (`508b1c0`); telemetry (perbaikan), emission (review), notification + fleet + auth (upgrade) berjalan |
+| 5c | Upgrade 9 service ke kit baru: hapus workaround lokal, event resolusi alert, celah API dari web | 🔄 safety ✅ 0.2.0 (`dda0d2c`), geo ✅ 0.2.0 (`f7102d0`), surveillance ✅ 0.2.0 (`c35e7b8`), ais-pipeline ✅ 0.2.0 (`508b1c0`), telemetry ✅ 0.2.0 (`2cf2d33`), emission ✅ 0.2.0; notification + fleet + auth (upgrade) berjalan |
 | 5d | Migrator MongoDB → v2 (`tools/mongo-migrator`, plan/run/verify/report, idempoten) | ✅ selesai: ledger fingerprint (edit di v2 tidak ditimpa), lock, retry penolakan sisi target; 14 temuan review diperbaiki; 191 unit test + 16 integration test; runbook `docs/migration/MONGO_TO_V2.md` |
 | 6 | Integrasi, E2E seluruh stack, dokumentasi, push semua repo | ⏳ |
 
@@ -40,7 +40,7 @@ Resume bila terpotong limit: `Workflow({scriptPath: "<scratchpad>/<script>", res
 | Upgrade service U1a: safety (upgrade → review → perbaikan) — ✅ selesai 21:50 UTC | `wf_f4672787-a28` | `services-upgrade-workflow.js` + args `{"services":["safety"]}` |
 | Upgrade service U1b: surveillance, geo — ✅ selesai 01:50 UTC | `wf_80e5fe76-b42` | `services-upgrade-workflow.js` + args `{"services":["surveillance","geo"]}` |
 
-| Upgrade service U2a: ais-pipeline, telemetry, emission | `wf_eb10a1b6-993` | `services-upgrade-workflow.js` + args `{"services":["ais-pipeline","telemetry","emission"]}` |
+| Upgrade service U2a: ais-pipeline, telemetry, emission — ✅ selesai 03:10 UTC | `wf_eb10a1b6-993` | `services-upgrade-workflow.js` + args `{"services":["ais-pipeline","telemetry","emission"]}` |
 | Upgrade service U2b: notification, fleet, auth | `wf_febac7a1-56d` | `services-upgrade-workflow.js` + args `{"services":["notification","fleet","auth"]}` |
 
 Rencana sisa 5c: Celah API susulan untuk service yang sudah di-upgrade lebih dulu (mis. safety
