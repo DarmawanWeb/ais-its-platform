@@ -61,7 +61,9 @@ Berikutnya (script sudah siap di scratchpad):
   → perbaikan per kluster + dokumentasi → verifikasi akhir (clone baru).
 
 ## Cara melanjutkan (untuk sesi berikutnya)
-1. Clone `ais-its-platform` branch `feat/platform-v2` beserta repo `ais-its-*` lain yang sudah ter-push.
+1. Clone `ais-its-platform` branch `feat/platform-v2` beserta repo `ais-its-*` lain yang sudah ter-push. Bila ada
+   branch `wip/*` yang lebih baru dari branch utama repo itu, isinya adalah pekerjaan yang belum selesai di-review:
+   checkout branch utama lalu ambil isi WIP-nya (`git checkout wip/<nama> -- .`) sebelum melanjutkan workflow.
 2. Siapkan registry npm lokal (Verdaccio) untuk scope `@darmawanweb` bila package belum ada di GitHub Packages,
    dan image Docker yang dipakai test (`timescale/timescaledb-ha:pg17`, `nats`, `valkey/valkey:8-alpine`, `axllent/mailpit`, `rustfs/rustfs`).
 3. Lanjutkan tahap pertama yang belum ✅ pada tabel di atas; semua instruksi teknis ada di `docs/PLATFORM_SPEC.md`.
@@ -88,3 +90,8 @@ Berikutnya (script sudah siap di scratchpad):
   basi dihapus: `rm -f /var/run/docker/containerd/containerd.pid`).
 - 2026-11-23 ~03:28 UTC: limit kesepuluh (review notification/fleet, upgrade auth, integrasi web tertunda; telemetry dan
   emission sempat selesai); di-resume 06:28 UTC setelah reset 06:20 UTC.
+- 2026-11-23 ~07:00 UTC: limit mingguan (perbaikan notification/fleet, upgrade auth, review celah telemetry, perbaikan
+  `GET /safety/stats`, integrasi web tertunda); di-resume 2026-11-26 20:30 UTC setelah reset 20:00 UTC. Build cache
+  Docker dipangkas (disk tinggal 3 GB). Cadangan pekerjaan yang belum di-commit ter-push ke branch terpisah tanpa
+  mengubah branch utama: `wip/platform-v2-features` (web) dan `wip/v0.2.0` (auth, fleet, notification, safety,
+  telemetry); script `scratchpad/wip-snapshot.sh <repo> <branch>`.
