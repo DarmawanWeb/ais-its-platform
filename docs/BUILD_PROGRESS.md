@@ -48,10 +48,11 @@ Rencana sisa 5c: Celah API susulan untuk service yang sudah di-upgrade lebih dul
 `GET /safety/stats` dari kelompok fleet) dikerjakan dalam satu putaran "late gaps" setelah integrasi web.
 Tindak lanjut tahap 6 dari upgrade: Helm `values.yaml` safety masih `replicaCount: 1` + `Recreate`; ubah ke ≥ 2 replika
 `RollingUpdate` (maxUnavailable 0) untuk detektor yang sudah di-upgrade, sesuaikan `infra/helm/README.md`.
-Tindak lanjut kit (patch 0.3.x di tahap 6, daftar di `seemp-ref/notes/kit-followups.md`): consumer eksklusif yang
+Tindak lanjut kit (patch 0.3.1 berjalan lebih awal di workflow `wf_623e7075-038`, daftar di `seemp-ref/notes/kit-followups.md`): consumer eksklusif yang
 terputus dari NATS tetap aktif setelah TTL pin; pesan yang ter-buffer melewati jeda > TTL diproses dengan pin lama;
 drain NATS saat shutdown tanpa batas waktu; deskripsi OpenAPI `@RequirePlatformAdmin()` menyebut API key walau rute menolak API key.
 | Migrator Mongo (build → review → perbaikan) — ✅ selesai 2026-11-22 11:55 UTC | `wf_8f7d6d22-70f` | `migrator-workflow.js` |
+| Patch kit (nest 0.3.1 / contracts 0.4.1: consumer eksklusif, drain NATS, OpenAPI admin, label audit, metode security, catatan katalog) + Helm replika/rolling update — mulai 2026-11-26 22:10 UTC | `wf_623e7075-038` | `kit-patch-workflow.js` (salinan dari `~/.claude/projects/.../workflows/scripts/ais-its-kit-patch-wf_623e7075-038.js`) |
 
 Berikutnya (script sudah siap di scratchpad):
 - Tahap 5c: `node gen-upgrade-notes.mjs` (catatan per service di `seemp-ref/notes/upgrade/` dari triage kit, panduan
