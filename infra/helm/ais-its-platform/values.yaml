@@ -81,6 +81,10 @@ ais-ingestor:
     repository: ghcr.io/darmawanweb/ais-its-pipeline
   command: ["node", "dist/apps/ingestor/main.js"]
   port: 3003
+  # Stateless: replicas scale horizontally (duplicates are dropped by
+  # Nats-Msg-Id). Every replica opens its own connection to each upstream with
+  # AIS_UPSTREAM_TOKEN: if the upstream account admits one connection, run the
+  # feeds in a single-replica release and leave the URLs empty here.
   env:
     SERVICE_NAME: ais-ingestor
     AIS_PRIMARY_URL: ""          # empty = upstream disabled
@@ -95,11 +99,11 @@ ais-processor:
     repository: ghcr.io/darmawanweb/ais-its-pipeline
   command: ["node", "dist/apps/processor/main.js"]
   port: 3004
-  # Single consumer of AIS_RAW (durable "ais-processor") keeping per-vessel
-  # order: never two processors at once, not even during a rollout.
-  replicaCount: 1
-  strategy:
-    type: Recreate
+  # The AIS_RAW consumer "ais-processor" is exclusive (NATS >= 2.11 pinned
+  # client): one active replica keeps per-vessel order, others are hot
+  # standbys. A graceful stop releases the pin, so rolling updates hand over at
+  # once; a crashed active replica is replaced after the 30 s pin TTL. The query
+  # API, the outbox relay and the traffic sampler run on every replica.
   env:
     SERVICE_NAME: ais-processor
     DATABASE_SCHEMA: ais
@@ -129,6 +133,15 @@ emission:
   image:
     repository: ghcr.io/darmawanweb/ais-its-emission-service
   port: 3006
+  # Any number of replicas, rolling updates. The first 0.2.0 replica started on
+  # a 0.1.0-release database applies 0004/0005 at boot and opens its port only
+  # once 0005 has materialized the whole CII history: 30 min startup budget, and
+  # a progress deadline above it. That upgrade also needs Recreate once
+  # (infra/helm/README.md, "Upgrading from the 0.1.0 release").
+  probes:
+    startup:
+      failureThreshold: 360        # × 5 s = 30 min
+  progressDeadlineSeconds: 2100
   env:
     DATABASE_SCHEMA: emission
     CII_PUBLISH_INTERVAL_S: "60"
@@ -154,12 +167,11 @@ safety:
   image:
     repository: ghcr.io/darmawanweb/ais-its-safety-service
   port: 3011
-  # Detectors keep per-vessel state in memory (Detector SDK VesselStateStore,
-  # pair search): one instance per durable consumer ("safety-positions"), never
-  # two at once, until the consumer is partitioned by ais.position.v1.<p>.>.
-  replicaCount: 1
-  strategy:
-    type: Recreate
+  # Detectors keep per-vessel state in memory, so positions go to one active
+  # instance per durable ("safety-positions", exclusive, NATS >= 2.11); further
+  # replicas are hot standbys (failover, not throughput). The new active
+  # instance reloads the open alerts before its first position and a stopping
+  # Pod releases its pin at once: RollingUpdate, no Recreate (spec §13.7, §18).
   env:
     DATABASE_SCHEMA: safety
     DETECTORS: ews,collision
@@ -177,11 +189,10 @@ surveillance:
   image:
     repository: ghcr.io/darmawanweb/ais-its-surveillance-service
   port: 3007
-  # Streaks, track buffers and transhipment pairs live in memory: one instance
-  # per durable consumer ("surveillance-positions"), as for safety.
-  replicaCount: 1
-  strategy:
-    type: Recreate
+  # Streaks, track buffers and transhipment pairs live in memory: one active
+  # instance per durable ("surveillance-positions"), hot standbys and rolling
+  # updates as for safety; the dark scan and the transhipment analyser run on
+  # the active instance only (spec §13.8).
   env:
     DATABASE_SCHEMA: surveillance
     DETECTORS: transhipment,anomaly,dark,geofence,fishing
@@ -197,6 +208,10 @@ notification:
   image:
     repository: ghcr.io/darmawanweb/ais-its-notification-service
   port: 3008
+  # Scales horizontally: the durables and the delivery worker share the work,
+  # alert pushes reach every replica's sockets over the core NATS fan-out
+  # aisits.notification.realtime.v1, and the gateway's sticky cookie keeps
+  # long-polling clients on one replica (spec §9, §13.9).
   env:
     DATABASE_SCHEMA: notify
     SMTP_FROM: "AIS Maritime Intelligence <no-reply@ais-its.example.com>"

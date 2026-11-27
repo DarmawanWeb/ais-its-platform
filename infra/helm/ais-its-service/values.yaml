@@ -38,12 +38,21 @@ imagePullSecrets: []
 # -- Ignored when autoscaling.enabled.
 replicaCount: 1
 
-# -- Deployment strategy. Use {type: Recreate} for a consumer that must never run twice.
+# -- Deployment strategy: one extra Pod at a time, never one less than desired.
+# Kit services hand over at a graceful stop (exclusive consumers release their pin,
+# shared durables and outbox relays are shared), so they roll. Use {type: Recreate}
+# only where the old and the new version must never run together (e.g. a migration
+# that breaks the old version: emission from its 0.1.0 release).
 strategy:
   type: RollingUpdate
   rollingUpdate:
-    maxSurge: 25%
+    maxSurge: 1
     maxUnavailable: 0
+
+# -- Seconds a rollout may make no progress before the Deployment reports
+# ProgressDeadlineExceeded (null = Kubernetes default, 600). Keep it above the
+# startup probe budget of a process with long boot-time migrations.
+progressDeadlineSeconds: null
 
 # -- Container entrypoint override, e.g. ["node", "dist/apps/processor/main.js"]
 # to run the ais-pipeline processor from the same image as the ingestor.
@@ -79,7 +88,9 @@ probes:
     periodSeconds: 5
     timeoutSeconds: 3
     failureThreshold: 3
-  # Generous: services run their SQL migrations on boot (DB_MIGRATE_ON_BOOT).
+  # The port opens only after the boot-time SQL migrations (DB_MIGRATE_ON_BOOT) and
+  # the bootstrap (projection snapshots, consumers): 36 × 5 s = 3 min. Raise
+  # failureThreshold for a release with long migrations (emission does).
   startup:
     enabled: true
     path: /health/live
@@ -136,8 +147,13 @@ autoscaling:
   targetMemoryUtilizationPercentage: null
 
 podDisruptionBudget:
+  # -- Rendered only when the Deployment can run more than one replica
+  # (replicaCount > 1, or autoscaling.maxReplicas > 1): a budget for one Pod
+  # protects nothing.
   enabled: true
-  # -- maxUnavailable never blocks node drains, even with a single replica.
+  # -- Voluntary disruptions (node drains) take one Pod at a time, so N-1 keep
+  # serving; an exclusive consumer's standby takes over at the evicted Pod's
+  # graceful stop.
   maxUnavailable: 1
 
 # -- Scrape annotations for Prometheus-compatible agents (GET /metrics, spec §10).
@@ -165,7 +181,11 @@ writablePaths: [/tmp]
 # -- Seconds to keep serving after the Pod is marked terminating, so that the
 # gateway stops routing to it before the process shuts down (0 = disabled).
 preStopSleepSeconds: 5
-terminationGracePeriodSeconds: 30
+# -- Covers preStopSleepSeconds + the kit's graceful shutdown deadline
+# (SHUTDOWN_TIMEOUT_MS, 30 s: stop consumers, release exclusive pins, publish
+# pending resolutions, drain NATS) + 5 s, so Kubernetes never kills a process
+# before the kit's own deadline. Raise it with SHUTDOWN_TIMEOUT_MS.
+terminationGracePeriodSeconds: 40
 
 # -- Spread replicas over nodes when possible (soft constraint).
 spreadAcrossNodes: true

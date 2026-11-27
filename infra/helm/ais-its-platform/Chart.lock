@@ -1,42 +1,42 @@
 dependencies:
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
+  version: 0.2.0
 - name: ais-its-service
   repository: file://../ais-its-service
-  version: 0.1.0
-digest: sha256:bb7c61a0c0db7840bb9c437f3b45d1861c18fdd95e3dbd891bc0ec96459c2a0e
-generated: "2026-11-21T09:05:27.196592661Z"
+  version: 0.2.0
+digest: sha256:9040220fc9870ea36e4a9d2c80769786dbb813e69e002716689c577c4ae6b9c7
+generated: "2026-11-26T22:21:04.898243411Z"
