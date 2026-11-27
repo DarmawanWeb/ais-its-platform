@@ -1677,8 +1677,8 @@
     "status": "implemented",
     "needsCitation": true,
     "notes": {
-      "id": "Regresi per kapal spesifik tesis (sampel Dharma Ferry VIII); satuan L/min hanya tersirat dari konversi. Perlu dokumentasi satuan, data fitting dan rentang kecepatan valid tiap regresi, serta dasar batas bawah 0,5 (berlaku juga pada 0 kn). Legacy mengevaluasi string dengan new Function/with; NaN tidak dibatasi. v2 memakai evaluator ekspresi aman (spesifikasi 15.4: angka, speedKnot, + - * / ** ^ ( ), fungsi Math) dan mengartikan ^ sebagai pangkat (di JavaScript legacy ^ adalah XOR): uji golden harus memeriksa bahwa rumus yang ada tidak memakai ^. v2: bahasa rumus (tata bahasa, batas, semantik JavaScript) dibagikan sebagai parseFuelFormula, evaluateFuelFormula dan validateFuelFormula di @darmawanweb/ais-its-contracts/domain mulai contracts 0.4.0; sampai layanan memakainya, fleet memvalidasi rumus tersimpan di src/domain/fuel-formula.ts#parseFuelFormula dan emission mengevaluasinya di src/domain/expression/evaluator.ts#compileFormula.",
-      "en": "Thesis-specific per-vessel regressions (sample Dharma Ferry VIII); the L/min unit is only implied by the conversion. Document unit, fitting data and valid speed range of each regression and the basis of the 0.5 floor (also applied at 0 kn). The legacy evaluates the strings with new Function/with; NaN is not clamped. v2 uses a safe expression evaluator (spec 15.4: numbers, speedKnot, + - * / ** ^ ( ), Math functions) and reads ^ as power (in legacy JavaScript ^ is XOR): golden tests must check that existing formulas do not use ^. v2: the formula language (grammar, limits, JavaScript semantics) is shared as @darmawanweb/ais-its-contracts/domain parseFuelFormula, evaluateFuelFormula and validateFuelFormula from contracts 0.4.0; until the services adopt it, fleet validates stored formulas in src/domain/fuel-formula.ts#parseFuelFormula and emission evaluates them in src/domain/expression/evaluator.ts#compileFormula."
+      "id": "Regresi per kapal spesifik tesis (sampel Dharma Ferry VIII); satuan L/min hanya tersirat dari konversi. Perlu dokumentasi satuan, data fitting dan rentang kecepatan valid tiap regresi, serta dasar batas bawah 0,5 (berlaku juga pada 0 kn). Legacy mengevaluasi string dengan new Function/with; NaN tidak dibatasi. v2 memakai evaluator ekspresi aman (spesifikasi 15.4: angka, speedKnot, + - * / ** ^ ( ), fungsi Math) dan mengartikan ^ sebagai pangkat (di JavaScript legacy ^ adalah XOR): uji golden harus memeriksa bahwa rumus yang ada tidak memakai ^. v2: bahasa rumus (tata bahasa, batas, semantik JavaScript) dibagikan sebagai parseFuelFormula, evaluateFuelFormula dan validateFuelFormula di @darmawanweb/ais-its-contracts/domain (contracts 0.4.0); fleet 0.2.0 memvalidasi rumus tersimpan dengan validateFuelFormula di src/modules/common/validation.ts#IsFuelFormula (masalah pertama dan posisinya di src/domain/fuel-formula-problem.ts#fuelFormulaProblem), dan emission 0.2.0 mengurainya dengan parseFuelFormula di src/domain/fuel/first-formula.ts#prepareFuelFlowFormula serta mengevaluasinya dengan evaluateFuelFormula di src/domain/fuel/first-formula.ts#evaluateFuelFlow.",
+      "en": "Thesis-specific per-vessel regressions (sample Dharma Ferry VIII); the L/min unit is only implied by the conversion. Document unit, fitting data and valid speed range of each regression and the basis of the 0.5 floor (also applied at 0 kn). The legacy evaluates the strings with new Function/with; NaN is not clamped. v2 uses a safe expression evaluator (spec 15.4: numbers, speedKnot, + - * / ** ^ ( ), Math functions) and reads ^ as power (in legacy JavaScript ^ is XOR): golden tests must check that existing formulas do not use ^. v2: the formula language (grammar, limits, JavaScript semantics) is shared as @darmawanweb/ais-its-contracts/domain parseFuelFormula, evaluateFuelFormula and validateFuelFormula (contracts 0.4.0); fleet 0.2.0 validates stored formulas with validateFuelFormula in src/modules/common/validation.ts#IsFuelFormula (first problem and position in src/domain/fuel-formula-problem.ts#fuelFormulaProblem), and emission 0.2.0 parses them with parseFuelFormula in src/domain/fuel/first-formula.ts#prepareFuelFlowFormula and evaluates them with evaluateFuelFormula in src/domain/fuel/first-formula.ts#evaluateFuelFlow."
     }
   },
   {
@@ -8743,6 +8743,881 @@
     "notes": {
       "id": "Aturan desain v2 (spesifikasi §9: positions / safety:states, jendela 1 s dan 5 s).",
       "en": "v2 design rule (spec 9: positions / safety:states, 1 s and 5 s windows)."
+    }
+  },
+  {
+    "id": "security.password_hashing",
+    "domain": "security",
+    "name": {
+      "id": "Hash kata sandi (Argon2id)",
+      "en": "Password hashing (Argon2id)"
+    },
+    "summary": {
+      "id": "Kata sandi disimpan sebagai string PHC Argon2id ($argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>) dengan salt acak 16 byte dan keluaran 32 byte; hash dengan parameter lain dihitung ulang setelah login berhasil berikutnya (needsRehash).",
+      "en": "Passwords are stored as Argon2id PHC strings ($argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>) with a 16-byte random salt and a 32-byte output; a hash made with other parameters is recomputed after the next successful login (needsRehash)."
+    },
+    "formulaLatex": "H=\\mathrm{Argon2id}_{v=19}\\left(P,\\ S;\\ m,\\ t,\\ p,\\ \\ell\\right),\\qquad \\lvert S\\rvert=16\\ \\mathrm{B}",
+    "variables": [
+      {
+        "symbol": "P",
+        "name": {
+          "id": "Kata sandi",
+          "en": "Password"
+        },
+        "unit": null,
+        "source": "request body"
+      },
+      {
+        "symbol": "S",
+        "name": {
+          "id": "Salt acak per kata sandi",
+          "en": "Random salt per password"
+        },
+        "unit": "B",
+        "source": "CSPRNG"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "m",
+        "name": {
+          "id": "Biaya memori",
+          "en": "Memory cost"
+        },
+        "value": 19456,
+        "unit": "KiB",
+        "referenceIds": [
+          "owasp-password-storage-cheat-sheet"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "t",
+        "name": {
+          "id": "Jumlah iterasi",
+          "en": "Iterations"
+        },
+        "value": 2,
+        "unit": null,
+        "referenceIds": [
+          "owasp-password-storage-cheat-sheet"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "p",
+        "name": {
+          "id": "Paralelisme",
+          "en": "Parallelism"
+        },
+        "value": 1,
+        "unit": null,
+        "referenceIds": [
+          "owasp-password-storage-cheat-sheet"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "\\lvert S\\rvert",
+        "name": {
+          "id": "Panjang salt",
+          "en": "Salt length"
+        },
+        "value": 16,
+        "unit": "B",
+        "referenceIds": [
+          "ietf-rfc-9106"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "\\ell",
+        "name": {
+          "id": "Panjang hash",
+          "en": "Hash length"
+        },
+        "value": 32,
+        "unit": "B",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "ietf-rfc-9106",
+      "owasp-password-storage-cheat-sheet",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/domain/password-hashing.ts#ARGON2_PARAMETERS"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Argon2id sesuai RFC 9106 (varian yang wajib didukung setiap implementasi); parameter biaya adalah konfigurasi minimum OWASP (19 MiB, t = 2, p = 1), bukan salah satu dari dua profil RFC 9106 bagian 4 (2 GiB / 64 MiB), dipilih demi latensi login. Panjang keluaran 32 byte adalah bawaan pustaka yang dipertahankan spesifikasi 13.1 (belum ada sumber eksternal yang diperiksa).",
+      "en": "Argon2id per RFC 9106 (the variant every implementation must support); the cost parameters are the minimum OWASP configuration (19 MiB, t = 2, p = 1), not one of the two RFC 9106 section 4 profiles (2 GiB / 64 MiB), chosen for the latency of a login. The 32-byte output length is the library default kept by spec 13.1 (no external source checked)."
+    }
+  },
+  {
+    "id": "security.password_policy",
+    "domain": "security",
+    "name": {
+      "id": "Kebijakan kata sandi",
+      "en": "Password policy"
+    },
+    "summary": {
+      "id": "Kata sandi baru harus 10 sampai 128 code point Unicode dan memuat minimal satu huruf dan satu angka; kata sandi yang lebih panjang ditolak, tidak pernah dipotong.",
+      "en": "A new password must have 10 to 128 Unicode code points and contain at least one letter and one digit; a longer password is rejected, never truncated."
+    },
+    "formulaLatex": "L_{min}\\le \\lvert P\\rvert_{cp}\\le L_{max}\\ \\wedge\\ \\exists\\,\\text{huruf}\\in P\\ \\wedge\\ \\exists\\,\\text{angka}\\in P",
+    "variables": [
+      {
+        "symbol": "\\lvert P\\rvert_{cp}",
+        "name": {
+          "id": "Panjang kata sandi dalam code point",
+          "en": "Password length in code points"
+        },
+        "unit": null,
+        "source": "request body"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "L_{min}",
+        "name": {
+          "id": "Panjang minimum",
+          "en": "Minimum length"
+        },
+        "value": 10,
+        "unit": null,
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      },
+      {
+        "symbol": "L_{max}",
+        "name": {
+          "id": "Panjang maksimum",
+          "en": "Maximum length"
+        },
+        "value": 128,
+        "unit": null,
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "nist-sp-800-63b-4",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/domain/password-policy.ts#checkPasswordPolicy"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Menyimpang dari NIST SP 800-63B-4 (final Juli 2025), yang mewajibkan minimal 15 karakter untuk kata sandi sebagai satu-satunya faktor (8 bila bagian dari autentikasi multifaktor), menerima minimal 64 karakter, dan melarang aturan komposisi: aturan v2 (spesifikasi 13.1) memakai minimum lebih rendah dan aturan komposisi (huruf + angka). Maksimum 128 memenuhi syarat \"minimal 64\". Keputusan untuk pemilik keamanan: memakai 15 karakter tanpa aturan komposisi, atau mendokumentasikan alasannya.",
+      "en": "Deviates from NIST SP 800-63B-4 (final July 2025), which requires at least 15 characters for passwords used as the only factor (8 when part of multi-factor authentication), accepts at least 64 and prohibits composition rules: the v2 rule (spec 13.1) has a lower minimum and a composition rule (letter + digit). The maximum of 128 meets the \"at least 64\" requirement. Decision for the security owner: adopt 15 characters without composition rules, or document why not."
+    }
+  },
+  {
+    "id": "security.login_throttle",
+    "domain": "security",
+    "name": {
+      "id": "Pembatasan percobaan login",
+      "en": "Login throttling"
+    },
+    "summary": {
+      "id": "Login gagal dihitung dalam jendela tetap 15 menit (Valkey): maksimal 5 per alamat e-mail dan 20 per IP klien (termasuk kode MFA salah); kode MFA dan ganti kata sandi dibatasi 5 kegagalan per akun per 15 menit. Percobaan dicadangkan sebelum diperiksa dan dikembalikan bila berhasil; di atas batas jawabannya 429.",
+      "en": "Failed logins are counted in fixed 15-minute windows (Valkey): at most 5 per e-mail address and 20 per client IP (wrong MFA codes included); MFA codes and password changes allow 5 failures per account per 15 minutes. Attempts are reserved before the check and refunded on success; beyond the limit the answer is 429."
+    },
+    "formulaLatex": "n_{fail}(k,\\ [t-W,\\ t))\\le N_k,\\qquad W=15\\ \\mathrm{min}",
+    "variables": [
+      {
+        "symbol": "n_{fail}",
+        "name": {
+          "id": "Jumlah percobaan gagal per kunci dalam jendela",
+          "en": "Failed attempts per key in the window"
+        },
+        "unit": null,
+        "source": "Valkey counter (e-mail SHA-256, client IP, user id)"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "N_{email}",
+        "name": {
+          "id": "Batas login gagal per e-mail",
+          "en": "Failed logins per e-mail"
+        },
+        "value": 5,
+        "unit": null,
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      },
+      {
+        "symbol": "N_{ip}",
+        "name": {
+          "id": "Batas login gagal per IP klien",
+          "en": "Failed logins per client IP"
+        },
+        "value": 20,
+        "unit": null,
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      },
+      {
+        "symbol": "N_{mfa}",
+        "name": {
+          "id": "Batas kode MFA salah per akun",
+          "en": "Wrong MFA codes per account"
+        },
+        "value": 5,
+        "unit": null,
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      },
+      {
+        "symbol": "W",
+        "name": {
+          "id": "Panjang jendela",
+          "en": "Window length"
+        },
+        "value": 15,
+        "unit": "min",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "owasp-authentication-cheat-sheet",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/modules/throttling/auth-throttle.service.ts#THROTTLE_LIMITS"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "OWASP menganjurkan membatasi atau menunda percobaan gagal dan penguncian sementara, tanpa angka: batas dan jendela adalah default desain v2 (spesifikasi 13.1). Kunci tidak memuat e-mail dalam teks jelas (SHA-256); IP klien dari security.client_ip.",
+      "en": "OWASP recommends limiting or delaying failed attempts and temporary lockouts, without numbers: the limits and window are v2 design defaults (spec 13.1). Keys never hold e-mail addresses in clear (SHA-256); the client IP comes from security.client_ip."
+    }
+  },
+  {
+    "id": "security.refresh_rotation",
+    "domain": "security",
+    "name": {
+      "id": "Rotasi refresh token dan deteksi penggunaan ulang",
+      "en": "Refresh token rotation and reuse detection"
+    },
+    "summary": {
+      "id": "Satu sesi adalah satu keluarga token: setiap refresh memakai token yang diberikan (used_at) dan menerbitkan penggantinya; token yang sudah dipakai diberikan lagi mencabut seluruh keluarga (reuse_detected), demikian pula akun tidak aktif atau keanggotaan organisasi sesi yang dihapus; token kedaluwarsa (bawaan 30 hari) ditolak.",
+      "en": "A session is a token family: every refresh consumes the presented token (used_at) and issues its successor; presenting a consumed token again revokes the whole family (reuse_detected), as do an inactive account or a removed membership of the session's organization; an expired token (default 30 days) is rejected."
+    },
+    "formulaLatex": null,
+    "variables": [],
+    "constants": [
+      {
+        "symbol": "T_{rt}",
+        "name": {
+          "id": "Umur refresh token (REFRESH_TOKEN_TTL_DAYS)",
+          "en": "Refresh token lifetime (REFRESH_TOKEN_TTL_DAYS)"
+        },
+        "value": 30,
+        "unit": "d",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "ietf-rfc-9700",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/domain/refresh-rotation.ts#decideRefresh"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Rotasi dengan pencabutan saat token dipakai ulang adalah salah satu dari dua cara RFC 9700 §4.14.2 untuk klien publik (yang lain: refresh token terikat pengirim). Refresh token adalah token opak dalam cookie HttpOnly (spesifikasi 8.3); umur 30 hari adalah default desain.",
+      "en": "Rotation with revocation on reuse is one of the two ways RFC 9700 section 4.14.2 allows for public clients (the other: sender-constrained refresh tokens). The refresh token is an opaque token in an HttpOnly cookie (spec 8.3); the 30-day lifetime is a design default."
+    }
+  },
+  {
+    "id": "security.secret_encryption",
+    "domain": "security",
+    "name": {
+      "id": "Enkripsi rahasia saat disimpan (AES-256-GCM)",
+      "en": "Encryption of secrets at rest (AES-256-GCM)"
+    },
+    "summary": {
+      "id": "Kunci privat penandatanganan dan rahasia MFA disimpan terenkripsi dengan AES-256-GCM (IV acak 12 byte, tag 16 byte) di bawah kunci per tujuan yang diturunkan dari KEY_ENCRYPTION_SECRET dengan HKDF-SHA256 (info = tujuan); data terautentikasi tambahan mengikat ciphertext ke barisnya. Bentuk: v1.<iv>.<tag>.<ciphertext>.",
+      "en": "Signing private keys and MFA secrets are stored encrypted with AES-256-GCM (random 12-byte IV, 16-byte tag) under a per-purpose key derived from KEY_ENCRYPTION_SECRET with HKDF-SHA256 (info = purpose); additional authenticated data binds the ciphertext to its row. Form: v1.<iv>.<tag>.<ciphertext>."
+    },
+    "formulaLatex": "K_{u}=\\mathrm{HKDF}_{SHA\\text{-}256}(K_{master},\\ info=u),\\qquad (c,\\tau)=\\mathrm{AES\\text{-}256\\text{-}GCM}_{K_u}(IV,\\ m,\\ aad)",
+    "variables": [
+      {
+        "symbol": "K_{master}",
+        "name": {
+          "id": "Rahasia induk (KEY_ENCRYPTION_SECRET)",
+          "en": "Master secret (KEY_ENCRYPTION_SECRET)"
+        },
+        "unit": null,
+        "source": "configuration"
+      },
+      {
+        "symbol": "u",
+        "name": {
+          "id": "Tujuan (signing-key, mfa-secret)",
+          "en": "Purpose (signing-key, mfa-secret)"
+        },
+        "unit": null,
+        "source": "code"
+      },
+      {
+        "symbol": "aad",
+        "name": {
+          "id": "Data terautentikasi tambahan (id kunci / id pengguna)",
+          "en": "Additional authenticated data (key id / user id)"
+        },
+        "unit": null,
+        "source": "database row"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "\\lvert IV\\rvert",
+        "name": {
+          "id": "Panjang IV acak",
+          "en": "Random IV length"
+        },
+        "value": 96,
+        "unit": "bit",
+        "referenceIds": [
+          "nist-sp-800-38d"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "\\lvert\\tau\\rvert",
+        "name": {
+          "id": "Panjang tag autentikasi",
+          "en": "Authentication tag length"
+        },
+        "value": 128,
+        "unit": "bit",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "nist-sp-800-38d",
+      "ietf-rfc-5869",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/domain/secret-box.ts#sealSecret"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "IV 96 bit sesuai rekomendasi SP 800-38D; tag 128 bit adalah pilihan desain (revisi SP 800-38D yang diumumkan menghapus tag di bawah 96 bit). HKDF per tujuan (RFC 5869, parameter info) sehingga satu rahasia induk tidak menghasilkan kunci yang sama untuk dua tujuan.",
+      "en": "96-bit IVs as SP 800-38D recommends; the 128-bit tag is a design choice (the announced SP 800-38D revision drops tags below 96 bits). Per-purpose HKDF (RFC 5869, info parameter), so one master secret never yields the same key for two purposes."
+    }
+  },
+  {
+    "id": "security.signing_key_lifecycle",
+    "domain": "security",
+    "name": {
+      "id": "Siklus hidup kunci penandatanganan JWT (Ed25519, JWKS)",
+      "en": "JWT signing key life cycle (Ed25519, JWKS)"
+    },
+    "summary": {
+      "id": "Token akses adalah JWT bertanda tangan EdDSA (Ed25519) dengan kid = thumbprint JWK SHA-256. Tepat satu kunci aktif; rotasi menurunkannya menjadi retiring (tetap di JWKS, tidak menandatangani) dan kunci itu pensiun setelah masa tenggang = umur token akses + toleransi jam verifier (30 s) + refresh cache kunci (30 s).",
+      "en": "Access tokens are JWTs signed with EdDSA (Ed25519), kid = the SHA-256 JWK thumbprint. Exactly one key is active; rotation demotes it to retiring (still in the JWKS, no longer signing) and it is retired after the grace period = access token lifetime + verifier clock tolerance (30 s) + key cache refresh (30 s)."
+    },
+    "formulaLatex": "g=T_{at}+\\tau_{clock}+\\left\\lceil t_{cache}/1000\\right\\rceil",
+    "variables": [
+      {
+        "symbol": "T_{at}",
+        "name": {
+          "id": "Umur token akses (ACCESS_TOKEN_TTL, bawaan 900)",
+          "en": "Access token lifetime (ACCESS_TOKEN_TTL, default 900)"
+        },
+        "unit": "s",
+        "source": "configuration"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "\\tau_{clock}",
+        "name": {
+          "id": "Toleransi jam verifier",
+          "en": "Verifier clock tolerance"
+        },
+        "value": 30,
+        "unit": "s",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      },
+      {
+        "symbol": "t_{cache}",
+        "name": {
+          "id": "Interval refresh cache kunci",
+          "en": "Key cache refresh interval"
+        },
+        "value": 30000,
+        "unit": "ms",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "ietf-rfc-7519",
+      "ietf-rfc-8037",
+      "ietf-rfc-7638",
+      "ietf-rfc-7517",
+      "ietf-rfc-8725",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/domain/signing-key-rules.ts#retirementGraceSeconds"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Kunci OKP Ed25519 dan alg EdDSA (RFC 8037), kid thumbprint (RFC 7638), publikasi kunci aktif dan retiring sebagai JWK Set (RFC 7517 §5); verifier kit hanya menerima EdDSA (RFC 8725 §3.1). Komponen masa tenggang adalah default desain v2 (spesifikasi 8.2).",
+      "en": "Ed25519 OKP keys and alg EdDSA (RFC 8037), thumbprint kid (RFC 7638), active and retiring keys published as a JWK Set (RFC 7517 section 5); the kit's verifier accepts EdDSA only (RFC 8725 section 3.1). The parts of the grace period are v2 design defaults (spec 8.2)."
+    }
+  },
+  {
+    "id": "security.totp",
+    "domain": "security",
+    "name": {
+      "id": "Kode MFA berbasis waktu (TOTP)",
+      "en": "Time-based MFA codes (TOTP)"
+    },
+    "summary": {
+      "id": "MFA memakai TOTP RFC 6238 dengan HMAC-SHA-1, 6 digit dan langkah waktu 30 s; kode satu langkah sebelum dan sesudah langkah saat ini juga diterima; rahasia acak 20 byte (160 bit) disimpan terenkripsi (security.secret_encryption).",
+      "en": "MFA uses RFC 6238 TOTP with HMAC-SHA-1, 6 digits and a 30 s time step; codes of the steps just before and after the current one are accepted too; the random 20-byte (160-bit) secret is stored encrypted (security.secret_encryption)."
+    },
+    "formulaLatex": "T=\\left\\lfloor \\frac{t-T_0}{X}\\right\\rfloor,\\quad code=\\mathrm{HOTP}_{SHA\\text{-}1}(K,\\ T)\\bmod 10^{d},\\quad T\\in\\{T_c-w,\\dots,T_c+w\\}",
+    "variables": [
+      {
+        "symbol": "t",
+        "name": {
+          "id": "Waktu Unix saat ini",
+          "en": "Current Unix time"
+        },
+        "unit": "s",
+        "source": "server clock"
+      },
+      {
+        "symbol": "K",
+        "name": {
+          "id": "Rahasia TOTP pengguna",
+          "en": "TOTP secret of the user"
+        },
+        "unit": null,
+        "source": "users.mfa_secret (encrypted)"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "X",
+        "name": {
+          "id": "Langkah waktu",
+          "en": "Time step"
+        },
+        "value": 30,
+        "unit": "s",
+        "referenceIds": [
+          "ietf-rfc-6238"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "d",
+        "name": {
+          "id": "Jumlah digit",
+          "en": "Digits"
+        },
+        "value": 6,
+        "unit": null,
+        "referenceIds": [
+          "ietf-rfc-4226"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "w",
+        "name": {
+          "id": "Jendela langkah yang diterima",
+          "en": "Accepted step window"
+        },
+        "value": 1,
+        "unit": null,
+        "referenceIds": [
+          "ietf-rfc-6238"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "\\lvert K\\rvert",
+        "name": {
+          "id": "Panjang rahasia",
+          "en": "Secret length"
+        },
+        "value": 160,
+        "unit": "bit",
+        "referenceIds": [
+          "ietf-rfc-4226"
+        ],
+        "needsCitation": false
+      },
+      {
+        "symbol": "T_0",
+        "name": {
+          "id": "Waktu awal",
+          "en": "Start time"
+        },
+        "value": 0,
+        "unit": "s",
+        "referenceIds": [
+          "ietf-rfc-6238"
+        ],
+        "needsCitation": false
+      }
+    ],
+    "referenceIds": [
+      "ietf-rfc-6238",
+      "ietf-rfc-4226"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/domain/totp.ts#verifyTotp"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": false,
+    "notes": {
+      "id": "Rahasia 160 bit seperti dianjurkan RFC 4226 R6; jendela ±1 langkah mengikuti anjuran jeda jaringan RFC 6238 §5.2 (dilihat pada draft terakhir). URI provisioning mengikuti format otpauth Google Authenticator (issuer \"AIS Maritime Intelligence\").",
+      "en": "160-bit secret as RFC 4226 R6 recommends; the ±1 step window follows the network-delay recommendation of RFC 6238 section 5.2 (seen in the final draft). The provisioning URI follows the otpauth format of Google Authenticator (issuer \"AIS Maritime Intelligence\")."
+    }
+  },
+  {
+    "id": "security.api_key_scope_grant",
+    "domain": "security",
+    "name": {
+      "id": "Pemberian scope kunci API",
+      "en": "API key scope grants"
+    },
+    "summary": {
+      "id": "Super admin dapat memberi setiap scope; org_admin organisasi pemilik kunci hanya scope yang aman untuk tenant (telemetry:ingest, ais:read). ais:ingest hanya untuk super admin, karena menulis ke feed AIS bersama semua tenant.",
+      "en": "Super admins may grant every scope; the org_admins of the key's organization only the tenant-safe ones (telemetry:ingest, ais:read). ais:ingest is reserved to super admins, because it writes into the AIS feed every tenant shares."
+    },
+    "formulaLatex": null,
+    "variables": [],
+    "constants": [
+      {
+        "symbol": "S_{platform}",
+        "name": {
+          "id": "Scope khusus platform",
+          "en": "Platform-only scopes"
+        },
+        "value": "ais:ingest",
+        "unit": null,
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/domain/access-rules.ts#grantableScopes"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan otorisasi v2 yang menutup celah spesifikasi 8.1/8.4 (tidak menyebut siapa yang boleh memberi ais:ingest): posisi palsu akan memicu alert EWS, tubrukan dan transhipment tenant lain dan mengubah jarak CII mereka. Tidak ada sumber eksternal.",
+      "en": "A v2 authorization rule that closes a gap of spec 8.1/8.4 (they do not say who may grant ais:ingest): faked positions would raise EWS, collision and transhipment alerts for other tenants and change their CII distances. No external source."
+    }
+  },
+  {
+    "id": "security.invitation_consent",
+    "domain": "security",
+    "name": {
+      "id": "Keanggotaan hanya lewat undangan yang diterima",
+      "en": "Memberships only by accepted invitation"
+    },
+    "summary": {
+      "id": "Tidak ada akun yang ditambahkan ke organisasi tanpa persetujuan: undangan mengirim tautan e-mail dan keanggotaan baru ditulis saat penerima menerimanya; jawaban dan catatan audit sama untuk alamat yang dikenal maupun tidak, sehingga admin tidak mengetahui akun di luar organisasinya.",
+      "en": "No account is added to an organization without consent: an invitation sends an e-mailed link and the membership is written only when the invitee accepts it; the answer and the audit record are the same for known and unknown addresses, so an admin learns nothing about accounts outside the organization."
+    },
+    "formulaLatex": null,
+    "variables": [],
+    "constants": [],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/modules/organizations/members.service.ts#MembersService.invite"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan desain v2 (spesifikasi 13.1, anggota): persetujuan dan tidak membocorkan keberadaan akun lintas tenant. Pengiriman ulang dibatasi 4 e-mail per alamat dan organisasi per jam. Tidak ada sumber eksternal.",
+      "en": "A v2 design rule (spec 13.1, members): consent and no disclosure of accounts across tenants. Resends are limited to 4 e-mails per address and organization per hour. No external source."
+    }
+  },
+  {
+    "id": "security.client_ip",
+    "domain": "security",
+    "name": {
+      "id": "Alamat IP klien",
+      "en": "Client IP address"
+    },
+    "summary": {
+      "id": "IP klien untuk sesi, kunci pembatasan dan catatan audit adalah request.ip Fastify (X-Forwarded-For hanya dari TRUSTED_PROXIES) yang dinormalisasi clientIp kit: tanpa kurung siku, port dan zone id IPv6; null bila bukan alamat IP.",
+      "en": "The client IP of sessions, throttle keys and audit records is Fastify's request.ip (X-Forwarded-For only from TRUSTED_PROXIES) normalized by the kit's clientIp: brackets, ports and IPv6 zone ids stripped, null when it is not an IP address."
+    },
+    "formulaLatex": null,
+    "variables": [],
+    "constants": [],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/common/principals.ts#clientInfo"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Aturan desain v2 (spesifikasi 5, TRUSTED_PROXIES): alamat yang sama dengan yang disimpan AuditService kit, sehingga cocok untuk kolom inet. Tidak ada sumber eksternal yang diperiksa.",
+      "en": "A v2 design rule (spec 5, TRUSTED_PROXIES): the same address the kit's AuditService stores, so it fits an inet column. No external source checked."
+    }
+  },
+  {
+    "id": "security.api_key_rotation",
+    "domain": "security",
+    "name": {
+      "id": "Rotasi rahasia kunci API",
+      "en": "API key secret rotation"
+    },
+    "summary": {
+      "id": "Merotasi rahasia kunci API menerbitkan rahasia baru; rahasia lama tetap berlaku selama masa tenggang (bawaan 24 jam, maksimal 7 hari, 0 = berakhir seketika) agar klien sempat beralih; nilai di luar batas menggagalkan rotasi.",
+      "en": "Rotating an API key secret issues a new secret; the replaced one stays valid for a grace period (default 24 h, at most 7 days, 0 = ends at once) so that clients can switch; a value out of bounds fails the rotation."
+    },
+    "formulaLatex": "t_{end}=t_{rotate}+g,\\qquad 0\\le g\\le g_{max}",
+    "variables": [
+      {
+        "symbol": "t_{rotate}",
+        "name": {
+          "id": "Waktu rotasi",
+          "en": "Rotation time"
+        },
+        "unit": null,
+        "source": "server clock"
+      },
+      {
+        "symbol": "g",
+        "name": {
+          "id": "Masa tenggang yang diminta (gracePeriodMin)",
+          "en": "Requested grace period (gracePeriodMin)"
+        },
+        "unit": "min",
+        "source": "request body"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "g_{default}",
+        "name": {
+          "id": "Masa tenggang bawaan",
+          "en": "Default grace period"
+        },
+        "value": 1440,
+        "unit": "min",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      },
+      {
+        "symbol": "g_{max}",
+        "name": {
+          "id": "Masa tenggang maksimum",
+          "en": "Maximum grace period"
+        },
+        "value": 10080,
+        "unit": "min",
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/domain/api-key-lifecycle.ts#rotationGraceEnd"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "Default desain v2 (spesifikasi 8.1); tidak ada sumber eksternal yang diperiksa.",
+      "en": "v2 design defaults (spec 8.1); no external source checked."
+    }
+  },
+  {
+    "id": "security.csv_injection",
+    "domain": "security",
+    "name": {
+      "id": "Netralisasi formula pada ekspor CSV",
+      "en": "Formula neutralization of CSV exports"
+    },
+    "summary": {
+      "id": "Ekspor CSV log audit mengikuti RFC 4180 (sel dikutip bila memuat koma, kutip atau baris baru; kutip digandakan) dan menambahkan apostrof di depan sel yang diawali =, +, -, @, tab atau carriage return agar spreadsheet tidak menjalankannya sebagai formula.",
+      "en": "CSV exports of the audit log follow RFC 4180 (a cell is quoted when it holds a comma, a quote or a line break; quotes are doubled) and prefix cells that start with =, +, -, @, tab or carriage return with an apostrophe, so spreadsheets never run them as formulas."
+    },
+    "formulaLatex": null,
+    "variables": [],
+    "constants": [
+      {
+        "symbol": "F",
+        "name": {
+          "id": "Karakter awal formula",
+          "en": "Formula start characters"
+        },
+        "value": "= + - @ TAB CR",
+        "unit": null,
+        "referenceIds": [
+          "owasp-csv-injection"
+        ],
+        "needsCitation": false
+      }
+    ],
+    "referenceIds": [
+      "ietf-rfc-4180",
+      "owasp-csv-injection"
+    ],
+    "implementedBy": {
+      "service": "auth",
+      "module": "src/modules/audit-logs/audit-log-csv.ts#csvCell"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": false,
+    "notes": {
+      "id": "Nama, user agent dan meta berasal dari pengguna dan layanan lain, sehingga setiap sel dinetralkan. OWASP mencatat bahwa awalan apostrof tidak andal di Microsoft Excel setelah disimpan dan dibuka ulang.",
+      "en": "Names, user agents and meta come from users and other services, so every cell is neutralized. OWASP notes that the apostrophe prefix is not reliable in Microsoft Excel after saving and re-opening."
+    }
+  },
+  {
+    "id": "security.api_key_hashing",
+    "domain": "security",
+    "name": {
+      "id": "Hash kunci API (SHA-256)",
+      "en": "API key hashing (SHA-256)"
+    },
+    "summary": {
+      "id": "Kunci API berbentuk sk_<id 10 base62>_<rahasia 32 base62>; hanya SHA-256 (hex huruf kecil) dari byte UTF-8 kunci lengkap yang disimpan (api_keys.key_hash) dan dibandingkan dalam waktu konstan; produsen (auth) dan verifier (kit) memakai satu definisi, hashApiKey.",
+      "en": "API keys have the form sk_<10 base62 id>_<32 base62 secret>; only the SHA-256 (lowercase hex) of the UTF-8 bytes of the full key is stored (api_keys.key_hash) and compared in constant time; producer (auth) and verifier (kit) share one definition, hashApiKey."
+    },
+    "formulaLatex": "h=\\mathrm{hex}\\left(\\mathrm{SHA\\text{-}256}\\left(\\mathrm{UTF8}(\\texttt{sk\\_}id\\texttt{\\_}secret)\\right)\\right)",
+    "variables": [
+      {
+        "symbol": "id",
+        "name": {
+          "id": "Id publik kunci (10 karakter base62)",
+          "en": "Public key id (10 base62 characters)"
+        },
+        "unit": null,
+        "source": "api_keys.id"
+      },
+      {
+        "symbol": "secret",
+        "name": {
+          "id": "Rahasia (32 karakter base62)",
+          "en": "Secret (32 base62 characters)"
+        },
+        "unit": null,
+        "source": "CSPRNG"
+      }
+    ],
+    "constants": [
+      {
+        "symbol": "\\lvert secret\\rvert",
+        "name": {
+          "id": "Panjang rahasia",
+          "en": "Secret length"
+        },
+        "value": 32,
+        "unit": null,
+        "referenceIds": [
+          "platform-spec-v1-1"
+        ],
+        "needsCitation": true
+      }
+    ],
+    "referenceIds": [
+      "nist-fips-180-4",
+      "platform-spec-v1-1"
+    ],
+    "implementedBy": {
+      "service": "contracts",
+      "module": "src/auth/api-key.ts#hashApiKey"
+    },
+    "legacy": [],
+    "status": "implemented",
+    "needsCitation": true,
+    "notes": {
+      "id": "SHA-256 tanpa salt dan tanpa peregangan cukup karena rahasia acak 32 karakter base62 (sekitar 190 bit), bukan kata sandi pilihan pengguna; format kunci adalah default desain v2 (spesifikasi 8.1). Dibagikan di paket contracts sejak 0.4.0.",
+      "en": "An unsalted, unstretched SHA-256 suffices because the secret is a random 32-character base62 string (about 190 bits), not a user-chosen password; the key format is a v2 design default (spec 8.1). Shared in the contracts package since 0.4.0."
     }
   }
 ]

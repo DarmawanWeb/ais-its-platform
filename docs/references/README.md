@@ -6,7 +6,7 @@ This folder holds the machine-readable methodology catalog of AIS Maritime Intel
 | File | Content |
 |---|---|
 | `references.json` | Every source cited by a method: regulations, guidelines, standards, papers, books, reports, datasets, software and the legacy MVP code. |
-| `methods.json` | Every formula, empirical constant, threshold and rule of the platform (109 methods; 149 references in `references.json`), with its equation, variables, constants, sources, v2 owner and legacy location. |
+| `methods.json` | Every formula, empirical constant, threshold and rule of the platform (122 methods; 164 references in `references.json`), with its equation, variables, constants, sources, v2 owner and legacy location. |
 
 Together with `docs/METHODOLOGY.md` (the human-readable "Metodologi & Referensi", Bahasa Indonesia
 with an English abstract) they are the **single source of truth** for:
@@ -39,7 +39,8 @@ The renderer used for version 1.0 is a one-off script that is not part of this r
 home: `tools/methodology/`); until it is added, change the JSON first and then apply the same change to
 the document by hand, keeping the citation numbers in step with the array order. §20 of the document
 (the 18 methods and 9 references added with contracts 0.4.0) was rendered from the JSON with the same
-block layout.
+block layout. §21 (the 13 `security` methods of the auth service and of the contracts `hashApiKey`, and the
+15 standards they cite, added on 2026-11-27) was rendered the same way.
 
 `pnpm --filter @darmawanweb/ais-its-contracts run references:verify` (in `packages/ais-its-contracts`)
 checks the catalog against the code: every `implemented` method's `implementedBy.module` file and symbol

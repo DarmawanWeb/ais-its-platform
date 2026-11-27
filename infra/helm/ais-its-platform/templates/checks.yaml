@@ -1,0 +1,5 @@
+{{- /*
+  Deployment rules of the service READMEs that a render can check (see
+  _helpers.tpl). Renders no object: a broken rule fails the render.
+*/}}
+{{- include "ais-its-platform.checkIngestorFeeds" . }}

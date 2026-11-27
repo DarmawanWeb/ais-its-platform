@@ -77,7 +77,7 @@ Batas riset yang perlu diketahui pembaca:
 
 ### 1.4 Indeks metode
 
-Katalog: **109 metode** dan **149 referensi** (88 terverifikasi, 41 dikoreksi, 20 belum terverifikasi); 85 metode masih bertanda ⚠️ perlu sitasi; status: 104 diimplementasikan, 5 tidak diimplementasikan di v2.
+Katalog: **122 metode** dan **164 referensi** (103 terverifikasi, 2 terverifikasi sebagian, 41 dikoreksi, 18 belum terverifikasi); 96 metode masih bertanda ⚠️ perlu sitasi; status: 117 diimplementasikan, 5 tidak diimplementasikan di v2.
 
 | § | Id | Nama | Pemilik v2 | Status | Sitasi |
 |---|---|---|---|---|---|
@@ -190,6 +190,19 @@ Katalog: **109 metode** dan **149 referensi** (88 terverifikasi, 41 dikoreksi, 2
 | 20.16 | [`notify.realtime_viewport_rooms`](#notify.realtime_viewport_rooms) | Room viewport realtime (tile zoom 6) | `notification` | diimplementasikan | ⚠️ |
 | 20.17 | [`notify.rule_quiet_period`](#notify.rule_quiet_period) | Periode tenang per aturan | `notification` | diimplementasikan | ⚠️ |
 | 20.18 | [`notify.webhook_signature`](#notify.webhook_signature) | Tanda tangan webhook (HMAC-SHA256) | `notification` | diimplementasikan | ⚠️ |
+| 21.1 | [`security.password_hashing`](#security.password_hashing) | Hash kata sandi (Argon2id) | `auth` | diimplementasikan | ⚠️ |
+| 21.2 | [`security.password_policy`](#security.password_policy) | Kebijakan kata sandi | `auth` | diimplementasikan | ⚠️ |
+| 21.3 | [`security.login_throttle`](#security.login_throttle) | Pembatasan percobaan login | `auth` | diimplementasikan | ⚠️ |
+| 21.4 | [`security.refresh_rotation`](#security.refresh_rotation) | Rotasi refresh token dan deteksi penggunaan ulang | `auth` | diimplementasikan | ⚠️ |
+| 21.5 | [`security.secret_encryption`](#security.secret_encryption) | Enkripsi rahasia saat disimpan (AES-256-GCM) | `auth` | diimplementasikan | ⚠️ |
+| 21.6 | [`security.signing_key_lifecycle`](#security.signing_key_lifecycle) | Siklus hidup kunci penandatanganan JWT (Ed25519, JWKS) | `auth` | diimplementasikan | ⚠️ |
+| 21.7 | [`security.totp`](#security.totp) | Kode MFA berbasis waktu (TOTP) | `auth` | diimplementasikan | ✓ |
+| 21.8 | [`security.api_key_scope_grant`](#security.api_key_scope_grant) | Pemberian scope kunci API | `auth` | diimplementasikan | ⚠️ |
+| 21.9 | [`security.invitation_consent`](#security.invitation_consent) | Keanggotaan hanya lewat undangan yang diterima | `auth` | diimplementasikan | ⚠️ |
+| 21.10 | [`security.client_ip`](#security.client_ip) | Alamat IP klien | `auth` | diimplementasikan | ⚠️ |
+| 21.11 | [`security.api_key_rotation`](#security.api_key_rotation) | Rotasi rahasia kunci API | `auth` | diimplementasikan | ⚠️ |
+| 21.12 | [`security.csv_injection`](#security.csv_injection) | Netralisasi formula pada ekspor CSV | `auth` | diimplementasikan | ✓ |
+| 21.13 | [`security.api_key_hashing`](#security.api_key_hashing) | Hash kunci API (SHA-256) | `contracts` | diimplementasikan | ⚠️ |
 
 ## 2. Dasar hukum dan regulasi (ringkasan)
 
@@ -785,7 +798,7 @@ $$
 
 > ⚠️ **Perlu sitasi dari tesis.** Jangan mengaitkan nilai ini dengan sumber yang belum terbukti memuatnya. Nilai yang belum bersumber: Aliran minimum.
 
-**Catatan.** Regresi per kapal spesifik tesis (sampel Dharma Ferry VIII); satuan L/min hanya tersirat dari konversi. Perlu dokumentasi satuan, data fitting dan rentang kecepatan valid tiap regresi, serta dasar batas bawah 0,5 (berlaku juga pada 0 kn). Legacy mengevaluasi string dengan new Function/with; NaN tidak dibatasi. v2 memakai evaluator ekspresi aman (spesifikasi 15.4: angka, speedKnot, + - * / ** ^ ( ), fungsi Math) dan mengartikan ^ sebagai pangkat (di JavaScript legacy ^ adalah XOR): uji golden harus memeriksa bahwa rumus yang ada tidak memakai ^.
+**Catatan.** Regresi per kapal spesifik tesis (sampel Dharma Ferry VIII); satuan L/min hanya tersirat dari konversi. Perlu dokumentasi satuan, data fitting dan rentang kecepatan valid tiap regresi, serta dasar batas bawah 0,5 (berlaku juga pada 0 kn). Legacy mengevaluasi string dengan new Function/with; NaN tidak dibatasi. v2 memakai evaluator ekspresi aman (spesifikasi 15.4: angka, speedKnot, + - * / ** ^ ( ), fungsi Math) dan mengartikan ^ sebagai pangkat (di JavaScript legacy ^ adalah XOR): uji golden harus memeriksa bahwa rumus yang ada tidak memakai ^. v2: bahasa rumus (tata bahasa, batas, semantik JavaScript) dibagikan sebagai parseFuelFormula, evaluateFuelFormula dan validateFuelFormula di @darmawanweb/ais-its-contracts/domain (contracts 0.4.0); fleet 0.2.0 memvalidasi rumus tersimpan dengan validateFuelFormula di src/modules/common/validation.ts#IsFuelFormula (masalah pertama dan posisinya di src/domain/fuel-formula-problem.ts#fuelFormulaProblem), dan emission 0.2.0 mengurainya dengan parseFuelFormula di src/domain/fuel/first-formula.ts#prepareFuelFlowFormula serta mengevaluasinya dengan evaluateFuelFormula di src/domain/fuel/first-formula.ts#evaluateFuelFlow.
 
 <a id="fuel.me_regression_sample"></a>
 #### 7.2.2 `fuel.me_regression_sample` — Contoh regresi bahan bakar mesin induk -0,0382 v^2 + 0,8658 v - 0,0197
@@ -3183,11 +3196,26 @@ Catatan tiap entri ditulis dalam bahasa Inggris seperti di katalog.
 - <a id="ref-douglas-peucker-1973"></a>**[142]** David H. Douglas, Thomas K. Peucker (1973). *Algorithms for the reduction of the number of points required to represent a digitized line or its caricature*. [Artikel ilmiah] The Canadian Cartographer (now Cartographica) 10(2): 112-122; doi:10.3138/FM57-6770-U75U-7727. <https://doi.org/10.3138/FM57-6770-U75U-7727>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `douglas-peucker-1973`. Catatan: Line simplification (Douglas-Peucker) used for the display of vessel tracks (ais-pipeline) and of the zone map layer (geo, PostGIS ST_SimplifyPreserveTopology). Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
 - <a id="ref-ramer-1972"></a>**[143]** Urs Ramer (1972). *An iterative procedure for the polygonal approximation of plane curves*. [Artikel ilmiah] Computer Graphics and Image Processing 1(3): 244-256; doi:10.1016/S0146-664X(72)80017-0. <https://doi.org/10.1016/S0146-664X(72)80017-0>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `ramer-1972`. Catatan: The same polygonal approximation, published independently; cited with Douglas and Peucker by the track simplification of ais-pipeline. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
 - <a id="ref-ietf-rfc-2104"></a>**[144]** H. Krawczyk, M. Bellare, R. Canetti (IETF) (1997). *HMAC: Keyed-Hashing for Message Authentication*. [Standar] RFC 2104 (Informational), February 1997. <https://www.rfc-editor.org/rfc/rfc2104>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `ietf-rfc-2104`. Catatan: HMAC construction of the webhook signature of the notification service (HMAC-SHA256). Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
-- <a id="ref-nist-fips-180-4"></a>**[145]** National Institute of Standards and Technology (NIST) (2015). *Secure Hash Standard (SHS)*. [Standar] FIPS PUB 180-4, August 2015 (SHA-256). <https://csrc.nist.gov/pubs/fips/180-4/upd1/final>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `nist-fips-180-4`. Catatan: SHA-256, the hash function of the webhook signature (HMAC-SHA256). Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
+- <a id="ref-nist-fips-180-4"></a>**[145]** National Institute of Standards and Technology (NIST) (2015). *Secure Hash Standard (SHS)*. [Standar] FIPS PUB 180-4, August 2015 (SHA-256). <https://csrc.nist.gov/pubs/fips/180-4/upd1/final>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `nist-fips-180-4`. Catatan: SHA-256, the hash function of the webhook signature (HMAC-SHA256). Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it. Re-checked on 2026-11-27 through search extracts of csrc.nist.gov: FIPS 180-4, published August 2015 (the 2015 update changed only the Applicability Clause, not the algorithms). Also cited by security.api_key_hashing (SHA-256 of API keys).
 - <a id="ref-osm-slippy-map-tilenames"></a>**[146]** OpenStreetMap Wiki contributors (None). *Slippy map tilenames*. [Situs web] None. <https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `osm-slippy-map-tilenames`. Catatan: Tile numbering x/y at zoom z of the Web Mercator tile pyramid, used through the contracts tile math for the realtime viewport rooms. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
 - <a id="ref-ietf-rfc-9110"></a>**[147]** R. Fielding, M. Nottingham, J. Reschke (IETF) (2022). *HTTP Semantics*. [Standar] RFC 9110 (Internet Standard, STD 97), June 2022; section 10.2.3 Retry-After. <https://www.rfc-editor.org/rfc/rfc9110>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `ietf-rfc-9110`. Catatan: Retry-After of a webhook target, honoured by the delivery backoff of the notification service when it is longer than the backoff. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
 - <a id="ref-telegram-bot-api"></a>**[148]** Telegram (None). *Telegram Bot API (ResponseParameters.retry_after)*. [Situs web] None. <https://core.telegram.org/bots/api#responseparameters>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `telegram-bot-api`. Catatan: retry_after of a rate-limited Telegram Bot API call, honoured by the delivery backoff of the notification service when it is longer than the backoff. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
-- <a id="ref-ietf-rfc-4180"></a>**[149]** Y. Shafranovich (IETF) (2005). *Common Format and MIME Type for Comma-Separated Values (CSV) Files*. [Standar] RFC 4180 (Informational), October 2005. <https://www.rfc-editor.org/rfc/rfc4180>. Belum diakses. Verifikasi: **belum terverifikasi**. Id katalog: `ietf-rfc-4180`. Catatan: CSV format (CRLF line ends, quoting) of the DCS-style annual summary export of the emission service. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it.
+- <a id="ref-ietf-rfc-4180"></a>**[149]** Y. Shafranovich (IETF) (2005). *Common Format and MIME Type for Comma-Separated Values (CSV) Files*. [Standar] RFC 4180 (Informational), October 2005. <https://www.rfc-editor.org/rfc/rfc4180>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `ietf-rfc-4180`. Catatan: CSV format (CRLF line ends, quoting) of the DCS-style annual summary export of the emission service. Identity (number, title, authors, year, URL) from the TSDoc of the implementing service and the publisher index; the source was not opened in this pass (no internet access from the research machine): check the cited section before relying on it. Re-checked on 2026-11-27 through search extracts of the IETF datatracker: Informational, October 2005, Y. Shafranovich; registers the text/csv media type; updated by RFC 7111. Also cited by security.csv_injection (audit log CSV export of the auth service).
+- <a id="ref-ietf-rfc-9106"></a>**[150]** A. Biryukov, D. Dinu, D. Khovratovich, S. Josefsson (IRTF CFRG) (2021). *Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work Applications*. [Standar] RFC 9106 (Informational, IRTF stream), September 2021. <https://www.rfc-editor.org/rfc/rfc9106>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `ietf-rfc-9106`. Catatan: Argon2 version 1.3 (BLAKE2b): Argon2id is the variant every implementation must support and the one to use when the threat model is unknown; the salt should be unique per password and 16 bytes are recommended for password hashing. Supports the algorithm and the salt length of security.password_hashing; the cost parameters of the platform (m = 19 456 KiB, t = 2, p = 1) come from the OWASP Password Storage Cheat Sheet, not from the two profiles of RFC 9106 section 4; the 32-byte output length was not confirmed in the RFC. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-owasp-password-storage-cheat-sheet"></a>**[151]** OWASP Foundation (OWASP Cheat Sheet Series) (None). *Password Storage Cheat Sheet*. [Pedoman] Living document, section "Argon2id" (version current on 2026-11-27). <https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `owasp-password-storage-cheat-sheet`. Catatan: Recommends Argon2id with a minimum configuration of 19 MiB of memory (m = 19456 KiB), an iteration count of 2 and 1 degree of parallelism (equivalent: m = 47104 KiB, t = 1, p = 1); the 19 MiB figure dates from May 2023 (earlier versions said 15 MiB). Text seen in a search extract of the cheat sheet's markdown source (OWASP/CheatSheetSeries) on 2026-11-27.
+- <a id="ref-nist-sp-800-63b-4"></a>**[152]** D. Temoshok, J. L. Fenton, Y.-Y. Choong, N. Lefkovitz, A. Regenscheid, R. Galluzzo, J. P. Richer (NIST) (2025). *Digital Identity Guidelines: Authentication and Authenticator Management*. [Pedoman] NIST SP 800-63B-4, final 31 July 2025 (supersedes SP 800-63B from 1 August 2025); DOI 10.6028/NIST.SP.800-63B-4. <https://pages.nist.gov/800-63-4/sp800-63b.html>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `nist-sp-800-63b-4`. Catatan: Passwords used as the only authentication factor must have at least 15 characters (8 when the password is one factor of multi-factor authentication); verifiers should accept at least 64 characters; mandatory composition rules are prohibited. Cited by security.password_policy, whose v2 rule deviates from it (see the method notes). Identity from the NIST publication record and DOI; the requirements were seen in search extracts quoting the publication. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-owasp-authentication-cheat-sheet"></a>**[153]** OWASP Foundation (OWASP Cheat Sheet Series) (None). *Authentication Cheat Sheet*. [Pedoman] Living document, section "Protect Against Automated Attacks". <https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html>. Diakses 2026-11-27. Verifikasi: **terverifikasi sebagian**. Id katalog: `owasp-authentication-cheat-sheet`. Catatan: Cited for throttling failed logins: limit or increasingly delay failed attempts, keep lockouts temporary (permanent lockout enables denial of service), multi-factor authentication as the strongest control. On 2026-11-27 the search extracts did not show the section itself; these statements come from related OWASP pages (Top Ten 2017 A2, Credential Stuffing Prevention Cheat Sheet, WSTG weak lock-out test). OWASP gives no numeric limits: the limits of security.login_throttle are v2 design defaults (spec 13.1).
+- <a id="ref-ietf-rfc-9700"></a>**[154]** T. Lodderstedt, J. Bradley, A. Labunets, D. Fett (IETF) (2025). *Best Current Practice for OAuth 2.0 Security*. [Standar] RFC 9700, BCP 240, January 2025; updates RFC 6749, RFC 6750 and RFC 6819. <https://www.rfc-editor.org/rfc/rfc9700>. Diakses 2026-11-27. Verifikasi: **terverifikasi sebagian**. Id katalog: `ietf-rfc-9700`. Catatan: Section 4.14.2 (Refresh Token Protection, Recommendations): for public clients the authorization server must detect refresh token replay, either with sender-constrained refresh tokens (mutual TLS, RFC 8705; DPoP, RFC 9449) or with refresh token rotation: a refresh token presented again after it was rotated makes the server revoke the active refresh token, and the legitimate client has to obtain a new grant. Identity confirmed through rfc-editor.org and datatracker records; the wording of 4.14.2 was seen only in secondary quotations (OAuth WG mailing list, a developer forum, an arXiv paper), not in the RFC text. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-ietf-rfc-6238"></a>**[155]** D. M'Raihi, S. Machani, M. Pei, J. Rydell (IETF) (2011). *TOTP: Time-Based One-Time Password Algorithm*. [Standar] RFC 6238 (Informational), May 2011. <https://www.rfc-editor.org/rfc/rfc6238>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `ietf-rfc-6238`. Catatan: TOTP is HOTP (RFC 4226) with the counter T = floor((now - T0) / X); the time step X is a system parameter with the default X = 30 seconds, and prover and verifier must use the same X (R4). The recommendation to accept at most one time step of network delay (section 5.2) was seen in the final Internet-Draft (draft-mraihi-totp-timebased-08), not in the RFC text. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-ietf-rfc-4226"></a>**[156]** D. M'Raihi, M. Bellare, F. Hoornaert, D. Naccache, O. Ranen (IETF) (2005). *HOTP: An HMAC-Based One-Time Password Algorithm*. [Standar] RFC 4226 (Informational), December 2005. <https://www.rfc-editor.org/rfc/rfc4226>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `ietf-rfc-4226`. Catatan: Section 4, requirement R6: the shared secret is at least 128 bits long and 160 bits are recommended; HOTP values have at least 6 digits (erratum 5792 discusses the upper range). R6 was seen in an implementation quoting it and in the first draft (draft-mraihi-oath-hmac-otp-00), the 6-digit minimum in extracts of the RFC. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-ietf-rfc-7519"></a>**[157]** M. Jones, J. Bradley, N. Sakimura (IETF) (2015). *JSON Web Token (JWT)*. [Standar] RFC 7519 (Proposed Standard), May 2015; DOI 10.17487/RFC7519; updated by RFC 7797 and RFC 8725. <https://www.rfc-editor.org/rfc/rfc7519>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `ietf-rfc-7519`. Catatan: JWT: a compact, URL-safe means of representing claims transferred between two parties, signed as a JWS. The access tokens of the platform are JWTs signed by the auth service. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-ietf-rfc-8725"></a>**[158]** Y. Sheffer, D. Hardt, M. Jones (IETF) (2020). *JSON Web Token Best Current Practices*. [Standar] RFC 8725, BCP 225, February 2020; updates RFC 7519. <https://www.rfc-editor.org/rfc/rfc8725>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `ietf-rfc-8725`. Catatan: Section 3.1 "Perform Algorithm Verification" (first best practice): verifiers accept only the algorithms they expect; the kit pins EdDSA and selects the key by kid. A successor (draft-ietf-oauth-rfc8725bis) was in progress in 2026. Only the section title of 3.1 was seen, not its text. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-ietf-rfc-8037"></a>**[159]** I. Liusvaara (IETF) (2017). *CFRG Elliptic Curve Diffie-Hellman (ECDH) and Signatures in JSON Object Signing and Encryption (JOSE)*. [Standar] RFC 8037 (Proposed Standard), January 2017. <https://www.rfc-editor.org/rfc/rfc8037>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `ietf-rfc-8037`. Catatan: Registers the JWK key type "OKP" (octet key pairs) and the JWS algorithm "EdDSA" for Ed25519 and Ed448: the signing keys of the auth service are Ed25519 OKP keys and access tokens use alg EdDSA. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-ietf-rfc-7638"></a>**[160]** M. Jones, N. Sakimura (IETF) (2015). *JSON Web Key (JWK) Thumbprint*. [Standar] RFC 7638 (Proposed Standard), September 2015. <https://www.rfc-editor.org/rfc/rfc7638>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `ietf-rfc-7638`. Catatan: A hash over the required members of a JWK; the base64url-encoded SHA-256 thumbprint may be used as the "kid" (key ID) value, as the auth service does for its signing keys. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-ietf-rfc-7517"></a>**[161]** M. Jones (IETF) (2015). *JSON Web Key (JWK)*. [Standar] RFC 7517 (Proposed Standard), May 2015. <https://www.rfc-editor.org/rfc/rfc7517>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `ietf-rfc-7517`. Catatan: JWK and JWK Set: a JWK Set is a JSON object with a "keys" member holding an array of JWKs (section 5, JWK Set Format); the auth service publishes its active and retiring signing keys as a JWK Set. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-nist-sp-800-38d"></a>**[162]** M. Dworkin (NIST) (2007). *Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC*. [Pedoman] NIST SP 800-38D, November 2007 (revision announced in 2024; SP 800-38D Rev. 1 in draft). <https://csrc.nist.gov/pubs/sp/800/38/d/final>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `nist-sp-800-38d`. Catatan: GCM authenticated encryption; 96-bit IVs are the recommended case (J0 = IV || 0^31 || 1), with deterministic or random-bit-generator IV constructions. The announced revision drops tags shorter than 96 bits (the platform uses 128-bit tags). Supports the 96-bit random IV of security.secret_encryption. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-ietf-rfc-5869"></a>**[163]** H. Krawczyk, P. Eronen (IETF) (2010). *HMAC-based Extract-and-Expand Key Derivation Function (HKDF)*. [Standar] RFC 5869 (Informational), May 2010; DOI 10.17487/RFC5869. <https://www.rfc-editor.org/rfc/rfc5869>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `ietf-rfc-5869`. Catatan: Extract-then-expand key derivation: PRK = HMAC-Hash(salt, IKM), expanded with the optional context and application specific "info", which binds a derived key to its purpose; the auth service derives one key per purpose (signing-key, mfa-secret) with HKDF-SHA256. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
+- <a id="ref-owasp-csv-injection"></a>**[164]** OWASP Foundation (OWASP Community) (None). *CSV Injection*. [Pedoman] OWASP community page (Attacks). <https://owasp.org/www-community/attacks/CSV_Injection>. Diakses 2026-11-27. Verifikasi: **terverifikasi**. Id katalog: `owasp-csv-injection`. Catatan: Cells beginning with =, +, -, @, tab (0x09) or carriage return (0x0D) can be run as formulas by spreadsheets; mitigation: prefix such cells with a single quote, quote every field and double embedded quotes (not reliable in Microsoft Excel after saving and re-opening). Tab and carriage return were added to the list later (Symfony CVE-2021-41270 write-up). Weakness CWE-1236. Checked on 2026-11-27 through search extracts (the publisher hosts could not be opened from the research session); re-read the cited section verbatim before relying on its wording.
 
 ## 17. Celah sitasi terbuka untuk penulis tesis
 
@@ -3825,3 +3853,349 @@ $$
 - **Referensi:** [[144]](#ref-ietf-rfc-2104), [[145]](#ref-nist-fips-180-4), [[49]](#ref-platform-spec-v1-1)
 
 **Catatan.** Mekanisme keamanan, bukan metode analitik; dicatat agar format tanda tangan dapat ditelusuri (spesifikasi §13.9). Penerima membandingkan dalam waktu konstan dan membatasi umur timestamp (verifyWebhookSignature).
+
+## 21. Keamanan (auth): metode katalog 2026-11-27
+
+Aturan keamanan layanan `auth` (dan definisi hash kunci API di paket contracts) yang diusulkan auth 0.2.0 untuk domain `security`, dengan sumber standar (RFC, NIST, OWASP) yang diperiksa pada 2026-11-27 melalui kutipan mesin pencari (situs rfc-editor.org dan datatracker.ietf.org tidak dapat dibuka dari sesi riset; lihat catatan tiap referensi). Ambang yang merupakan default desain v2 bertanda ⚠️; keputusannya milik pemilik keamanan, bukan penulis tesis. Penyimpangan yang perlu diputuskan: kebijakan kata sandi (`security.password_policy`) memakai minimum 10 karakter dengan aturan komposisi, sedangkan NIST SP 800-63B-4 meminta minimal 15 karakter untuk kata sandi sebagai satu-satunya faktor dan melarang aturan komposisi.
+
+<a id="security.password_hashing"></a>
+#### 21.1 `security.password_hashing` — Hash kata sandi (Argon2id)
+
+*Password hashing (Argon2id)*
+
+**Deskripsi.** Kata sandi disimpan sebagai string PHC Argon2id ($argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>) dengan salt acak 16 byte dan keluaran 32 byte; hash dengan parameter lain dihitung ulang setelah login berhasil berikutnya (needsRehash).
+
+$$
+H=\mathrm{Argon2id}_{v=19}\left(P,\ S;\ m,\ t,\ p,\ \ell\right),\qquad \lvert S\rvert=16\ \mathrm{B}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $P$ | Kata sandi | — | request body |
+| $S$ | Salt acak per kata sandi | B | CSPRNG |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $m$ | Biaya memori | 19456 | KiB | [[151]](#ref-owasp-password-storage-cheat-sheet) |
+| $t$ | Jumlah iterasi | 2 | — | [[151]](#ref-owasp-password-storage-cheat-sheet) |
+| $p$ | Paralelisme | 1 | — | [[151]](#ref-owasp-password-storage-cheat-sheet) |
+| $\lvert S\rvert$ | Panjang salt | 16 | B | [[150]](#ref-ietf-rfc-9106) |
+| $\ell$ | Panjang hash | 32 | B | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/domain/password-hashing.ts#ARGON2_PARAMETERS`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[150]](#ref-ietf-rfc-9106), [[151]](#ref-owasp-password-storage-cheat-sheet), [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Nilai yang belum bersumber: Panjang hash.
+
+**Catatan.** Argon2id sesuai RFC 9106 (varian yang wajib didukung setiap implementasi); parameter biaya adalah konfigurasi minimum OWASP (19 MiB, t = 2, p = 1), bukan salah satu dari dua profil RFC 9106 bagian 4 (2 GiB / 64 MiB), dipilih demi latensi login. Panjang keluaran 32 byte adalah bawaan pustaka yang dipertahankan spesifikasi 13.1 (belum ada sumber eksternal yang diperiksa).
+
+<a id="security.password_policy"></a>
+#### 21.2 `security.password_policy` — Kebijakan kata sandi
+
+*Password policy*
+
+**Deskripsi.** Kata sandi baru harus 10 sampai 128 code point Unicode dan memuat minimal satu huruf dan satu angka; kata sandi yang lebih panjang ditolak, tidak pernah dipotong.
+
+$$
+L_{min}\le \lvert P\rvert_{cp}\le L_{max}\ \wedge\ \exists\,\text{huruf}\in P\ \wedge\ \exists\,\text{angka}\in P
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $\lvert P\rvert_{cp}$ | Panjang kata sandi dalam code point | — | request body |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $L_{min}$ | Panjang minimum | 10 | — | ⚠️ perlu sitasi |
+| $L_{max}$ | Panjang maksimum | 128 | — | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/domain/password-policy.ts#checkPasswordPolicy`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[152]](#ref-nist-sp-800-63b-4), [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Nilai yang belum bersumber: Panjang minimum; Panjang maksimum.
+
+**Catatan.** Menyimpang dari NIST SP 800-63B-4 (final Juli 2025), yang mewajibkan minimal 15 karakter untuk kata sandi sebagai satu-satunya faktor (8 bila bagian dari autentikasi multifaktor), menerima minimal 64 karakter, dan melarang aturan komposisi: aturan v2 (spesifikasi 13.1) memakai minimum lebih rendah dan aturan komposisi (huruf + angka). Maksimum 128 memenuhi syarat "minimal 64". Keputusan untuk pemilik keamanan: memakai 15 karakter tanpa aturan komposisi, atau mendokumentasikan alasannya.
+
+<a id="security.login_throttle"></a>
+#### 21.3 `security.login_throttle` — Pembatasan percobaan login
+
+*Login throttling*
+
+**Deskripsi.** Login gagal dihitung dalam jendela tetap 15 menit (Valkey): maksimal 5 per alamat e-mail dan 20 per IP klien (termasuk kode MFA salah); kode MFA dan ganti kata sandi dibatasi 5 kegagalan per akun per 15 menit. Percobaan dicadangkan sebelum diperiksa dan dikembalikan bila berhasil; di atas batas jawabannya 429.
+
+$$
+n_{fail}(k,\ [t-W,\ t))\le N_k,\qquad W=15\ \mathrm{min}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $n_{fail}$ | Jumlah percobaan gagal per kunci dalam jendela | — | Valkey counter (e-mail SHA-256, client IP, user id) |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $N_{email}$ | Batas login gagal per e-mail | 5 | — | ⚠️ perlu sitasi |
+| $N_{ip}$ | Batas login gagal per IP klien | 20 | — | ⚠️ perlu sitasi |
+| $N_{mfa}$ | Batas kode MFA salah per akun | 5 | — | ⚠️ perlu sitasi |
+| $W$ | Panjang jendela | 15 | min | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/modules/throttling/auth-throttle.service.ts#THROTTLE_LIMITS`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[153]](#ref-owasp-authentication-cheat-sheet), [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Nilai yang belum bersumber: Batas login gagal per e-mail; Batas login gagal per IP klien; Batas kode MFA salah per akun; Panjang jendela.
+
+**Catatan.** OWASP menganjurkan membatasi atau menunda percobaan gagal dan penguncian sementara, tanpa angka: batas dan jendela adalah default desain v2 (spesifikasi 13.1). Kunci tidak memuat e-mail dalam teks jelas (SHA-256); IP klien dari security.client_ip.
+
+<a id="security.refresh_rotation"></a>
+#### 21.4 `security.refresh_rotation` — Rotasi refresh token dan deteksi penggunaan ulang
+
+*Refresh token rotation and reuse detection*
+
+**Deskripsi.** Satu sesi adalah satu keluarga token: setiap refresh memakai token yang diberikan (used_at) dan menerbitkan penggantinya; token yang sudah dipakai diberikan lagi mencabut seluruh keluarga (reuse_detected), demikian pula akun tidak aktif atau keanggotaan organisasi sesi yang dihapus; token kedaluwarsa (bawaan 30 hari) ditolak.
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $T_{rt}$ | Umur refresh token (REFRESH_TOKEN_TTL_DAYS) | 30 | d | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/domain/refresh-rotation.ts#decideRefresh`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[154]](#ref-ietf-rfc-9700), [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Nilai yang belum bersumber: Umur refresh token (REFRESH_TOKEN_TTL_DAYS).
+
+**Catatan.** Rotasi dengan pencabutan saat token dipakai ulang adalah salah satu dari dua cara RFC 9700 §4.14.2 untuk klien publik (yang lain: refresh token terikat pengirim). Refresh token adalah token opak dalam cookie HttpOnly (spesifikasi 8.3); umur 30 hari adalah default desain.
+
+<a id="security.secret_encryption"></a>
+#### 21.5 `security.secret_encryption` — Enkripsi rahasia saat disimpan (AES-256-GCM)
+
+*Encryption of secrets at rest (AES-256-GCM)*
+
+**Deskripsi.** Kunci privat penandatanganan dan rahasia MFA disimpan terenkripsi dengan AES-256-GCM (IV acak 12 byte, tag 16 byte) di bawah kunci per tujuan yang diturunkan dari KEY_ENCRYPTION_SECRET dengan HKDF-SHA256 (info = tujuan); data terautentikasi tambahan mengikat ciphertext ke barisnya. Bentuk: v1.<iv>.<tag>.<ciphertext>.
+
+$$
+K_{u}=\mathrm{HKDF}_{SHA\text{-}256}(K_{master},\ info=u),\qquad (c,\tau)=\mathrm{AES\text{-}256\text{-}GCM}_{K_u}(IV,\ m,\ aad)
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $K_{master}$ | Rahasia induk (KEY_ENCRYPTION_SECRET) | — | configuration |
+| $u$ | Tujuan (signing-key, mfa-secret) | — | code |
+| $aad$ | Data terautentikasi tambahan (id kunci / id pengguna) | — | database row |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $\lvert IV\rvert$ | Panjang IV acak | 96 | bit | [[162]](#ref-nist-sp-800-38d) |
+| $\lvert\tau\rvert$ | Panjang tag autentikasi | 128 | bit | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/domain/secret-box.ts#sealSecret`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[162]](#ref-nist-sp-800-38d), [[163]](#ref-ietf-rfc-5869), [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Nilai yang belum bersumber: Panjang tag autentikasi.
+
+**Catatan.** IV 96 bit sesuai rekomendasi SP 800-38D; tag 128 bit adalah pilihan desain (revisi SP 800-38D yang diumumkan menghapus tag di bawah 96 bit). HKDF per tujuan (RFC 5869, parameter info) sehingga satu rahasia induk tidak menghasilkan kunci yang sama untuk dua tujuan.
+
+<a id="security.signing_key_lifecycle"></a>
+#### 21.6 `security.signing_key_lifecycle` — Siklus hidup kunci penandatanganan JWT (Ed25519, JWKS)
+
+*JWT signing key life cycle (Ed25519, JWKS)*
+
+**Deskripsi.** Token akses adalah JWT bertanda tangan EdDSA (Ed25519) dengan kid = thumbprint JWK SHA-256. Tepat satu kunci aktif; rotasi menurunkannya menjadi retiring (tetap di JWKS, tidak menandatangani) dan kunci itu pensiun setelah masa tenggang = umur token akses + toleransi jam verifier (30 s) + refresh cache kunci (30 s).
+
+$$
+g=T_{at}+\tau_{clock}+\left\lceil t_{cache}/1000\right\rceil
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $T_{at}$ | Umur token akses (ACCESS_TOKEN_TTL, bawaan 900) | s | configuration |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $\tau_{clock}$ | Toleransi jam verifier | 30 | s | ⚠️ perlu sitasi |
+| $t_{cache}$ | Interval refresh cache kunci | 30000 | ms | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/domain/signing-key-rules.ts#retirementGraceSeconds`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[157]](#ref-ietf-rfc-7519), [[159]](#ref-ietf-rfc-8037), [[160]](#ref-ietf-rfc-7638), [[161]](#ref-ietf-rfc-7517), [[158]](#ref-ietf-rfc-8725), [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Nilai yang belum bersumber: Toleransi jam verifier; Interval refresh cache kunci.
+
+**Catatan.** Kunci OKP Ed25519 dan alg EdDSA (RFC 8037), kid thumbprint (RFC 7638), publikasi kunci aktif dan retiring sebagai JWK Set (RFC 7517 §5); verifier kit hanya menerima EdDSA (RFC 8725 §3.1). Komponen masa tenggang adalah default desain v2 (spesifikasi 8.2).
+
+<a id="security.totp"></a>
+#### 21.7 `security.totp` — Kode MFA berbasis waktu (TOTP)
+
+*Time-based MFA codes (TOTP)*
+
+**Deskripsi.** MFA memakai TOTP RFC 6238 dengan HMAC-SHA-1, 6 digit dan langkah waktu 30 s; kode satu langkah sebelum dan sesudah langkah saat ini juga diterima; rahasia acak 20 byte (160 bit) disimpan terenkripsi (security.secret_encryption).
+
+$$
+T=\left\lfloor \frac{t-T_0}{X}\right\rfloor,\quad code=\mathrm{HOTP}_{SHA\text{-}1}(K,\ T)\bmod 10^{d},\quad T\in\{T_c-w,\dots,T_c+w\}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $t$ | Waktu Unix saat ini | s | server clock |
+| $K$ | Rahasia TOTP pengguna | — | users.mfa_secret (encrypted) |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $X$ | Langkah waktu | 30 | s | [[155]](#ref-ietf-rfc-6238) |
+| $d$ | Jumlah digit | 6 | — | [[156]](#ref-ietf-rfc-4226) |
+| $w$ | Jendela langkah yang diterima | 1 | — | [[155]](#ref-ietf-rfc-6238) |
+| $\lvert K\rvert$ | Panjang rahasia | 160 | bit | [[156]](#ref-ietf-rfc-4226) |
+| $T_0$ | Waktu awal | 0 | s | [[155]](#ref-ietf-rfc-6238) |
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/domain/totp.ts#verifyTotp`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[155]](#ref-ietf-rfc-6238), [[156]](#ref-ietf-rfc-4226)
+
+**Catatan.** Rahasia 160 bit seperti dianjurkan RFC 4226 R6; jendela ±1 langkah mengikuti anjuran jeda jaringan RFC 6238 §5.2 (dilihat pada draft terakhir). URI provisioning mengikuti format otpauth Google Authenticator (issuer "AIS Maritime Intelligence").
+
+<a id="security.api_key_scope_grant"></a>
+#### 21.8 `security.api_key_scope_grant` — Pemberian scope kunci API
+
+*API key scope grants*
+
+**Deskripsi.** Super admin dapat memberi setiap scope; org_admin organisasi pemilik kunci hanya scope yang aman untuk tenant (telemetry:ingest, ais:read). ais:ingest hanya untuk super admin, karena menulis ke feed AIS bersama semua tenant.
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $S_{platform}$ | Scope khusus platform | ais:ingest | — | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/domain/access-rules.ts#grantableScopes`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Nilai yang belum bersumber: Scope khusus platform.
+
+**Catatan.** Aturan otorisasi v2 yang menutup celah spesifikasi 8.1/8.4 (tidak menyebut siapa yang boleh memberi ais:ingest): posisi palsu akan memicu alert EWS, tubrukan dan transhipment tenant lain dan mengubah jarak CII mereka. Tidak ada sumber eksternal.
+
+<a id="security.invitation_consent"></a>
+#### 21.9 `security.invitation_consent` — Keanggotaan hanya lewat undangan yang diterima
+
+*Memberships only by accepted invitation*
+
+**Deskripsi.** Tidak ada akun yang ditambahkan ke organisasi tanpa persetujuan: undangan mengirim tautan e-mail dan keanggotaan baru ditulis saat penerima menerimanya; jawaban dan catatan audit sama untuk alamat yang dikenal maupun tidak, sehingga admin tidak mengetahui akun di luar organisasinya.
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/modules/organizations/members.service.ts#MembersService.invite`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Aturan desain v2 tanpa sumber eksternal terverifikasi (lihat catatan).
+
+**Catatan.** Aturan desain v2 (spesifikasi 13.1, anggota): persetujuan dan tidak membocorkan keberadaan akun lintas tenant. Pengiriman ulang dibatasi 4 e-mail per alamat dan organisasi per jam. Tidak ada sumber eksternal.
+
+<a id="security.client_ip"></a>
+#### 21.10 `security.client_ip` — Alamat IP klien
+
+*Client IP address*
+
+**Deskripsi.** IP klien untuk sesi, kunci pembatasan dan catatan audit adalah request.ip Fastify (X-Forwarded-For hanya dari TRUSTED_PROXIES) yang dinormalisasi clientIp kit: tanpa kurung siku, port dan zone id IPv6; null bila bukan alamat IP.
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/common/principals.ts#clientInfo`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Aturan desain v2 tanpa sumber eksternal terverifikasi (lihat catatan).
+
+**Catatan.** Aturan desain v2 (spesifikasi 5, TRUSTED_PROXIES): alamat yang sama dengan yang disimpan AuditService kit, sehingga cocok untuk kolom inet. Tidak ada sumber eksternal yang diperiksa.
+
+<a id="security.api_key_rotation"></a>
+#### 21.11 `security.api_key_rotation` — Rotasi rahasia kunci API
+
+*API key secret rotation*
+
+**Deskripsi.** Merotasi rahasia kunci API menerbitkan rahasia baru; rahasia lama tetap berlaku selama masa tenggang (bawaan 24 jam, maksimal 7 hari, 0 = berakhir seketika) agar klien sempat beralih; nilai di luar batas menggagalkan rotasi.
+
+$$
+t_{end}=t_{rotate}+g,\qquad 0\le g\le g_{max}
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $t_{rotate}$ | Waktu rotasi | — | server clock |
+| $g$ | Masa tenggang yang diminta (gracePeriodMin) | min | request body |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $g_{default}$ | Masa tenggang bawaan | 1440 | min | ⚠️ perlu sitasi |
+| $g_{max}$ | Masa tenggang maksimum | 10080 | min | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/domain/api-key-lifecycle.ts#rotationGraceEnd`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Nilai yang belum bersumber: Masa tenggang bawaan; Masa tenggang maksimum.
+
+**Catatan.** Default desain v2 (spesifikasi 8.1); tidak ada sumber eksternal yang diperiksa.
+
+<a id="security.csv_injection"></a>
+#### 21.12 `security.csv_injection` — Netralisasi formula pada ekspor CSV
+
+*Formula neutralization of CSV exports*
+
+**Deskripsi.** Ekspor CSV log audit mengikuti RFC 4180 (sel dikutip bila memuat koma, kutip atau baris baru; kutip digandakan) dan menambahkan apostrof di depan sel yang diawali =, +, -, @, tab atau carriage return agar spreadsheet tidak menjalankannya sebagai formula.
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $F$ | Karakter awal formula | = + - @ TAB CR | — | [[164]](#ref-owasp-csv-injection) |
+
+- **Pemilik v2:** layanan `auth` (ais-its-auth-service) — `src/modules/audit-logs/audit-log-csv.ts#csvCell`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[149]](#ref-ietf-rfc-4180), [[164]](#ref-owasp-csv-injection)
+
+**Catatan.** Nama, user agent dan meta berasal dari pengguna dan layanan lain, sehingga setiap sel dinetralkan. OWASP mencatat bahwa awalan apostrof tidak andal di Microsoft Excel setelah disimpan dan dibuka ulang.
+
+<a id="security.api_key_hashing"></a>
+#### 21.13 `security.api_key_hashing` — Hash kunci API (SHA-256)
+
+*API key hashing (SHA-256)*
+
+**Deskripsi.** Kunci API berbentuk sk_<id 10 base62>_<rahasia 32 base62>; hanya SHA-256 (hex huruf kecil) dari byte UTF-8 kunci lengkap yang disimpan (api_keys.key_hash) dan dibandingkan dalam waktu konstan; produsen (auth) dan verifier (kit) memakai satu definisi, hashApiKey.
+
+$$
+h=\mathrm{hex}\left(\mathrm{SHA\text{-}256}\left(\mathrm{UTF8}(\texttt{sk\_}id\texttt{\_}secret)\right)\right)
+$$
+
+| Simbol | Arti | Satuan | Sumber nilai |
+|---|---|---|---|
+| $id$ | Id publik kunci (10 karakter base62) | — | api_keys.id |
+| $secret$ | Rahasia (32 karakter base62) | — | CSPRNG |
+
+**Konstanta dan ambang**
+
+| Simbol | Nama | Nilai | Satuan | Sumber |
+|---|---|---|---|---|
+| $\lvert secret\rvert$ | Panjang rahasia | 32 | — | ⚠️ perlu sitasi |
+
+- **Pemilik v2:** layanan `contracts` (@darmawanweb/ais-its-contracts 0.4.0) — `src/auth/api-key.ts#hashApiKey`; status: *diimplementasikan*.
+- **Lokasi legacy:** — (khusus v2, tidak ada di MVP)
+- **Referensi:** [[145]](#ref-nist-fips-180-4), [[49]](#ref-platform-spec-v1-1)
+
+> ⚠️ **Perlu sitasi / validasi domain.** Default desain v2 (bukan dari tesis) tanpa sumber eksternal terverifikasi. Nilai yang belum bersumber: Panjang rahasia.
+
+**Catatan.** SHA-256 tanpa salt dan tanpa peregangan cukup karena rahasia acak 32 karakter base62 (sekitar 190 bit), bukan kata sandi pilihan pengguna; format kunci adalah default desain v2 (spesifikasi 8.1). Dibagikan di paket contracts sejak 0.4.0.

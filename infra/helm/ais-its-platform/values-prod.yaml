@@ -12,9 +12,10 @@
 
 global:
   # Release of the nine services (kit 0.3 / contracts 0.4); web and legacy-be are
-  # versioned on their own (pinned below). The replica counts and rolling updates
-  # of this file need these images: coming from the 0.1.0 release, follow
-  # "Upgrading from the 0.1.0 release" in infra/helm/README.md (notification first).
+  # versioned on their own (image.tag pinned in values.yaml, not affected by
+  # this). The replica counts and rolling updates of this file need these
+  # images: coming from the 0.1.0 release, follow "Upgrading from the 0.1.0
+  # release" in infra/helm/README.md (notification first).
   imageTag: "0.2.0"
   existingSecret: ais-its-shared         # INTERNAL_TOKEN
   env:
@@ -70,8 +71,14 @@ notification:
     limits: { memory: 768Mi }
 
 ais-ingestor:
-  # Two instances keep the upstream feeds alive during a rollout or node loss;
-  # duplicates are dropped by JetStream (Nats-Msg-Id dedup, spec §13.2).
+  # Feeds off (AIS_*_URL empty, values.yaml): two instances keep the pusher
+  # socket and POST /ingest/ais up during a rollout or node loss; duplicates are
+  # dropped by JetStream (Nats-Msg-Id dedup, spec §13.2). A feed URL connects
+  # EVERY replica to that upstream with the same token: set it together with
+  # replicaCount: 1 (one connection per upstream account, ais-pipeline README;
+  # the render fails otherwise). A one-replica rollout still overlaps two Pods
+  # for a few seconds (maxSurge 1): duplicates are dropped, a refused second
+  # connection is retried with backoff.
   replicaCount: 2
   resources:
     requests: { cpu: 200m, memory: 256Mi }
@@ -93,17 +100,13 @@ emission:
     limits: { memory: 1Gi }
 
 web:
-  image:
-    tag: "0.1.0"                         # ais-its-web release
-  replicaCount: 2
+  replicaCount: 2                        # image pinned in values.yaml
 
 martin:
   replicaCount: 2                        # image pinned in values.yaml
 
-legacy-be:
+legacy-be:                               # image pinned in values.yaml
   enabled: true                          # /api/v1 until the v2 cut-over (spec §1)
-  image:
-    tag: "0.1.0"                         # ais-its-mvp-api image as deployed so far
   replicaCount: 1                        # in-process schedulers of the MVP
 
 gateway:

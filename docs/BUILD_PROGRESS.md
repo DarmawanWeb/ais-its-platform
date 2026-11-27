@@ -97,3 +97,7 @@ Berikutnya (script sudah siap di scratchpad):
   Docker dipangkas (disk tinggal 3 GB). Cadangan pekerjaan yang belum di-commit ter-push ke branch terpisah tanpa
   mengubah branch utama: `wip/platform-v2-features` (web) dan `wip/v0.2.0` (auth, fleet, notification, safety,
   telemetry); script `scratchpad/wip-snapshot.sh <repo> <branch>`.
+- 2026-11-26 ~22:30 UTC: limit kesebelas (integrasi web, implementasi patch kit dan review Helm tertunda; implementasi
+  Helm sempat selesai); restart worker mematikan dockerd dan Verdaccio (dinyalakan lagi 00:27 UTC). Cadangan WIP:
+  `wip/platform-v2-features` (web), `wip/kit-0.3.1` (kit), `wip/platform-v2-central` (Helm). Resume terjadwal
+  check-in 01:26 UTC setelah reset 01:20 UTC.

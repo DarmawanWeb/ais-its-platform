@@ -84,9 +84,10 @@ helm upgrade --install ais-its infra/helm/ais-its-platform -n ais-its-dev --crea
 `values.yaml` holds the environment-neutral base; `values-dev.yaml` / `values-prod.yaml` only
 contain what differs. Pin the release with `global.imageTag` (or `image.digest` per component);
 a floating `latest` tag makes the render fail. `values-prod.yaml` pins the services' release
-(`0.2.0`) globally and `web` / `legacy-be`, which are versioned on their own, with `image.tag`.
-Martin is pinned by tag and digest in `values.yaml` — its CLI flags are version-specific, so bump
-it deliberately.
+(`0.2.0`) globally. `web` and `legacy-be` are versioned on their own: `values.yaml` pins them with
+`image.tag` (`0.1.0`), so neither `global.imageTag` nor the chart's `appVersion` picks their tag
+(`values-dev.yaml` sets `web` to `main`). Martin is pinned by tag and digest in `values.yaml` —
+its CLI flags are version-specific, so bump it deliberately.
 
 Upgrades are rolling for every component (`maxSurge: 1`, `maxUnavailable: 0`, see
 [Replicas and rollouts](#replicas-and-rollouts)); coming from the 0.1.0 release, follow
@@ -96,20 +97,21 @@ Pods automatically (checksum annotations).
 ## Replicas and rollouts
 
 What each service README states about replicas and rollouts, and what the values files deploy.
-The service READMEs are those of the `services/<name>` repositories (spec §1) at 0.2.0.
+The links go to each service repository (spec §1) at its `v0.2.0` tag, the release that
+`values-prod.yaml` deploys.
 
 | Component | `values.yaml` | `values-dev.yaml` | `values-prod.yaml` | Strategy | PDB (`maxUnavailable: 1`) | Why |
 |---|---|---|---|---|---|---|
-| `auth` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Stateless HTTP; the `auth-audit` durable and the audit outbox relay are shared by every replica; 0.1.0 and 0.2.0 replicas run side by side (migrations 0003–0005 are additive) — [README, Operations: "Upgrading from 0.1.0"](../../services/auth/README.md#operations) |
-| `fleet` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Every replica relays the outbox (`FOR UPDATE SKIP LOCKED`, per-vessel order), 0.1 and 0.2 replicas together too — [README, Operations: "Upgrading from 0.1.x"](../../services/fleet/README.md#operations) |
-| `ais-ingestor` | 1 | 1 | 2 | RollingUpdate | prod | Stateless, scales horizontally (duplicates dropped by `Nats-Msg-Id`). Every replica connects to each upstream with the same token: if the upstream account admits one connection, run the feeds in a separate single-replica release and leave `AIS_*_URL` empty here — [README, Operations: "Scaling"](../../services/ais-pipeline/README.md#operations) |
-| `ais-processor` | 1 | 1 | 2 | RollingUpdate | prod | Exclusive `ais-processor` consumer (NATS ≥ 2.11): one active replica, hot standbys; a graceful stop hands over at once, a crashed active replica is replaced after the 30 s pin TTL; query API, outbox relay and traffic sampler run on every replica; a 0.1.0 and a 0.2.0 processor never publish at once — [README, Operations: "Scaling", "Upgrading from 0.1.0"](../../services/ais-pipeline/README.md#operations) |
-| `telemetry` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Any number of replicas, rolling updates from 0.1.0 included (relay `SKIP LOCKED`, MQTT queue group, shared `telemetry-fleet` durable) — [README, Operations: "Replicas"](../../services/telemetry/README.md#operations) |
-| `emission` | 1 | 1 | 2 | RollingUpdate; `Recreate` once from the 0.1.0 release | prod | Any number of replicas (shared durables, per-vessel advisory locks, jobs and throttles in the database). From the 0.1.0 release, 0.1.0 replicas fail once the first 0.2.0 replica applied `0004`/`0005`: stop them first. Its port opens only after `0005` materialized the whole CII history: startup probe 30 min, `progressDeadlineSeconds: 2100` — [README, Operations: "Replicas", "Rolling update to 0.2.0"](../../services/emission/README.md#operations) |
-| `geo` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Several replicas (per-key outbox claims, row and quota locks, idempotent tiles grants); 0.1 and 0.2 relay together in order — [README, Operations: "Replicas"](../../services/geo/README.md#operations), [Upgrading from 0.1](../../services/geo/README.md#upgrading-from-01) |
-| `safety` | 1 | 1 | 2 | RollingUpdate | prod | One active instance per durable (exclusive), further replicas are hot standbys (failover, not throughput); built for two or more replicas with `RollingUpdate` and `maxUnavailable: 0`, no `Recreate`; deploy after notification — [README, Deployment: replicas and failover](../../services/safety/README.md#deployment-replicas-and-failover) |
-| `surveillance` | 1 | 1 | 2 | RollingUpdate | prod | As safety: two or more replicas per `DETECTORS` set with rolling updates; the new active instance reloads the open occurrences; the dark scan and the transhipment analyser run on it only; deploy after notification — [README, Operations: "Replicas and failover"](../../services/surveillance/README.md#operations) |
-| `notification` | 1 | 1 | 2 | RollingUpdate | prod | Scales horizontally: durables and the delivery worker share the work, alert pushes reach every replica's sockets (`aisits.notification.realtime.v1`), the sticky cookie serves long polling; deploy **before** safety and surveillance 0.2 — [README, Operations: "Rollout order", "Health"](../../services/notification/README.md#operations) |
+| `auth` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Stateless HTTP; the `auth-audit` durable and the audit outbox relay are shared by every replica; 0.1.0 and 0.2.0 replicas run side by side (migrations 0003–0005 are additive) — [README, Operations: "Upgrading from 0.1.0"](https://github.com/DarmawanWeb/ais-its-auth-service/blob/main/README.md#operations) |
+| `fleet` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Every replica relays the outbox (`FOR UPDATE SKIP LOCKED`, per-vessel order), 0.1 and 0.2 replicas together too — [README, Operations: "Upgrading from 0.1.x"](https://github.com/DarmawanWeb/ais-its-fleet-service/blob/main/README.md#operations) |
+| `ais-ingestor` | 1 | 1 | 2; 1 with a feed URL | RollingUpdate | prod (2 replicas) | Stateless: the pusher socket and `POST /ingest/ais` scale horizontally (duplicates dropped by `Nats-Msg-Id`). Every replica also connects to each upstream whose `AIS_*_URL` is set, with the same token, and one Deployment cannot set the URLs per replica: with a feed URL set, run one replica (one connection per upstream account); the render fails with more (`env` / `secretEnv` checked). `values-prod.yaml` leaves the feeds off — [README, Operations: "Scaling"](https://github.com/DarmawanWeb/ais-its-pipeline/blob/main/README.md#operations) |
+| `ais-processor` | 1 | 1 | 2 | RollingUpdate | prod | Exclusive `ais-processor` consumer (NATS ≥ 2.11): one active replica, hot standbys; a graceful stop hands over at once, a crashed active replica is replaced after the 30 s pin TTL; query API, outbox relay and traffic sampler run on every replica; a 0.1.0 and a 0.2.0 processor never publish at once — [README, Operations: "Scaling", "Upgrading from 0.1.0"](https://github.com/DarmawanWeb/ais-its-pipeline/blob/main/README.md#operations) |
+| `telemetry` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Any number of replicas, rolling updates from 0.1.0 included (relay `SKIP LOCKED`, MQTT queue group, shared `telemetry-fleet` durable) — [README, Operations: "Replicas"](https://github.com/DarmawanWeb/ais-its-telemetry-service/blob/main/README.md#operations) |
+| `emission` | 1 | 1 | 2 | RollingUpdate; `Recreate` once from the 0.1.0 release | prod | Any number of replicas (shared durables, per-vessel advisory locks, jobs and throttles in the database). From the 0.1.0 release, 0.1.0 replicas fail once the first 0.2.0 replica applied `0004`/`0005`: stop them first. Its port opens only after `0005` materialized the whole CII history: startup probe 30 min, `progressDeadlineSeconds: 2100` — [README, Operations: "Replicas", "Rolling update to 0.2.0"](https://github.com/DarmawanWeb/ais-its-emission-service/blob/main/README.md#operations) |
+| `geo` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Several replicas (per-key outbox claims, row and quota locks, idempotent tiles grants); 0.1 and 0.2 relay together in order — [README, Operations: "Replicas"](https://github.com/DarmawanWeb/ais-its-geo-service/blob/main/README.md#operations), [Upgrading from 0.1](https://github.com/DarmawanWeb/ais-its-geo-service/blob/main/README.md#upgrading-from-01) |
+| `safety` | 1 | 1 | 2 | RollingUpdate | prod | One active instance per durable (exclusive), further replicas are hot standbys (failover, not throughput); built for two or more replicas with `RollingUpdate` and `maxUnavailable: 0`, no `Recreate`; deploy after notification — [README, Deployment: replicas and failover](https://github.com/DarmawanWeb/ais-its-safety-service/blob/main/README.md#deployment-replicas-and-failover) |
+| `surveillance` | 1 | 1 | 2 | RollingUpdate | prod | As safety: two or more replicas per `DETECTORS` set with rolling updates; the new active instance reloads the open occurrences; the dark scan and the transhipment analyser run on it only; deploy after notification — [README, Operations: "Replicas and failover"](https://github.com/DarmawanWeb/ais-its-surveillance-service/blob/main/README.md#operations) |
+| `notification` | 1 | 1 | 2 | RollingUpdate | prod | Scales horizontally: durables and the delivery worker share the work, alert pushes reach every replica's sockets (`aisits.notification.realtime.v1`), the sticky cookie serves long polling; deploy **before** safety and surveillance 0.2 — [README, Operations: "Rollout order", "Health"](https://github.com/DarmawanWeb/ais-its-notification-service/blob/main/README.md#operations) |
 | `web` | 1 | 1 | 2 | RollingUpdate | prod | nginx serving the built SPA (stateless) |
 | `martin` | 1 | 1 | 2 | RollingUpdate | prod | stateless tile server (role `tiles_ro`) |
 | `legacy-be` | off | off | 1 | RollingUpdate | — | MVP API with in-process work (upstream feeds, ingest socket): one replica |
@@ -203,11 +205,17 @@ $H lint --strict ais-its-platform -f ais-its-platform/values-dev.yaml
 $H lint --strict ais-its-platform -f ais-its-platform/values-prod.yaml
 $H lint --strict ais-its-platform -f ais-its-platform/values-prod.yaml \
   -f ais-its-platform/values-upgrade-from-0.1.0-step1.yaml
+$H lint --strict ais-its-platform -f ais-its-platform/values-prod.yaml --set emission.strategy.type=Recreate
 $H template ais-its ais-its-platform -n ais-its -f ais-its-platform/values-prod.yaml > /tmp/ais-its-prod.yaml
 ```
 
-`infra/scripts/helm-check.sh` runs the dev and prod lint and render and applies both renders with
-`kubectl apply --dry-run=server` to a throwaway k3s API server.
+`infra/scripts/helm-check.sh` runs the lint and render of dev, prod and the two steps of
+[Upgrading from the 0.1.0 release](#upgrading-from-the-010-release) (the only renders with a
+`Recreate` Deployment: step 1 the processor and the detectors, step 2 emission; the script checks
+that both contain one) and applies every render with `kubectl apply --dry-run=server` to a
+throwaway k3s API server (the API server rejects a `Recreate` strategy that still carries
+`rollingUpdate`). Before upgrading a real cluster from 0.1.0, also check each step's command with
+`template` instead of `upgrade` and `kubectl apply --dry-run=server -f` against the target cluster.
 
 ## The `ais-its-service` chart
 
@@ -215,7 +223,7 @@ Main knobs (`ais-its-service/values.yaml` documents all of them):
 
 | Value | Default | Purpose |
 |---|---|---|
-| `image.repository` / `tag` / `digest` | — / `global.imageTag` / — | image reference (`latest` refused) |
+| `image.repository` / `tag` / `digest` | — / `global.imageTag`, else the chart's `appVersion` / — | image reference (`latest` refused); pin `tag` for an image versioned apart from the services (`web`, `legacy-be`) |
 | `command`, `args` | `[]` | other entrypoint of the same image (ais-pipeline) |
 | `port` | `3001` | container port, `PORT` env, Service port |
 | `env` / `secretEnv` / `existingSecret` / `extraEnvFrom` | `{}` / `{}` / `""` / `[]` | ConfigMap (values are templates) / dev-only Secret / external Secret / more sources |

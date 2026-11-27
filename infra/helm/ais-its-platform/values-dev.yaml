@@ -107,6 +107,8 @@ notification:
     WEBHOOK_SIGNING_SECRET: dev-webhook-signing-secret
 
 web:
+  image:
+    tag: main                            # like global.imageTag (values.yaml pins a web release)
   replicaCount: 1
 
 martin:

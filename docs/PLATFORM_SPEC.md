@@ -378,7 +378,9 @@ the registry in a contracts minor release; consumers MUST accept unknown future 
 { actorType: 'user'|'api_key'|'system'; actorId: string | null; orgId: string | null;
   action: string /* "<resource>.<verb>", e.g. "vessel.update" */; targetType: string | null;
   targetId: string | null; ip: string | null; userAgent: string | null;
-  meta: Record<string, unknown>; at: string }
+  meta: Record<string, unknown>; at: string;
+  labels?: { actorName?: string | null; actorEmail?: string | null; orgName?: string | null;
+             targetLabel?: string | null } /* names known when written, ≤ 200 chars each */ }
 ```
 
 ---
@@ -1044,6 +1046,12 @@ so a new feature is one class:
   (`loadOpen`, replace semantics), re-seeds vessel states from the Valkey mirror and calls
   `onActivated`. Ticks run **only on the active instance** (`ctx.isActive()`); zone and vessel hooks
   run everywhere. A graceful stop publishes pending resolutions and releases the pin, so services
-  MAY run several replicas with rolling updates.
+  MAY run several replicas with rolling updates. An active instance that has had no confirmed
+  contact with the server, or did not run (`SIGSTOP`, a blocked event loop), for longer than
+  `pinContactTimeoutMs(pinnedTtlMs)` (half the pinned TTL) stops acting as active at once: it
+  dispatches nothing it buffered (returned for redelivery) and is active again only once the server
+  confirmed or newly assigned the pin, after a full activation. Resolutions recorded but not yet
+  announced (crash within the cooldown) are announced on the next activation when the persistence
+  hook implements `loadUnannounced` / `onResolutionPublished`.
 - `DetectorTestHarness`: feed synthetic tracks and zones to a detector in unit tests without NATS.
 - Every detector documents its method ids in the methodology catalog (§17).

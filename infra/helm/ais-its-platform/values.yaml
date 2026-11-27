@@ -81,10 +81,12 @@ ais-ingestor:
     repository: ghcr.io/darmawanweb/ais-its-pipeline
   command: ["node", "dist/apps/ingestor/main.js"]
   port: 3003
-  # Stateless: replicas scale horizontally (duplicates are dropped by
-  # Nats-Msg-Id). Every replica opens its own connection to each upstream with
-  # AIS_UPSTREAM_TOKEN: if the upstream account admits one connection, run the
-  # feeds in a single-replica release and leave the URLs empty here.
+  # Stateless: the pusher socket and POST /ingest/ais scale horizontally
+  # (duplicates are dropped by Nats-Msg-Id). Every replica also connects to each
+  # upstream whose URL is set, with the same AIS_UPSTREAM_TOKEN, and the replicas
+  # of one Deployment share these values: with a feed URL set, run ONE replica
+  # (one connection per upstream account, ais-pipeline README "Scaling"). The
+  # render fails otherwise (templates/checks.yaml; it reads env and secretEnv).
   env:
     SERVICE_NAME: ais-ingestor
     AIS_PRIMARY_URL: ""          # empty = upstream disabled
@@ -225,6 +227,9 @@ web:
   platformEnv: false
   image:
     repository: ghcr.io/darmawanweb/ais-its-web
+    # Versioned on its own: pinned here so that neither global.imageTag (the
+    # services' release) nor the chart appVersion picks its tag.
+    tag: "0.1.0"                  # ais-its-web release
   port: 8080
   probes:
     liveness: { path: /, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
@@ -244,6 +249,7 @@ legacy-be:
   platformEnv: false
   image:
     repository: ghcr.io/darmawanweb/ais-its-mvp-api
+    tag: "0.1.0"                  # image as deployed so far (versioned on its own, as web)
   port: 3020
   probes:
     liveness: { path: /, periodSeconds: 10, timeoutSeconds: 3, failureThreshold: 3 }
