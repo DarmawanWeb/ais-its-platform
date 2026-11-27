@@ -9,6 +9,9 @@ spec:
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   revisionHistoryLimit: 5
+  {{- with .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ . }}
+  {{- end }}
   strategy:
     type: {{ .Values.strategy.type }}
     {{- /* Values merge maps, so a {type: Recreate} override keeps the default

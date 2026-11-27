@@ -15,38 +15,23 @@ from managed offerings or their own charts (see "Production" in [`../README.md`]
 
 | Alias = Service name | Image | Port | Notes |
 |---|---|---|---|
-| `auth` | `ghcr.io/darmawanweb/ais-its-auth-service` | 3001 | HPA in prod |
-| `fleet` | `ghcr.io/darmawanweb/ais-its-fleet-service` | 3002 | HPA in prod |
-| `ais-ingestor` | `ghcr.io/darmawanweb/ais-its-pipeline` | 3003 | `command: node dist/apps/ingestor/main.js`, 2 replicas in prod |
-| `ais-processor` | `ghcr.io/darmawanweb/ais-its-pipeline` | 3004 | `command: node dist/apps/processor/main.js`, 1 replica, `Recreate` |
-| `telemetry` | `ghcr.io/darmawanweb/ais-its-telemetry-service` | 3005 | HPA in prod |
-| `emission` | `ghcr.io/darmawanweb/ais-its-emission-service` | 3006 | 2 replicas in prod |
-| `surveillance` | `ghcr.io/darmawanweb/ais-its-surveillance-service` | 3007 | detectors `DETECTORS=transhipment,anomaly,dark,geofence,fishing`; 1 replica, `Recreate` |
-| `notification` | `ghcr.io/darmawanweb/ais-its-notification-service` | 3008 | socket.io `/ws`, sticky cookie; 1 replica (see below) |
-| `geo` | `ghcr.io/darmawanweb/ais-its-geo-service` | 3009 | zones / geofences, HPA in prod |
-| `safety` | `ghcr.io/darmawanweb/ais-its-safety-service` | 3011 | detectors `DETECTORS=ews,collision`; 1 replica, `Recreate` |
+| `auth` | `ghcr.io/darmawanweb/ais-its-auth-service` | 3001 | access tokens, JWKS, API keys |
+| `fleet` | `ghcr.io/darmawanweb/ais-its-fleet-service` | 3002 | vessel master data, photos (S3) |
+| `ais-ingestor` | `ghcr.io/darmawanweb/ais-its-pipeline` | 3003 | `command: node dist/apps/ingestor/main.js` |
+| `ais-processor` | `ghcr.io/darmawanweb/ais-its-pipeline` | 3004 | `command: node dist/apps/processor/main.js` |
+| `telemetry` | `ghcr.io/darmawanweb/ais-its-telemetry-service` | 3005 | fuel readings (HTTP, MQTT) |
+| `emission` | `ghcr.io/darmawanweb/ais-its-emission-service` | 3006 | CII, SEEMP |
+| `surveillance` | `ghcr.io/darmawanweb/ais-its-surveillance-service` | 3007 | detectors `DETECTORS=transhipment,anomaly,dark,geofence,fishing` |
+| `notification` | `ghcr.io/darmawanweb/ais-its-notification-service` | 3008 | socket.io `/ws`, sticky cookie |
+| `geo` | `ghcr.io/darmawanweb/ais-its-geo-service` | 3009 | zones / geofences |
+| `safety` | `ghcr.io/darmawanweb/ais-its-safety-service` | 3011 | detectors `DETECTORS=ews,collision` |
 | `web` | `ghcr.io/darmawanweb/ais-its-web` | 8080 | nginx, non-root, probes on `/` |
 | `legacy-be` | `ghcr.io/darmawanweb/ais-its-mvp-api` | 3020 | `/api/v1` until cut-over; gateway-only NetworkPolicy |
 | `martin` | `ghcr.io/maplibre/martin` (1.16.1, by digest) | 3010 | vector tiles as `tiles_ro`, `--base-path /tiles` |
 
 Service names equal the compose hostnames of spec §3, so in-cluster URLs are identical in both
-worlds (`AUTH_INTERNAL_URL=http://auth:3001`, `NATS_URL=nats://nats:4222`, …).
-
-Replica rules: `ais-processor`, `safety` and `surveillance` each own one durable consumer whose
-handlers keep per-vessel state in memory (spec §7.3, §18), so they run exactly one Pod and roll
-out with `Recreate` until their consumers are partitioned (`ais.position.v1.<p>.>`).
-`notification` stays at one replica because socket.io events reach only the sockets of the
-replica that emits them, while `alert.raised.v1` arrives through the shared durable
-`notification-alerts`; scale it out only once it fans out through a cross-instance adapter
-(e.g. `@socket.io/redis-adapter` on Valkey).
-
-Once the services run kit 0.3 / contracts 0.4 (`packages/ais-its-contracts/packages/nest/UPGRADING.md`)
-these rules relax: `safety` and `surveillance` keep one *active* instance but support hot standbys
-with `RollingUpdate` (the new active instance reloads the open alerts before its first position and
-a stopping Pod releases its pin at once), `ais-processor` releases its pin on shutdown as well, and
-`notification` fans alert pushes out to every replica over the core NATS subject
-`aisits.notification.realtime.v1`. Raise those replica counts and switch the strategy only after
-the upgraded images are deployed (notification first).
+worlds (`AUTH_INTERNAL_URL=http://auth:3001`, `NATS_URL=nats://nats:4222`, …). Replica counts,
+rollout strategies and disruption budgets: [Replicas and rollouts](#replicas-and-rollouts).
 
 ## Prerequisites
 
@@ -98,12 +83,115 @@ helm upgrade --install ais-its infra/helm/ais-its-platform -n ais-its-dev --crea
 
 `values.yaml` holds the environment-neutral base; `values-dev.yaml` / `values-prod.yaml` only
 contain what differs. Pin the release with `global.imageTag` (or `image.digest` per component);
-a floating `latest` tag makes the render fail. Martin is pinned by tag and digest in
-`values.yaml` — its CLI flags are version-specific, so bump it deliberately.
+a floating `latest` tag makes the render fail. `values-prod.yaml` pins the services' release
+(`0.2.0`) globally. `web` and `legacy-be` are versioned on their own: `values.yaml` pins them with
+`image.tag` (`0.1.0`), so neither `global.imageTag` nor the chart's `appVersion` picks their tag
+(`values-dev.yaml` sets `web` to `main`). Martin is pinned by tag and digest in `values.yaml` —
+its CLI flags are version-specific, so bump it deliberately.
 
-Upgrades are rolling (`maxUnavailable: 0`) except `ais-processor`, `safety` and `surveillance`
-(`Recreate`: never two consumers of the same stateful durable). Config changes roll the Pods
-automatically (checksum annotations).
+Upgrades are rolling for every component (`maxSurge: 1`, `maxUnavailable: 0`, see
+[Replicas and rollouts](#replicas-and-rollouts)); coming from the 0.1.0 release, follow
+[Upgrading from the 0.1.0 release](#upgrading-from-the-010-release) once. Config changes roll the
+Pods automatically (checksum annotations).
+
+## Replicas and rollouts
+
+What each service README states about replicas and rollouts, and what the values files deploy.
+The links go to each service repository (spec §1) at its `v0.2.0` tag, the release that
+`values-prod.yaml` deploys.
+
+| Component | `values.yaml` | `values-dev.yaml` | `values-prod.yaml` | Strategy | PDB (`maxUnavailable: 1`) | Why |
+|---|---|---|---|---|---|---|
+| `auth` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Stateless HTTP; the `auth-audit` durable and the audit outbox relay are shared by every replica; 0.1.0 and 0.2.0 replicas run side by side (migrations 0003–0005 are additive) — [README, Operations: "Upgrading from 0.1.0"](https://github.com/DarmawanWeb/ais-its-auth-service/blob/main/README.md#operations) |
+| `fleet` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Every replica relays the outbox (`FOR UPDATE SKIP LOCKED`, per-vessel order), 0.1 and 0.2 replicas together too — [README, Operations: "Upgrading from 0.1.x"](https://github.com/DarmawanWeb/ais-its-fleet-service/blob/main/README.md#operations) |
+| `ais-ingestor` | 1 | 1 | 2; 1 with a feed URL | RollingUpdate | prod (2 replicas) | Stateless: the pusher socket and `POST /ingest/ais` scale horizontally (duplicates dropped by `Nats-Msg-Id`). Every replica also connects to each upstream whose `AIS_*_URL` is set, with the same token, and one Deployment cannot set the URLs per replica: with a feed URL set, run one replica (one connection per upstream account); the render fails with more (`env` / `secretEnv` checked). `values-prod.yaml` leaves the feeds off — [README, Operations: "Scaling"](https://github.com/DarmawanWeb/ais-its-pipeline/blob/main/README.md#operations) |
+| `ais-processor` | 1 | 1 | 2 | RollingUpdate | prod | Exclusive `ais-processor` consumer (NATS ≥ 2.11): one active replica, hot standbys; a graceful stop hands over at once, a crashed active replica is replaced after the 30 s pin TTL; query API, outbox relay and traffic sampler run on every replica; a 0.1.0 and a 0.2.0 processor never publish at once — [README, Operations: "Scaling", "Upgrading from 0.1.0"](https://github.com/DarmawanWeb/ais-its-pipeline/blob/main/README.md#operations) |
+| `telemetry` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Any number of replicas, rolling updates from 0.1.0 included (relay `SKIP LOCKED`, MQTT queue group, shared `telemetry-fleet` durable) — [README, Operations: "Replicas"](https://github.com/DarmawanWeb/ais-its-telemetry-service/blob/main/README.md#operations) |
+| `emission` | 1 | 1 | 2 | RollingUpdate; `Recreate` once from the 0.1.0 release | prod | Any number of replicas (shared durables, per-vessel advisory locks, jobs and throttles in the database). From the 0.1.0 release, 0.1.0 replicas fail once the first 0.2.0 replica applied `0004`/`0005`: stop them first. Its port opens only after `0005` materialized the whole CII history: startup probe 30 min, `progressDeadlineSeconds: 2100` — [README, Operations: "Replicas", "Rolling update to 0.2.0"](https://github.com/DarmawanWeb/ais-its-emission-service/blob/main/README.md#operations) |
+| `geo` | 1 | 1 | HPA 2–6 | RollingUpdate | prod | Several replicas (per-key outbox claims, row and quota locks, idempotent tiles grants); 0.1 and 0.2 relay together in order — [README, Operations: "Replicas"](https://github.com/DarmawanWeb/ais-its-geo-service/blob/main/README.md#operations), [Upgrading from 0.1](https://github.com/DarmawanWeb/ais-its-geo-service/blob/main/README.md#upgrading-from-01) |
+| `safety` | 1 | 1 | 2 | RollingUpdate | prod | One active instance per durable (exclusive), further replicas are hot standbys (failover, not throughput); built for two or more replicas with `RollingUpdate` and `maxUnavailable: 0`, no `Recreate`; deploy after notification — [README, Deployment: replicas and failover](https://github.com/DarmawanWeb/ais-its-safety-service/blob/main/README.md#deployment-replicas-and-failover) |
+| `surveillance` | 1 | 1 | 2 | RollingUpdate | prod | As safety: two or more replicas per `DETECTORS` set with rolling updates; the new active instance reloads the open occurrences; the dark scan and the transhipment analyser run on it only; deploy after notification — [README, Operations: "Replicas and failover"](https://github.com/DarmawanWeb/ais-its-surveillance-service/blob/main/README.md#operations) |
+| `notification` | 1 | 1 | 2 | RollingUpdate | prod | Scales horizontally: durables and the delivery worker share the work, alert pushes reach every replica's sockets (`aisits.notification.realtime.v1`), the sticky cookie serves long polling; deploy **before** safety and surveillance 0.2 — [README, Operations: "Rollout order", "Health"](https://github.com/DarmawanWeb/ais-its-notification-service/blob/main/README.md#operations) |
+| `web` | 1 | 1 | 2 | RollingUpdate | prod | nginx serving the built SPA (stateless) |
+| `martin` | 1 | 1 | 2 | RollingUpdate | prod | stateless tile server (role `tiles_ro`) |
+| `legacy-be` | off | off | 1 | RollingUpdate | — | MVP API with in-process work (upstream feeds, ingest socket): one replica |
+
+- **Rolling updates** (chart default `maxSurge: 1`, `maxUnavailable: 0`): a new Pod must pass its
+  startup and readiness probes before an old one stops. A stopping Pod first sleeps 5 s
+  (`preStopSleepSeconds`) while the gateway stops routing to it, then gets `SIGTERM`: kit services
+  answer readiness `503` from then on and stop gracefully within `SHUTDOWN_TIMEOUT_MS` (30 s:
+  consumers stop, exclusive pins are released, pending alert resolutions are published, NATS
+  drains). `terminationGracePeriodSeconds: 40` covers both plus 5 s; raise it with
+  `SHUTDOWN_TIMEOUT_MS`.
+- **Exclusive consumers** (`ais-processor`, `safety`, `surveillance`; NATS ≥ 2.11): replicas give
+  failover, not throughput. A graceful stop (rollout, node drain) hands the pin to a standby at
+  once; a crashed or frozen active Pod is replaced after the pinned TTL (30 s), during which
+  positions wait in the durable. Spread detector load by splitting `DETECTORS` over deployments
+  (safety README, "Deployment: one deployment per detector"), each with its own durable and
+  replicas. Kit 0.3 keeps two reported gaps (surveillance README, "Platform issues"): an active
+  instance cut off from NATS, or paused longer than the TTL, may still act next to the new one.
+  Safety and surveillance keep one open occurrence per key under a per-key advisory lock; a
+  duplicate `alert.resolved.v1` remains possible.
+- **PodDisruptionBudget** `maxUnavailable: 1`, rendered only when more than one replica can run
+  (`replicaCount`, or the HPA's `maxReplicas`): drains evict one Pod at a time and never block on
+  a single-replica component. Dev and `values.yaml` alone run one replica each, hence no budgets.
+- **Probes** (every service README, spec §10): startup and liveness on `/health/live`, readiness on
+  `/health/ready` (database, NATS consumers, Valkey where used; `503` while shutting down or when
+  a consumer stalls). The port opens only after the boot-time migrations and the bootstrap
+  (projection snapshots, consumers), so the startup probe allows 3 min (36 × 5 s) and 30 min for
+  emission.
+- **Migrations at start-up**: keep `DB_MIGRATE_ON_BOOT: "true"` (`global.env`). The first new
+  replica migrates under the migrator's lock while the old replicas keep working on the extended
+  schema — every 0.2.0 migration is additive for 0.1.x replicas except emission's from the 0.1.0
+  release. With `false`, run `node dist/migrate.js` from the new image before the rollout
+  (ais-pipeline refuses to boot with `OutboxConfigError` otherwise).
+- **Mixed versions**: while a rollout runs, older replicas answer the new 0.2.0 routes and query
+  parameters with `400` / `404` (service READMEs); deploy a web app that uses them only after the
+  rollout finished.
+
+### Upgrading from the 0.1.0 release
+
+The 0.1.0 release ran `ais-processor`, `safety` and `surveillance` as one Pod with `Recreate`
+(kit 0.2) and `notification` as one replica. A backup, then three steps in this order:
+
+0. Take a database backup (emission's migrations `0004`/`0005` are forward-only: going back to
+   0.1.0 needs it) and check NATS ≥ 2.11 with `max_payload` ≥ 4 MB (Prerequisites).
+1. **Notification first** — it handles `alert.resolved.v1`, which safety and surveillance 0.2
+   publish (a 0.1 notification acknowledges and skips it, so those inbox alerts would stay open).
+   [`values-upgrade-from-0.1.0-step1.yaml`](ais-its-platform/values-upgrade-from-0.1.0-step1.yaml)
+   deploys notification 0.2.0 and keeps every other component on 0.1.0 with the 0.1.0 rules:
+
+   ```bash
+   helm upgrade ais-its infra/helm/ais-its-platform -n ais-its \
+     -f infra/helm/ais-its-platform/values-prod.yaml \
+     -f infra/helm/ais-its-platform/values-upgrade-from-0.1.0-step1.yaml --atomic --timeout 10m
+   ```
+
+   Its migration `0003` is additive, so the 0.1 replica keeps working until it stops. Keep
+   `WEBHOOK_SIGNING_SECRET` in `ais-its-notification` and let no tenant create or rotate webhook
+   channels until the rollout is done (a 0.1 worker signs their deliveries with the deployment
+   secret), or uncomment `strategy: { type: Recreate }` there. The chart's new Pod template
+   restarts every other Pod once; the processor and the detectors (still `Recreate`) pause
+   briefly, their positions wait in the durables.
+2. **The services**, with emission recreated once:
+
+   ```bash
+   helm upgrade ais-its infra/helm/ais-its-platform -n ais-its \
+     -f infra/helm/ais-its-platform/values-prod.yaml \
+     --set emission.strategy.type=Recreate --wait --timeout 40m    # no --atomic
+   ```
+
+   Emission stops both 0.1.0 replicas before the first 0.2.0 replica applies `0004`/`0005` (up
+   to the 30 min startup budget). Without `--atomic`: a rollback to 0.1.0 images after those
+   migrations would break emission — fix forward or restore the backup. `ais-processor`,
+   `safety` and `surveillance` go from one Pod with `Recreate` to two with `RollingUpdate` in the
+   same rollout: the 0.1.0 instance stays active until it stops, then a 0.2.0 standby takes over
+   (the processor at once, the detectors at the latest after the pin TTL) and reloads the open
+   occurrences before its first position. The other services roll as in the table; until auth
+   has finished, give no API key an expiry and rotate none (0.1.0 replicas enforce neither).
+3. **Back to the regular command** (`-f values-prod.yaml --atomic --timeout 10m`, see Install):
+   emission returns to `RollingUpdate`, a change of the strategy alone that restarts no Pod.
+   Only then deploy a web app that uses the 0.2.0 API.
 
 ## Validate
 
@@ -115,8 +203,19 @@ $H dependency build ais-its-platform
 $H lint --strict ais-its-service
 $H lint --strict ais-its-platform -f ais-its-platform/values-dev.yaml
 $H lint --strict ais-its-platform -f ais-its-platform/values-prod.yaml
+$H lint --strict ais-its-platform -f ais-its-platform/values-prod.yaml \
+  -f ais-its-platform/values-upgrade-from-0.1.0-step1.yaml
+$H lint --strict ais-its-platform -f ais-its-platform/values-prod.yaml --set emission.strategy.type=Recreate
 $H template ais-its ais-its-platform -n ais-its -f ais-its-platform/values-prod.yaml > /tmp/ais-its-prod.yaml
 ```
+
+`infra/scripts/helm-check.sh` runs the lint and render of dev, prod and the two steps of
+[Upgrading from the 0.1.0 release](#upgrading-from-the-010-release) (the only renders with a
+`Recreate` Deployment: step 1 the processor and the detectors, step 2 emission; the script checks
+that both contain one) and applies every render with `kubectl apply --dry-run=server` to a
+throwaway k3s API server (the API server rejects a `Recreate` strategy that still carries
+`rollingUpdate`). Before upgrading a real cluster from 0.1.0, also check each step's command with
+`template` instead of `upgrade` and `kubectl apply --dry-run=server -f` against the target cluster.
 
 ## The `ais-its-service` chart
 
@@ -124,15 +223,17 @@ Main knobs (`ais-its-service/values.yaml` documents all of them):
 
 | Value | Default | Purpose |
 |---|---|---|
-| `image.repository` / `tag` / `digest` | — / `global.imageTag` / — | image reference (`latest` refused) |
+| `image.repository` / `tag` / `digest` | — / `global.imageTag`, else the chart's `appVersion` / — | image reference (`latest` refused); pin `tag` for an image versioned apart from the services (`web`, `legacy-be`) |
 | `command`, `args` | `[]` | other entrypoint of the same image (ais-pipeline) |
 | `port` | `3001` | container port, `PORT` env, Service port |
 | `env` / `secretEnv` / `existingSecret` / `extraEnvFrom` | `{}` / `{}` / `""` / `[]` | ConfigMap (values are templates) / dev-only Secret / external Secret / more sources |
 | `platformEnv` | `true` | inject `global.env` + `global.existingSecret` |
-| `probes.{startup,liveness,readiness}` | `/health/live`, `/health/ready` | spec §10; `enabled: false` to drop one |
-| `replicaCount`, `strategy` | `1`, RollingUpdate | `strategy: {type: Recreate}` drops the rolling-update parameters |
+| `probes.{startup,liveness,readiness}` | `/health/live`, `/health/ready` | spec §10; startup budget 36 × 5 s; `enabled: false` to drop one |
+| `replicaCount`, `strategy` | `1`, RollingUpdate (`maxSurge: 1`, `maxUnavailable: 0`) | `strategy: {type: Recreate}` drops the rolling-update parameters |
+| `progressDeadlineSeconds` | `null` (Kubernetes: 600) | keep it above the startup budget of long boot-time migrations |
+| `preStopSleepSeconds`, `terminationGracePeriodSeconds` | `5`, `40` | grace = preStop + the kit's `SHUTDOWN_TIMEOUT_MS` (30 s) + 5 s |
 | `autoscaling.*` | disabled | HPA on CPU (and optionally memory) |
-| `podDisruptionBudget.maxUnavailable` | `1` | never blocks node drains |
+| `podDisruptionBudget.*` | enabled, `maxUnavailable: 1` | rendered only when more than one replica can run (`replicaCount` or `autoscaling.maxReplicas` > 1) |
 | `secondaryContainer.*` | disabled | second process in the same Pod |
 | `writablePaths` | `[/tmp]` | emptyDirs on top of the read-only root filesystem |
 | `metrics.enabled` | `true` | `prometheus.io/*` scrape annotations for `GET /metrics` |
@@ -145,13 +246,13 @@ capabilities dropped, `RuntimeDefault` seccomp, no service-account token and no 
 
 The umbrella deploys the ingestor and the processor as two releases of the same image
 (`command` differs), so each scales and rolls out on its own. For a very small cluster they can
-share one Pod instead — then that Pod contains the single AIS_RAW processor, so it must never
-run twice either:
+share one Pod instead. Every replica of that Pod then also runs a processor, which is fine from
+0.2.0 on: the `ais-processor` consumer is exclusive (one active, the others stand by) and hands
+over at a graceful stop, so the Pod keeps the ingestor's replica count and rolling updates (with
+0.1.0 images it had to run one replica with `Recreate`):
 
 ```yaml
 ais-ingestor:
-  replicaCount: 1                 # never two processors at once (values-prod runs 2 ingestors) …
-  strategy: { type: Recreate }    # … not even during a rollout
   extraEnvFrom:                   # DATABASE_URL of the processor
     - secretRef: { name: ais-its-ais-processor }
   secondaryContainer:

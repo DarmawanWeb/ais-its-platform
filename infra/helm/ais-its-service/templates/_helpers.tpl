@@ -65,6 +65,15 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 {{- end }}
 
+{{/* Most replicas the Deployment can run: the HPA maximum, else replicaCount. */}}
+{{- define "ais-its-service.maxReplicas" -}}
+{{- if .Values.autoscaling.enabled }}
+{{- .Values.autoscaling.maxReplicas }}
+{{- else }}
+{{- .Values.replicaCount }}
+{{- end }}
+{{- end }}
+
 {{/* Container port names are limited to 15 characters. */}}
 {{- define "ais-its-service.secondaryPortName" -}}
 {{- printf "http-%s" .Values.secondaryContainer.name | trunc 15 | trimSuffix "-" }}

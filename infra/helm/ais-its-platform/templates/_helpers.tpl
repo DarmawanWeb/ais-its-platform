@@ -32,3 +32,32 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 {{- $match }}
 {{- end }}
+
+{{/*
+  ais-pipeline README (Operations, "Scaling"): every ingestor connects to each
+  upstream whose URL is set, with the same AIS_UPSTREAM_TOKEN, so run one per
+  upstream account. The replicas of one Deployment share their environment, so a
+  feed URL in env or secretEnv allows one replica (HPA off). URLs supplied through
+  existingSecret or extraEnvFrom are not visible here.
+*/}}
+{{- define "ais-its-platform.checkIngestorFeeds" -}}
+{{- $c := index .Values "ais-ingestor" | default dict }}
+{{- if $c.enabled }}
+{{- $env := $c.env | default dict }}
+{{- $secretEnv := $c.secretEnv | default dict }}
+{{- $feeds := list }}
+{{- range $key := list "AIS_PRIMARY_URL" "AIS_BATAM_URL" }}
+{{- if index $env $key | default (index $secretEnv $key) | default "" | toString | trim }}
+{{- $feeds = append $feeds $key }}
+{{- end }}
+{{- end }}
+{{- $autoscaling := $c.autoscaling | default dict }}
+{{- $max := int ($c.replicaCount | default 1) }}
+{{- if $autoscaling.enabled }}
+{{- $max = int ($autoscaling.maxReplicas | default 2) }}
+{{- end }}
+{{- if and $feeds (gt $max 1) }}
+{{- fail (printf "ais-ingestor: %s set with up to %d replicas. Every replica connects to each upstream whose URL is set, with the same AIS_UPSTREAM_TOKEN (ais-pipeline README, Operations: Scaling): set ais-ingestor.replicaCount to 1 with autoscaling disabled, or leave the feed URLs empty." (join " and " $feeds) $max) }}
+{{- end }}
+{{- end }}
+{{- end }}

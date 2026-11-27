@@ -1,0 +1,43 @@
+# =============================================================================
+# ais-its-platform — upgrade from the 0.1.0 release, STEP 1 of 3: notification first
+# =============================================================================
+# Layered on top of values-prod.yaml (infra/helm/README.md, "Upgrading from the
+# 0.1.0 release"):
+#   helm upgrade ais-its infra/helm/ais-its-platform -n ais-its \
+#     -f infra/helm/ais-its-platform/values-prod.yaml \
+#     -f infra/helm/ais-its-platform/values-upgrade-from-0.1.0-step1.yaml \
+#     --atomic --timeout 10m
+#
+# notification 0.2.0 handles alert.resolved.v1, which safety and surveillance
+# publish from 0.2.0 on; a 0.1 notification acknowledges and skips it, so those
+# resolutions would never close inbox alerts. Every other component stays on its
+# 0.1.0 image here, and the processor and the detectors keep the deployment rules
+# of 0.1.0 (kit 0.2: one consumer per stateful durable, Recreate) until step 2
+# deploys their 0.2.0 images with values-prod.yaml alone.
+
+global:
+  imageTag: "0.1.0"
+
+notification:
+  image:
+    tag: "0.2.0"
+  # Rolling update (values-prod: 2 replicas). Migration 0003 only adds nullable
+  # columns and tables, so the 0.1 replica keeps working until it stops. While it
+  # runs it may claim a webhook delivery of a channel created or rotated on 0.2:
+  # keep WEBHOOK_SIGNING_SECRET in the Secret and let no tenant create or rotate
+  # webhook channels until the rollout is done — or uncomment for no mixed
+  # webhook workers at all (a short notification outage; alert events wait in
+  # their durables):
+  # strategy: { type: Recreate }
+
+ais-processor:
+  replicaCount: 1
+  strategy: { type: Recreate }
+
+safety:
+  replicaCount: 1
+  strategy: { type: Recreate }
+
+surveillance:
+  replicaCount: 1
+  strategy: { type: Recreate }

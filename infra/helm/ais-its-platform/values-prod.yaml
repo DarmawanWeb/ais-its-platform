@@ -11,7 +11,12 @@
 # cluster, Valkey, S3 and SMTP — see infra/README.md "Production".
 
 global:
-  imageTag: "0.1.0"                      # pin the platform release (or use image.digest)
+  # Release of the nine services (kit 0.3 / contracts 0.4); web and legacy-be are
+  # versioned on their own (image.tag pinned in values.yaml, not affected by
+  # this). The replica counts and rolling updates of this file need these
+  # images: coming from the 0.1.0 release, follow "Upgrading from the 0.1.0
+  # release" in infra/helm/README.md (notification first).
+  imageTag: "0.2.0"
   existingSecret: ais-its-shared         # INTERNAL_TOKEN
   env:
     # Use tls://… once the NATS cluster serves TLS (infra/nats/nats.conf, production).
@@ -32,7 +37,11 @@ x-http-service: &http-service
     limits: { memory: 768Mi }
 
 x-detector-service: &detector-service
-  # replicaCount 1 + Recreate from values.yaml (one consumer per durable).
+  # One active instance (exclusive position consumer) + one hot standby that
+  # takes over at once at a graceful stop, after the pinned TTL (30 s; safety:
+  # DETECTOR_PINNED_TTL_MS) when the active Pod dies. Rolling updates (chart
+  # default), PDB maxUnavailable 1.
+  replicaCount: 2
   resources:
     requests: { cpu: 300m, memory: 384Mi }
     limits: { memory: 1Gi }
@@ -51,28 +60,34 @@ safety: *detector-service
 surveillance: *detector-service
 
 notification:
-  # ONE instance: socket.io events reach only the sockets of the replica that
-  # emits them, and alert.raised.v1 arrives through the shared durable consumer
-  # `notification-alerts` (one replica per message, §7.3), so with two replicas
-  # each realtime alert would reach only part of the clients (§9 rooms). Scale
-  # out only once the service fans out through a cross-instance adapter
-  # (e.g. @socket.io/redis-adapter on Valkey).
-  replicaCount: 1
+  # The replica that handles an alert event publishes the push on
+  # aisits.notification.realtime.v1 and every replica emits it to its own
+  # sockets (§9), so clients on any replica get every alert. Fixed count, no HPA:
+  # a scale-down would only drop sockets (clients reconnect).
+  replicaCount: 2
   autoscaling: { enabled: false }
   resources:
     requests: { cpu: 200m, memory: 256Mi }
     limits: { memory: 768Mi }
 
 ais-ingestor:
-  # Two instances keep the upstream feeds alive during a rollout or node loss;
-  # duplicates are dropped by JetStream (Nats-Msg-Id dedup, spec §13.2).
+  # Feeds off (AIS_*_URL empty, values.yaml): two instances keep the pusher
+  # socket and POST /ingest/ais up during a rollout or node loss; duplicates are
+  # dropped by JetStream (Nats-Msg-Id dedup, spec §13.2). A feed URL connects
+  # EVERY replica to that upstream with the same token: set it together with
+  # replicaCount: 1 (one connection per upstream account, ais-pipeline README;
+  # the render fails otherwise). A one-replica rollout still overlaps two Pods
+  # for a few seconds (maxSurge 1): duplicates are dropped, a refused second
+  # connection is retried with backoff.
   replicaCount: 2
   resources:
     requests: { cpu: 200m, memory: 256Mi }
     limits: { memory: 512Mi }
 
 ais-processor:
-  # replicaCount 1 + Recreate from values.yaml (single ordered AIS_RAW consumer).
+  # One active AIS_RAW consumer (exclusive, per-vessel order) + one hot standby;
+  # both serve the query API and relay the outbox.
+  replicaCount: 2
   resources:
     requests: { cpu: 500m, memory: 512Mi }
     limits: { memory: 1Gi }
@@ -85,12 +100,12 @@ emission:
     limits: { memory: 1Gi }
 
 web:
-  replicaCount: 2
+  replicaCount: 2                        # image pinned in values.yaml
 
 martin:
   replicaCount: 2                        # image pinned in values.yaml
 
-legacy-be:
+legacy-be:                               # image pinned in values.yaml
   enabled: true                          # /api/v1 until the v2 cut-over (spec §1)
   replicaCount: 1                        # in-process schedulers of the MVP
 

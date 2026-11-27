@@ -7,8 +7,8 @@ description: >-
   (PostgreSQL + TimescaleDB, NATS JetStream, Valkey, S3, SMTP, OpenTelemetry)
   are provided separately.
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.2.0
+appVersion: "0.2.0"
 kubeVersion: ">=1.27.0-0"
 home: https://github.com/DarmawanWeb/ais-its-platform
 sources:
@@ -21,66 +21,66 @@ maintainers:
 dependencies:
   - name: ais-its-service
     alias: auth
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: auth.enabled
   - name: ais-its-service
     alias: fleet
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: fleet.enabled
   - name: ais-its-service
     alias: ais-ingestor
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: ais-ingestor.enabled
   - name: ais-its-service
     alias: ais-processor
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: ais-processor.enabled
   - name: ais-its-service
     alias: telemetry
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: telemetry.enabled
   - name: ais-its-service
     alias: emission
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: emission.enabled
   - name: ais-its-service
     alias: geo
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: geo.enabled
   - name: ais-its-service
     alias: safety
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: safety.enabled
   - name: ais-its-service
     alias: surveillance
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: surveillance.enabled
   - name: ais-its-service
     alias: notification
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: notification.enabled
   - name: ais-its-service
     alias: web
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: web.enabled
   - name: ais-its-service
     alias: legacy-be
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: legacy-be.enabled
   - name: ais-its-service
     alias: martin
-    version: 0.1.0
+    version: 0.2.0
     repository: file://../ais-its-service
     condition: martin.enabled

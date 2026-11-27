@@ -23,6 +23,9 @@ global:
     OTEL_EXPORTER_OTLP_ENDPOINT: http://observability:4318
     INTERNAL_TOKEN: dev-internal-token-change-me   # spec §4 dev default (Secret in prod)
 
+# One replica, no PDB. Rollouts still surge one new Pod before the old one stops:
+# the processor and the detectors start as standbys and take over when the old
+# Pod releases its pin (graceful stop), so dev exercises the production handover.
 x-dev-small: &small
   replicaCount: 1
   autoscaling: { enabled: false }
@@ -104,6 +107,8 @@ notification:
     WEBHOOK_SIGNING_SECRET: dev-webhook-signing-secret
 
 web:
+  image:
+    tag: main                            # like global.imageTag (values.yaml pins a web release)
   replicaCount: 1
 
 martin:
